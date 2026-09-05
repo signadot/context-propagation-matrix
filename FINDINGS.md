@@ -177,10 +177,16 @@ Everywhere else, coverage collapses by language:
   the literal string `tracestate` (the header *name* as its value). No Kafka
   (confluent-kafka) or RabbitMQ (pika) support.
 - **.NET (1.34.7, startup-hook zero-code)**: HTTP + gRPC perfect incl.
-  baggage. Kafka/RabbitMQ instrumentation exists **only in the CLR-profiler
-  deployment** (linux-x64 only — it cannot run on arm64 at all), and even the
-  profiler caps at `RabbitMQ.Client <7.0.0` and `Confluent.Kafka <3.0.0`; the
-  startup hook covers neither. Messaging legs measure absent.
+  baggage. The agent's own Kafka/RabbitMQ instrumentation exists **only in
+  the CLR-profiler deployment** (linux-x64 only — it cannot run on arm64 at
+  all), and even the profiler caps at `RabbitMQ.Client <7.0.0` and
+  `Confluent.Kafka <3.0.0`; the startup hook covers neither. Measured
+  nuance: **RabbitMQ trace context still flows** (`*→rmq` inject and `rmq→*`
+  continuation both ✅ for traceparent/tracestate) because RabbitMQ.Client
+  7.x ships *native* `ActivitySource` instrumentation that the elastic
+  agent's OpenTelemetry bridge picks up — but baggage does not ride along.
+  Kafka (Confluent.Kafka has no native ActivitySource) measures fully
+  absent: `*→kafka` no inject, `kafka→*` new trace.
 - **Ruby (elastic-apm 4.9.0)**: http→http only; gRPC/Kafka/RabbitMQ all
   unsupported (gRPC requires hand-added interceptors; Kafka only via the
   Racecar framework).
