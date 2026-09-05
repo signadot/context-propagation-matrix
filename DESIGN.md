@@ -22,7 +22,10 @@ combination, never by quoting vendor documentation.
   `x-datadog-*`, `newrelic`, `b3`/`x-b3-*`, and everything else that arrives.
 
 A **variant** is one tool × language pair, named `{tool}-{lang}` (e.g.
-`datadog-java`). 18 variants total.
+`datadog-java`). Config variations get suffixed names (e.g.
+`datadog-java-defaults`, `datadog-python-kafkaprop`). Not every tool covers
+every language (e.g. Elastic has no Rust agent); `run.sh` holds the
+authoritative variant list.
 
 ## Components
 
@@ -34,15 +37,19 @@ driver ◀──────────────── GET /observations?tes
 
 ### Relay (one app per language, three instrumentation variants)
 
-The relay is deliberately naive application code. It listens on all three
+The relay is deliberately naive application code. It listens on all four
 protocols and, on receiving a message, forwards a new message to the sink over
 the protocol named in the payload. **Relay code must never touch headers,
 metadata, record headers, or tracing APIs directly** — header propagation is
 exclusively the job of the tool's instrumentation, because that is what we are
-measuring. The single exception is Go, where no auto-instrumentation exists for
-any of the three tools; Go relays use each vendor's documented contrib
-libraries and idiomatic `context.Context` plumbing, and the matrix labels Go
-results with the exact libraries used.
+measuring. The exceptions are Go and Rust, where no auto-instrumentation
+exists for any of the tools; those relays use each vendor's documented
+contrib libraries / carrier APIs and idiomatic context plumbing, and the
+matrix labels their results with the exact libraries used. PHP is a partial
+exception of a different kind: it serves HTTP and consumes Kafka/RabbitMQ,
+but no tracer-supported PHP topology can serve gRPC (see
+`relays/php/README.md`), so its gRPC-inbound cells are undeliverable by
+construction.
 
 Endpoints (identical for every variant):
 
@@ -98,12 +105,13 @@ Query: `GET /observations?test_id=X` → `{"observations":[...]}`.
 
 ### Driver (Go, uninstrumented)
 
-For each variant it runs all 9 boundaries. Per test:
+For each variant it runs all 16 boundaries. Per test:
 
 1. Generate `test_id = {variant}--{in}-{out}--{rand8}`, a random W3C
    `trace_id`/`span_id`, and routing key `rk-{rand8}`.
 2. Seed the inbound call with exactly these headers (HTTP headers, gRPC
-   metadata, or Kafka record headers, respectively):
+   metadata, Kafka record headers, or AMQP header-table entries,
+   respectively):
 
    | header | value |
    |---|---|
@@ -203,11 +211,13 @@ in the JSON so any cell can be audited down to the exact header values.
 Chosen to be each vendor's documented happy path; recorded in `/info` and in
 the matrix footnotes.
 
-| language | server / http client | grpc | kafka |
-|---|---|---|---|
-| java | Spring Boot 3 (Tomcat) / RestTemplate (HttpURLConnection) | grpc-java | spring-kafka (kafka-clients) |
-| node | express / axios (node http) | @grpc/grpc-js + proto-loader | kafkajs |
-| python | flask / requests | grpcio | confluent-kafka |
-| go | net/http | google.golang.org/grpc | per-tool contrib (kotel / dd contrib / nrsarama) |
-| dotnet | ASP.NET Core minimal API / HttpClient | Grpc.AspNetCore + Grpc.Net.Client | Confluent.Kafka |
-| ruby | sinatra (puma) / net-http | grpc gem | per-tool (rdkafka / ruby-kafka), see relay README |
+| language | server / http client | grpc | kafka | rabbitmq |
+|---|---|---|---|---|
+| java | Spring Boot 3 (Tomcat) / RestTemplate (HttpURLConnection) | grpc-java | spring-kafka (kafka-clients) | spring-rabbit (amqp-client) |
+| node | express / axios (node http) | @grpc/grpc-js + proto-loader | kafkajs | amqplib |
+| python | flask / requests | grpcio | confluent-kafka | pika |
+| go | net/http | google.golang.org/grpc | per-tool contrib (kotel / dd contrib / nrsarama) | amqp091-go (per-tool wiring) |
+| dotnet | ASP.NET Core minimal API / HttpClient | Grpc.AspNetCore + Grpc.Net.Client | Confluent.Kafka | RabbitMQ.Client |
+| ruby | sinatra (puma) / net-http | grpc gem | per-tool (rdkafka / ruby-kafka), see relay README | bunny |
+| php | Apache mod_php + Slim 4 / Guzzle | ext-grpc (client only; no server — see relay README) | ext-rdkafka | php-amqplib |
+| rust | axum / reqwest | tonic | rdkafka | lapin |

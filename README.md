@@ -3,9 +3,10 @@
 An empirical, re-runnable test harness that measures **context propagation**
 support — which trace/baggage headers actually survive a hop — across:
 
-- **Tools**: OpenTelemetry, Datadog (`dd-trace-*`), New Relic
-- **Languages**: Java, Node.js, Python, Go, .NET, Ruby
-- **Protocol boundaries**: every combination of `{HTTP, gRPC, Kafka} → {HTTP, gRPC, Kafka}`
+- **Tools**: OpenTelemetry, Datadog (`dd-trace-*`), Elastic APM, New Relic
+- **Languages**: Java, Node.js, Python, Go, .NET, Ruby, PHP, Rust
+- **Protocol boundaries**: every combination of
+  `{HTTP, gRPC, Kafka, RabbitMQ} → {HTTP, gRPC, Kafka, RabbitMQ}`
 - **Headers**: `traceparent`, `tracestate`, `baggage` (W3C), `ot-baggage-*`
   (OpenTracing legacy), plus whatever else shows up
 
@@ -18,8 +19,8 @@ Results are generated, not transcribed from docs: see the published matrix in
 Requirements: Docker + docker compose.
 
 ```sh
-# infra (Kafka + sink)
-docker compose up -d kafka sink
+# infra (Kafka + RabbitMQ + sink)
+docker compose up -d kafka rabbitmq sink
 
 # run one variant end to end (builds the relay image on first use)
 ./run.sh otel-java
@@ -39,11 +40,12 @@ per header — every cell of the matrix is auditable down to raw header values.
 
 ```
 DESIGN.md          the harness contract (read this first)
+FINDINGS.md        root causes and upstream references for notable cells
 proto/             relay/sink gRPC definitions
-sink/              uninstrumented Go recorder (HTTP + gRPC + Kafka)
+sink/              uninstrumented Go recorder (HTTP + gRPC + Kafka + RabbitMQ)
 driver/            uninstrumented Go test driver (seeds headers, evaluates results)
 matrixgen/         results/raw/*.json -> results/MATRIX.md
-relays/{lang}/     one naive relay app per language, 3 instrumentation variants each
+relays/{lang}/     one naive relay app per language, one instrumentation variant per tool
 results/raw/       machine-readable results per variant
 results/MATRIX.md  the generated support matrix
 ```
