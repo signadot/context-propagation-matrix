@@ -4,7 +4,7 @@ Generated from empirical runs of this harness — every cell is the observed
 result of an actual request/message hop, not a reading of vendor docs.
 Regenerate with `go run ./matrixgen` after `./run.sh`.
 
-Last generated: 2026-09-05 13:35 UTC
+Last generated: 2026-09-05 15:48 UTC
 
 Boundaries are `inbound protocol → outbound protocol` through a single
 instrumented service (the relay). Legend: ✅ propagated/preserved ·
@@ -220,10 +220,6 @@ instrumented service (the relay). Legend: ✅ propagated/preserved ·
 | dotnet · 1.34.7 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | ruby · 4.9.0 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | php · elastic_apm 1.17.0 | ❌ | ❌ | ❌ | ❌ | 🚫 | 🚫 | 🚫 | 🚫 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
-## New Relic
-
-_No results yet._
 
 ## Variant details
 

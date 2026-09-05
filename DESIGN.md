@@ -12,14 +12,14 @@ combination, never by quoting vendor documentation.
 ## Dimensions
 
 - **Tools**: `otel` (OpenTelemetry), `datadog` (dd-trace), `elastic` (Elastic
-  APM classic agents), `newrelic` (New Relic agents; deferred pending free-tier
-  license key)
+  APM classic agents). See Roadmap below for candidates.
 - **Languages**: `java`, `node`, `python`, `go`, `dotnet`, `ruby`, `php`, `rust`
 - **Boundaries** (inbound protocol → outbound protocol): all 16 of
   `{http, grpc, kafka, rabbitmq} × {http, grpc, kafka, rabbitmq}`
 - **Headers observed** (primary): `traceparent`, `tracestate`, `baggage` (W3C),
   `ot-baggage-*` (OpenTracing legacy). Secondary observations recorded verbatim:
-  `x-datadog-*`, `newrelic`, `b3`/`x-b3-*`, and everything else that arrives.
+  `x-datadog-*`, `elasticapmtraceparent`, `b3`/`x-b3-*`, and everything else
+  that arrives.
 
 A **variant** is one tool × language pair, named `{tool}-{lang}` (e.g.
 `datadog-java`). Config variations get suffixed names (e.g.
@@ -164,11 +164,10 @@ consumes; topics are auto-created; every message is self-describing via
   `datadog-{lang}-defaults`. No Datadog agent container: tracers buffer and
   drop when the agent is unreachable, header injection is unaffected
   (`DD_TRACE_STARTUP_LOGS=false` to keep logs quiet).
-- **newrelic**: distributed tracing enabled (`NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true`),
-  which is the agents' default W3C mode. New Relic agents require a successful
-  connect handshake (license key) before they create traces, so these variants
-  need `NEW_RELIC_LICENSE_KEY` in the environment (free-tier key is fine).
-  Without a key the driver records the variant as `not_run`.
+- **elastic**: agents configured from the environment with sending disabled
+  where supported (`ELASTIC_APM_DISABLE_SEND=true`,
+  `ELASTIC_APM_CENTRAL_CONFIG=false`); no APM Server container. Header
+  injection is independent of a reachable server for every agent tested.
 
 ## Results schema
 
@@ -216,8 +215,28 @@ the matrix footnotes.
 | java | Spring Boot 3 (Tomcat) / RestTemplate (HttpURLConnection) | grpc-java | spring-kafka (kafka-clients) | spring-rabbit (amqp-client) |
 | node | express / axios (node http) | @grpc/grpc-js + proto-loader | kafkajs | amqplib |
 | python | flask / requests | grpcio | confluent-kafka | pika |
-| go | net/http | google.golang.org/grpc | per-tool contrib (kotel / dd contrib / nrsarama) | amqp091-go (per-tool wiring) |
+| go | net/http | google.golang.org/grpc | per-tool contrib (kotel / dd contrib) | amqp091-go (per-tool wiring) |
 | dotnet | ASP.NET Core minimal API / HttpClient | Grpc.AspNetCore + Grpc.Net.Client | Confluent.Kafka | RabbitMQ.Client |
 | ruby | sinatra (puma) / net-http | grpc gem | per-tool (rdkafka / ruby-kafka), see relay README | bunny |
 | php | Apache mod_php + Slim 4 / Guzzle | ext-grpc (client only; no server — see relay README) | ext-rdkafka | php-amqplib |
 | rust | axum / reqwest | tonic | rdkafka | lapin |
+
+## Roadmap / contributions welcome
+
+Dimensions we plan to add (or would happily take PRs for):
+
+- **New Relic as a fourth tool column.** Confirmed viable: the agents are
+  free to use with a free-tier account, but they no-op until a license-key
+  connect handshake succeeds, so runs need `NEW_RELIC_LICENSE_KEY` set.
+  Working relay targets for the six original languages (including a Go main
+  using `nrgrpc`/`nrsarama`/`nramqp` and the documented
+  `AcceptDistributedTraceHeaders` consume pattern) existed previously and
+  were removed in one commit to keep the matrix license-key-free — restore
+  them from this repo's git history (`git log --diff-filter=D -- '*newrelic*'`).
+- **More boundaries**: SQS/SNS, NATS, Google Pub/Sub.
+- **PHP gRPC-inbound** via a RoadRunner-based relay variant (manual
+  instrumentation; no tracer covers RoadRunner's gRPC worker path
+  zero-code).
+- **More tools**: Dynatrace, Grafana Beyla/Alloy, AWS X-Ray.
+- **Scenarios**: mixed-tracer chains (OTel service → Datadog service),
+  service mesh in the path, context loss across job schedulers.

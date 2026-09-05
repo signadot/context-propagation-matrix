@@ -5,7 +5,6 @@ module Info
   TRACER_GEMS = {
     'otel' => 'opentelemetry-sdk',
     'datadog' => 'datadog',
-    'newrelic' => 'newrelic_rpm',
     'elastic' => 'elastic-apm'
   }.freeze
 
@@ -13,7 +12,7 @@ module Info
     OTEL_PROPAGATORS
     OTEL_TRACES_EXPORTER
     DD_TRACE_PROPAGATION_STYLE
-    NEW_RELIC_DISTRIBUTED_TRACING_ENABLED
+    ELASTIC_APM_SERVER_URL
   ].freeze
 
   def self.payload

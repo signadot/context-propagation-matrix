@@ -138,24 +138,6 @@ services:
       DD_REMOTE_CONFIG_ENABLED: "false"
     depends_on: *relay-depends
 
-  relay-newrelic-java:
-    build:
-      context: .
-      dockerfile: relays/java/Dockerfile
-      target: newrelic
-    profiles: [newrelic-java]
-    restart: on-failure
-    environment:
-      <<: *relay-common-env
-      VARIANT: newrelic-java
-      TOOL: newrelic
-      RELAY_TOPIC: relay-in-newrelic-java
-      NEW_RELIC_APP_NAME: relay-newrelic-java
-      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
-      NEW_RELIC_DISTRIBUTED_TRACING_ENABLED: "true"
-      NEW_RELIC_LOG_FILE_NAME: STDOUT
-    depends_on: *relay-depends
-
   # ---------------- Node relays ----------------
 
   relay-otel-node:
@@ -203,21 +185,6 @@ services:
       DD_TRACE_STARTUP_LOGS: "false"
       DD_INSTRUMENTATION_TELEMETRY_ENABLED: "false"
       DD_REMOTE_CONFIG_ENABLED: "false"
-    depends_on: *relay-depends
-
-  relay-newrelic-node:
-    build: { context: ., dockerfile: relays/node/Dockerfile, target: newrelic }
-    profiles: [newrelic-node]
-    restart: on-failure
-    environment:
-      <<: *relay-common-env
-      VARIANT: newrelic-node
-      TOOL: newrelic
-      RELAY_TOPIC: relay-in-newrelic-node
-      NEW_RELIC_APP_NAME: relay-newrelic-node
-      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
-      NEW_RELIC_DISTRIBUTED_TRACING_ENABLED: "true"
-      NEW_RELIC_LOG: stdout
     depends_on: *relay-depends
 
   # ---------------- Python relays ----------------
@@ -288,21 +255,6 @@ services:
       DD_REMOTE_CONFIG_ENABLED: "false"
     depends_on: *relay-depends
 
-  relay-newrelic-python:
-    build: { context: ., dockerfile: relays/python/Dockerfile, target: newrelic }
-    profiles: [newrelic-python]
-    restart: on-failure
-    environment:
-      <<: *relay-common-env
-      VARIANT: newrelic-python
-      TOOL: newrelic
-      RELAY_TOPIC: relay-in-newrelic-python
-      NEW_RELIC_APP_NAME: relay-newrelic-python
-      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
-      NEW_RELIC_DISTRIBUTED_TRACING_ENABLED: "true"
-      NEW_RELIC_LOG: stdout
-    depends_on: *relay-depends
-
   # ---------------- Go relays ----------------
 
   relay-otel-go:
@@ -348,20 +300,6 @@ services:
       DD_TRACE_STARTUP_LOGS: "false"
       DD_INSTRUMENTATION_TELEMETRY_ENABLED: "false"
       DD_REMOTE_CONFIG_ENABLED: "false"
-    depends_on: *relay-depends
-
-  relay-newrelic-go:
-    build: { context: ., dockerfile: relays/go/Dockerfile, args: { TOOL: newrelic } }
-    profiles: [newrelic-go]
-    restart: on-failure
-    environment:
-      <<: *relay-common-env
-      VARIANT: newrelic-go
-      TOOL: newrelic
-      RELAY_TOPIC: relay-in-newrelic-go
-      NEW_RELIC_APP_NAME: relay-newrelic-go
-      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
-      NEW_RELIC_DISTRIBUTED_TRACING_ENABLED: "true"
     depends_on: *relay-depends
 
   # ---------------- .NET relays ----------------
@@ -413,21 +351,6 @@ services:
       DD_REMOTE_CONFIG_ENABLED: "false"
     depends_on: *relay-depends
 
-  relay-newrelic-dotnet:
-    build: { context: ., dockerfile: relays/dotnet/Dockerfile, target: newrelic }
-    profiles: [newrelic-dotnet]
-    restart: on-failure
-    environment:
-      <<: *relay-common-env
-      VARIANT: newrelic-dotnet
-      TOOL: newrelic
-      RELAY_TOPIC: relay-in-newrelic-dotnet
-      NEW_RELIC_APP_NAME: relay-newrelic-dotnet
-      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
-      NEW_RELIC_DISTRIBUTED_TRACING_ENABLED: "true"
-      NEW_RELIC_LOG_CONSOLE: "true"
-    depends_on: *relay-depends
-
   # ---------------- Ruby relays ----------------
 
   relay-otel-ruby:
@@ -473,21 +396,6 @@ services:
       DD_TRACE_STARTUP_LOGS: "false"
       DD_INSTRUMENTATION_TELEMETRY_ENABLED: "false"
       DD_REMOTE_CONFIG_ENABLED: "false"
-    depends_on: *relay-depends
-
-  relay-newrelic-ruby:
-    build: { context: ., dockerfile: relays/ruby/Dockerfile, target: newrelic }
-    profiles: [newrelic-ruby]
-    restart: on-failure
-    environment:
-      <<: *relay-common-env
-      VARIANT: newrelic-ruby
-      TOOL: newrelic
-      RELAY_TOPIC: relay-in-newrelic-ruby
-      NEW_RELIC_APP_NAME: relay-newrelic-ruby
-      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
-      NEW_RELIC_DISTRIBUTED_TRACING_ENABLED: "true"
-      NEW_RELIC_LOG: stdout
     depends_on: *relay-depends
 
   # ---------------- Elastic APM relays ----------------

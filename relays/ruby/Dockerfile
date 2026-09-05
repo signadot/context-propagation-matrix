@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Build context is the repo root (so proto/ is reachable).
-# Targets: otel | datadog | newrelic | elastic (same app, different Gemfile +
-# boot file).
+# Targets: otel | datadog | elastic (same app, different Gemfile + boot
+# file).
 
 # grpc-tools ships no linux/arm64 protoc binaries, so stub generation runs in
 # an explicit amd64 stage (emulated on Apple Silicon) and the generated .rb
@@ -47,13 +47,6 @@ RUN bundle install
 COPY relays/ruby/app app
 ENV TOOL=datadog
 CMD ["ruby", "app/boot_datadog.rb"]
-
-FROM base AS newrelic
-COPY relays/ruby/Gemfile.newrelic Gemfile
-RUN bundle install
-COPY relays/ruby/app app
-ENV TOOL=newrelic
-CMD ["ruby", "app/boot_newrelic.rb"]
 
 FROM base AS elastic
 COPY relays/ruby/Gemfile.elastic Gemfile

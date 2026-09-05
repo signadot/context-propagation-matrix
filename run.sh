@@ -3,7 +3,6 @@
 #
 #   ./run.sh otel-java datadog-node
 #   ./run.sh all
-#   NEW_RELIC_LICENSE_KEY=... ./run.sh newrelic-java
 set -uo pipefail
 cd "$(dirname "$0")"
 
@@ -16,7 +15,6 @@ ALL_VARIANTS=(
   datadog-python-kafkaprop
   elastic-java elastic-node elastic-python elastic-go elastic-dotnet elastic-ruby
   elastic-php
-  newrelic-java newrelic-node newrelic-python newrelic-go newrelic-dotnet newrelic-ruby
 )
 
 if [[ $# -eq 0 ]]; then
@@ -37,10 +35,6 @@ docker compose build driver || exit 1
 
 failures=()
 for v in "${variants[@]}"; do
-  if [[ "$v" == newrelic-* && -z "${NEW_RELIC_LICENSE_KEY:-}" ]]; then
-    echo "==> SKIP $v (NEW_RELIC_LICENSE_KEY not set)"
-    continue
-  fi
   echo "==> running variant $v"
   # Pre-create topics: some Kafka clients (e.g. kafkajs) crash at startup if
   # the subscribed topic does not exist yet.

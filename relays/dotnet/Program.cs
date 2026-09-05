@@ -3,8 +3,8 @@
 // Deliberately naive application code: it never touches HTTP headers, gRPC
 // metadata, Kafka record headers, AMQP header tables, Activity, or any tracing
 // API. Whatever context propagation happens is exclusively the job of the
-// attached auto-instrumentation (OpenTelemetry / Datadog / New Relic / Elastic
-// APM zero-code agents).
+// attached auto-instrumentation (OpenTelemetry / Datadog / Elastic APM
+// zero-code agents).
 
 using System.Net.Http.Json;
 using System.Reflection;
@@ -63,7 +63,7 @@ app.MapGet("/info", () =>
     foreach (var key in new[]
              {
                  "OTEL_PROPAGATORS", "OTEL_TRACES_EXPORTER",
-                 "DD_TRACE_PROPAGATION_STYLE", "NEW_RELIC_DISTRIBUTED_TRACING_ENABLED",
+                 "DD_TRACE_PROPAGATION_STYLE",
              })
     {
         if (Environment.GetEnvironmentVariable(key) is { Length: > 0 } value)

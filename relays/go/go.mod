@@ -2,21 +2,12 @@ module github.com/signadot/context-propagation-matrix/relays/go
 
 go 1.25.11
 
-// v1.38.1 is the last release published under the Shopify path (the repo now
-// redirects to IBM/sarama, whose tags declare the IBM module path); nrsarama
-// is built against the Shopify module.
-require github.com/Shopify/sarama v1.38.1
-
 require (
 	github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2 v2.10.1
 	github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2 v2.10.1
 	github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.10.1
 	github.com/DataDog/dd-trace-go/v2 v2.10.1
 	github.com/IBM/sarama v1.60.2
-	github.com/newrelic/go-agent/v3 v3.44.2
-	github.com/newrelic/go-agent/v3/integrations/nramqp v1.0.3
-	github.com/newrelic/go-agent/v3/integrations/nrgrpc v1.4.10
-	github.com/newrelic/go-agent/v3/integrations/nrsarama v1.0.2
 	github.com/rabbitmq/amqp091-go v1.14.0
 	github.com/signadot/context-propagation-matrix v0.0.0-00010101000000-000000000000
 	github.com/twmb/franz-go v1.21.6
@@ -56,8 +47,6 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
-	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
-	github.com/eapache/queue v1.1.0 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/elastic/go-sysinfo v1.7.1 // indirect
 	github.com/elastic/go-windows v1.0.0 // indirect
@@ -65,11 +54,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/go-version v1.9.0 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
@@ -86,7 +71,6 @@ require (
 	github.com/minio/simdjson-go v0.4.5 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
-	github.com/newrelic/csec-go-agent v1.6.0 // indirect
 	github.com/outcaste-io/ristretto v0.2.3 // indirect
 	github.com/petermattis/goid v0.0.0-20260226131333-17d1149c6ac6 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
@@ -118,7 +102,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/arch v0.30.0 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/exp v0.0.0-20260529124908-c761662dc8c9 // indirect
 	golang.org/x/mod v0.38.0 // indirect

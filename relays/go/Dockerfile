@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Build context is the repo root (so gen/ and the root go.mod are reachable,
 # mirroring relays/java/Dockerfile). Select the relay binary with
-# --build-arg TOOL=otel|datadog|newrelic|elastic.
+# --build-arg TOOL=otel|datadog|elastic.
 
 FROM golang:1.25 AS build
 WORKDIR /src
@@ -19,8 +19,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     cd relays/go && CGO_ENABLED=0 go build -o /relay "./${TOOL}"
 
 FROM debian:bookworm-slim AS runtime
-# ca-certificates: the New Relic agent connects to collector.newrelic.com
-# over TLS. Harmless for the other relays.
+# ca-certificates: kept for any agent that phones home over TLS; harmless
+# for relays that don't.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates \
  && rm -rf /var/lib/apt/lists/*

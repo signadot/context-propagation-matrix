@@ -45,13 +45,12 @@ var boundaries = []string{
 	"rabbitmq->http", "rabbitmq->grpc", "rabbitmq->kafka", "rabbitmq->rabbitmq",
 }
 
-var tools = []string{"otel", "datadog", "elastic", "newrelic"}
+var tools = []string{"otel", "datadog", "elastic"}
 
 var toolTitles = map[string]string{
 	"otel":     "OpenTelemetry",
 	"datadog":  "Datadog (`dd-trace`)",
 	"elastic":  "Elastic APM (classic agents)",
-	"newrelic": "New Relic",
 }
 
 var langOrder = map[string]int{

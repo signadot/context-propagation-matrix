@@ -3,7 +3,7 @@
 An empirical, re-runnable test harness that measures **context propagation**
 support — which trace/baggage headers actually survive a hop — across:
 
-- **Tools**: OpenTelemetry, Datadog (`dd-trace-*`), Elastic APM, New Relic
+- **Tools**: OpenTelemetry, Datadog (`dd-trace-*`), Elastic APM
 - **Languages**: Java, Node.js, Python, Go, .NET, Ruby, PHP, Rust
 - **Protocol boundaries**: every combination of
   `{HTTP, gRPC, Kafka, RabbitMQ} → {HTTP, gRPC, Kafka, RabbitMQ}`
@@ -12,7 +12,8 @@ support — which trace/baggage headers actually survive a hop — across:
 
 Results are generated, not transcribed from docs: see the published matrix in
 [`results/MATRIX.md`](results/MATRIX.md) and the design/contract in
-[`DESIGN.md`](DESIGN.md).
+[`DESIGN.md`](DESIGN.md) — including a Roadmap section listing planned
+additions (New Relic, SQS/SNS, NATS, …) where contributions are welcome.
 
 ## Run it
 
@@ -25,8 +26,8 @@ docker compose up -d kafka rabbitmq sink
 # run one variant end to end (builds the relay image on first use)
 ./run.sh otel-java
 
-# run everything (New Relic variants need a license key)
-NEW_RELIC_LICENSE_KEY=... ./run.sh all
+# run everything
+./run.sh all
 
 # regenerate results/MATRIX.md from results/raw/*.json
 go run ./matrixgen

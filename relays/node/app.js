@@ -67,7 +67,6 @@ function tracerVersion() {
   const name = {
     otel: '@opentelemetry/auto-instrumentations-node',
     datadog: 'dd-trace',
-    newrelic: 'newrelic',
     elastic: 'elastic-apm-node',
   }[TOOL];
   return name ? pkgVersion(name) : 'unknown';
@@ -90,7 +89,7 @@ app.get('/info', (req, res) => {
   const config = {};
   for (const k of [
     'OTEL_PROPAGATORS', 'OTEL_TRACES_EXPORTER',
-    'DD_TRACE_PROPAGATION_STYLE', 'NEW_RELIC_DISTRIBUTED_TRACING_ENABLED',
+    'DD_TRACE_PROPAGATION_STYLE',
   ]) {
     if (process.env[k]) config[k] = process.env[k];
   }
