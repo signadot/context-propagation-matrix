@@ -118,9 +118,24 @@ framework. Same class as dd-py/pika: canonical client, zero coverage.
 
 Three structural findings apply to every PHP variant:
 
-- **No gRPC server, period.** `ext-grpc` is client-only; serving gRPC requires
-  RoadRunner, which none of the three tools' zero-code stories support. All
-  grpc→* boundaries are undeliverable (🚫) — a *language-level* gap.
+- **No gRPC server in any tracer-supported topology.** The official gRPC PHP
+  implementation is client-only
+  ([grpc.io quickstart](https://grpc.io/docs/languages/php/quickstart/):
+  "You can only create gRPC clients in PHP. Use another language to create a
+  gRPC server."). PHP *can* serve gRPC via a separate application server —
+  RoadRunner's [gRPC plugin](https://docs.roadrunner.dev/docs/grpc/grpc)
+  (Go proxy → PHP workers; the de facto standard) or Swoole-based frameworks
+  such as Hyperf — but none of the three tracers' zero-code instrumentation
+  covers those paths: dd-trace-php's RoadRunner integration hooks the HTTP
+  `PSR7Worker` only (Datadog's own guidance for RoadRunner gRPC is manual
+  `dd_trace_method` hooks, see
+  [dd-trace-php#805](https://github.com/DataDog/dd-trace-php/issues/805));
+  OTel has no roadrunner-grpc PHP instrumentation (RoadRunner's `otel`
+  plugin traces in the Go proxy layer, not the PHP worker); Elastic supports
+  neither. The harness measures the documented Apache mod_php + CLI worker
+  topology, so all grpc→* boundaries are undeliverable (🚫). A
+  RoadRunner-based relay with manual instrumentation is a candidate
+  follow-up (tracked in the article followups).
 - **No tool instruments the gRPC client** (`ext-grpc` + `grpc/grpc`): every
   `*→grpc` cell is header-free for otel, datadog, and elastic alike.
 - The relay runs Apache mod_php + two CLI workers — the documented supported
