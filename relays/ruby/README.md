@@ -121,8 +121,12 @@ elastic-apm 4.9.x. Exact versions are reported at runtime by `GET /info`
 - Kafka consumer in a background thread (rdkafka `consumer.each`, or the
   embedded karafka server for datadog); group `relay-{VARIANT}`, topic
   `RELAY_TOPIC`, earliest offset
+- RabbitMQ consumer in a background thread (bunny `queue.subscribe`,
+  restarting on error; deliveries run on bunny's channel work pool)
 - Sinatra via puma on `:8080` in the main thread (`POST /relay`, `GET /info`)
 
 Env: `VARIANT`, `TOOL`, `RELAY_TOPIC` (default `relay-in-{VARIANT}`),
-`KAFKA_BROKERS` (default `kafka:9092`), `SINK_HTTP` (default
-`http://sink:9080`), `SINK_GRPC` (default `sink:9081`).
+`KAFKA_BROKERS` (default `kafka:9092`), `RABBIT_URL` (default
+`amqp://guest:guest@rabbitmq:5672/`), `RELAY_RABBIT_QUEUE` (default
+`relay-rmq-{VARIANT}`), `SINK_RABBIT_QUEUE` (default `sink-rmq`), `SINK_HTTP`
+(default `http://sink:9080`), `SINK_GRPC` (default `sink:9081`).

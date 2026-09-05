@@ -16,7 +16,8 @@ other 8 boundaries. `traceparent`, `tracestate`, `ot-baggage-*`, and
 from the *span* rather than the *current context*
 (`defaultPropagator().inject(span, ...)`); baggage lives on the thread-local
 context, and `AgentSpan.get()` delegates non-span context keys to
-`Context.root()`, so the baggage propagator finds nothing. Reported by us:
+`Context.root()`, so the baggage propagator finds nothing. Reported upstream
+in May 2026:
 [dd-trace-java#11286](https://github.com/DataDog/dd-trace-java/issues/11286).
 Datadog's response confirms scoping: "W3C baggage propagation was specifically
 scoped to HTTP to begin with … extending it to other transports is a feature

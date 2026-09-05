@@ -14,6 +14,7 @@
       "confluent-kafka": "2.15.0",
       "flask": "3.1.3",
       "grpcio": "1.83.1",
+      "rabbitmq": "pika 1.4.4",
       "requests": "2.34.2"
     },
     "runtime_version": "python 3.12.14",
@@ -21,22 +22,22 @@
     "tracer_version": "4.14.0",
     "variant": "datadog-python"
   },
-  "ran_at": "2026-09-04T19:31:55.946362648Z",
+  "ran_at": "2026-09-05T12:58:01.974486035Z",
   "tests": [
     {
       "boundary": "http-\u003ehttp",
-      "test_id": "datadog-python--http-http--c5686900",
+      "test_id": "datadog-python--http-http--618dc8ac",
       "delivered": true,
       "seeded": {
-        "trace_id": "0dc28d9335db555efa3a53c1affc9605",
-        "span_id": "b775d406eacc4519",
-        "routing_key": "rk-832a75c4",
+        "trace_id": "3b3913fbd3b8025b6499f92b7662667d",
+        "span_id": "8bb55c03c50eaae6",
+        "routing_key": "rk-2c5bfbff",
         "headers": {
-          "baggage": "sd-routing-key=rk-832a75c4,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-832a75c4",
-          "traceparent": "00-0dc28d9335db555efa3a53c1affc9605-b775d406eacc4519-01",
+          "baggage": "sd-routing-key=rk-2c5bfbff,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-2c5bfbff",
+          "traceparent": "00-3b3913fbd3b8025b6499f92b7662667d-8bb55c03c50eaae6-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "datadog-python--http-http--c5686900"
+          "x-sd-canary": "datadog-python--http-http--618dc8ac"
         }
       },
       "observed": {
@@ -49,7 +50,7 @@
             "gzip, deflate"
           ],
           "baggage": [
-            "sd-routing-key=rk-832a75c4,team=alpha"
+            "sd-routing-key=rk-2c5bfbff,team=alpha"
           ],
           "connection": [
             "keep-alive"
@@ -61,25 +62,25 @@
             "application/json"
           ],
           "traceparent": [
-            "00-0dc28d9335db555efa3a53c1affc9605-0ef3c5551e23dc78-01"
+            "00-3b3913fbd3b8025b6499f92b7662667d-ae58f3a3fef62fc2-01"
           ],
           "tracestate": [
-            "dd=p:0ef3c5551e23dc78;s:1;t.tid:0dc28d9335db555e,sdtest=v1"
+            "dd=p:ae58f3a3fef62fc2;s:1;t.tid:3b3913fbd3b8025b,sdtest=v1"
           ],
           "user-agent": [
             "python-requests/2.34.2"
           ],
           "x-datadog-parent-id": [
-            "1077421705240239224"
+            "12563059046232764354"
           ],
           "x-datadog-sampling-priority": [
             "1"
           ],
           "x-datadog-tags": [
-            "_dd.p.tid=0dc28d9335db555e"
+            "_dd.p.tid=3b3913fbd3b8025b"
           ],
           "x-datadog-trace-id": [
-            "18030816149477561861"
+            "7249099040294594173"
           ]
         }
       },
@@ -94,18 +95,18 @@
     },
     {
       "boundary": "http-\u003egrpc",
-      "test_id": "datadog-python--http-grpc--dbb7747c",
+      "test_id": "datadog-python--http-grpc--0fe28665",
       "delivered": true,
       "seeded": {
-        "trace_id": "341c85bcbc0e951b5be4af01cd750007",
-        "span_id": "c7ec6aa93f517753",
-        "routing_key": "rk-3b9d4109",
+        "trace_id": "f6f409bd8b232863c1955bb185de666e",
+        "span_id": "a05ad7f2cda532cd",
+        "routing_key": "rk-44dbd7d6",
         "headers": {
-          "baggage": "sd-routing-key=rk-3b9d4109,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-3b9d4109",
-          "traceparent": "00-341c85bcbc0e951b5be4af01cd750007-c7ec6aa93f517753-01",
+          "baggage": "sd-routing-key=rk-44dbd7d6,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-44dbd7d6",
+          "traceparent": "00-f6f409bd8b232863c1955bb185de666e-a05ad7f2cda532cd-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "datadog-python--http-grpc--dbb7747c"
+          "x-sd-canary": "datadog-python--http-grpc--0fe28665"
         }
       },
       "observed": {
@@ -115,7 +116,7 @@
             "sink:9081"
           ],
           "baggage": [
-            "sd-routing-key=rk-3b9d4109,team=alpha"
+            "sd-routing-key=rk-44dbd7d6,team=alpha"
           ],
           "content-type": [
             "application/grpc"
@@ -124,25 +125,25 @@
             "identity, deflate, gzip"
           ],
           "traceparent": [
-            "00-341c85bcbc0e951b5be4af01cd750007-543c37ba12efb418-01"
+            "00-f6f409bd8b232863c1955bb185de666e-005f68e5b5205011-01"
           ],
           "tracestate": [
-            "dd=p:543c37ba12efb418;s:1;t.tid:341c85bcbc0e951b,sdtest=v1"
+            "dd=p:005f68e5b5205011;s:1;t.tid:f6f409bd8b232863,sdtest=v1"
           ],
           "user-agent": [
             "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
           ],
           "x-datadog-parent-id": [
-            "6069787670109729816"
+            "26855458583105553"
           ],
           "x-datadog-sampling-priority": [
             "1"
           ],
           "x-datadog-tags": [
-            "_dd.p.tid=341c85bcbc0e951b"
+            "_dd.p.tid=f6f409bd8b232863"
           ],
           "x-datadog-trace-id": [
-            "6621609774418296839"
+            "13949156238863263342"
           ]
         }
       },
@@ -157,18 +158,18 @@
     },
     {
       "boundary": "http-\u003ekafka",
-      "test_id": "datadog-python--http-kafka--5c1c39a3",
+      "test_id": "datadog-python--http-kafka--aeeb8a51",
       "delivered": true,
       "seeded": {
-        "trace_id": "a7dca2caa4550c6a510c9dc589e0fe4b",
-        "span_id": "7a1e3fadb2324eb5",
-        "routing_key": "rk-47f2cdc8",
+        "trace_id": "ba5b4ca05fced199ed94c140c271e2dd",
+        "span_id": "ae582f4a693cd113",
+        "routing_key": "rk-aa147591",
         "headers": {
-          "baggage": "sd-routing-key=rk-47f2cdc8,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-47f2cdc8",
-          "traceparent": "00-a7dca2caa4550c6a510c9dc589e0fe4b-7a1e3fadb2324eb5-01",
+          "baggage": "sd-routing-key=rk-aa147591,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-aa147591",
+          "traceparent": "00-ba5b4ca05fced199ed94c140c271e2dd-ae582f4a693cd113-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "datadog-python--http-kafka--5c1c39a3"
+          "x-sd-canary": "datadog-python--http-kafka--aeeb8a51"
         }
       },
       "observed": {
@@ -185,19 +186,48 @@
       }
     },
     {
-      "boundary": "grpc-\u003ehttp",
-      "test_id": "datadog-python--grpc-http--aca8b7cf",
+      "boundary": "http-\u003erabbitmq",
+      "test_id": "datadog-python--http-rabbitmq--e7f90822",
       "delivered": true,
       "seeded": {
-        "trace_id": "652583e13dfa8b68b13eea67daef398c",
-        "span_id": "8d5cb0e9740e3ab1",
-        "routing_key": "rk-f6b7aa41",
+        "trace_id": "fdfa953a539789bdbefab25713ace961",
+        "span_id": "6d45e0bb3c5be5b0",
+        "routing_key": "rk-b9c64ce0",
         "headers": {
-          "baggage": "sd-routing-key=rk-f6b7aa41,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-f6b7aa41",
-          "traceparent": "00-652583e13dfa8b68b13eea67daef398c-8d5cb0e9740e3ab1-01",
+          "baggage": "sd-routing-key=rk-b9c64ce0,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-b9c64ce0",
+          "traceparent": "00-fdfa953a539789bdbefab25713ace961-6d45e0bb3c5be5b0-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "datadog-python--grpc-http--aca8b7cf"
+          "x-sd-canary": "datadog-python--http-rabbitmq--e7f90822"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003ehttp",
+      "test_id": "datadog-python--grpc-http--122aef28",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "dbaeba09fa598caf8c3d4bc1efdceda6",
+        "span_id": "d0f83f342d819cab",
+        "routing_key": "rk-9d6fbf41",
+        "headers": {
+          "baggage": "sd-routing-key=rk-9d6fbf41,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-9d6fbf41",
+          "traceparent": "00-dbaeba09fa598caf8c3d4bc1efdceda6-d0f83f342d819cab-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "datadog-python--grpc-http--122aef28"
         }
       },
       "observed": {
@@ -210,7 +240,7 @@
             "gzip, deflate"
           ],
           "baggage": [
-            "sd-routing-key=rk-f6b7aa41,team=alpha"
+            "sd-routing-key=rk-9d6fbf41,team=alpha"
           ],
           "connection": [
             "keep-alive"
@@ -222,25 +252,25 @@
             "application/json"
           ],
           "traceparent": [
-            "00-652583e13dfa8b68b13eea67daef398c-7081ff9e992b0db2-01"
+            "00-dbaeba09fa598caf8c3d4bc1efdceda6-a39f93bd58373473-01"
           ],
           "tracestate": [
-            "dd=p:7081ff9e992b0db2;s:1;t.tid:652583e13dfa8b68,sdtest=v1"
+            "dd=p:a39f93bd58373473;s:1;t.tid:dbaeba09fa598caf,sdtest=v1"
           ],
           "user-agent": [
             "python-requests/2.34.2"
           ],
           "x-datadog-parent-id": [
-            "8107041860883254706"
+            "11790304790917362803"
           ],
           "x-datadog-sampling-priority": [
             "1"
           ],
           "x-datadog-tags": [
-            "_dd.p.tid=652583e13dfa8b68"
+            "_dd.p.tid=dbaeba09fa598caf"
           ],
           "x-datadog-trace-id": [
-            "12771903325044947340"
+            "10105316435214265766"
           ]
         }
       },
@@ -255,18 +285,18 @@
     },
     {
       "boundary": "grpc-\u003egrpc",
-      "test_id": "datadog-python--grpc-grpc--7c65b747",
+      "test_id": "datadog-python--grpc-grpc--7e64b658",
       "delivered": true,
       "seeded": {
-        "trace_id": "e40ea0bb01071694dcdb643b4239f896",
-        "span_id": "48781e50397a4647",
-        "routing_key": "rk-3a71a2be",
+        "trace_id": "7a1dc394faf6021912725ac14c929947",
+        "span_id": "3cb38c80067fdb32",
+        "routing_key": "rk-9bd038f4",
         "headers": {
-          "baggage": "sd-routing-key=rk-3a71a2be,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-3a71a2be",
-          "traceparent": "00-e40ea0bb01071694dcdb643b4239f896-48781e50397a4647-01",
+          "baggage": "sd-routing-key=rk-9bd038f4,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-9bd038f4",
+          "traceparent": "00-7a1dc394faf6021912725ac14c929947-3cb38c80067fdb32-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "datadog-python--grpc-grpc--7c65b747"
+          "x-sd-canary": "datadog-python--grpc-grpc--7e64b658"
         }
       },
       "observed": {
@@ -276,7 +306,7 @@
             "sink:9081"
           ],
           "baggage": [
-            "sd-routing-key=rk-3a71a2be,team=alpha"
+            "sd-routing-key=rk-9bd038f4,team=alpha"
           ],
           "content-type": [
             "application/grpc"
@@ -285,25 +315,25 @@
             "identity, deflate, gzip"
           ],
           "traceparent": [
-            "00-e40ea0bb01071694dcdb643b4239f896-619117257e3c5e49-01"
+            "00-7a1dc394faf6021912725ac14c929947-5a11bca49c8be9d4-01"
           ],
           "tracestate": [
-            "dd=p:619117257e3c5e49;s:1;t.tid:e40ea0bb01071694,sdtest=v1"
+            "dd=p:5a11bca49c8be9d4;s:1;t.tid:7a1dc394faf60219,sdtest=v1"
           ],
           "user-agent": [
             "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
           ],
           "x-datadog-parent-id": [
-            "7030425943101169225"
+            "6490175953204668884"
           ],
           "x-datadog-sampling-priority": [
             "1"
           ],
           "x-datadog-tags": [
-            "_dd.p.tid=e40ea0bb01071694"
+            "_dd.p.tid=7a1dc394faf60219"
           ],
           "x-datadog-trace-id": [
-            "15914423913920723094"
+            "1329224626287581511"
           ]
         }
       },
@@ -318,18 +348,18 @@
     },
     {
       "boundary": "grpc-\u003ekafka",
-      "test_id": "datadog-python--grpc-kafka--041e1951",
+      "test_id": "datadog-python--grpc-kafka--bea44ccd",
       "delivered": true,
       "seeded": {
-        "trace_id": "eb4c3e0047ac6bdd48c2298e5cd130d5",
-        "span_id": "d9fc03798aaa5098",
-        "routing_key": "rk-fdea0db3",
+        "trace_id": "bcfebf8cca723e1f7f9dc84e42167047",
+        "span_id": "3a678d44febc14e3",
+        "routing_key": "rk-f38fd5e1",
         "headers": {
-          "baggage": "sd-routing-key=rk-fdea0db3,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-fdea0db3",
-          "traceparent": "00-eb4c3e0047ac6bdd48c2298e5cd130d5-d9fc03798aaa5098-01",
+          "baggage": "sd-routing-key=rk-f38fd5e1,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-f38fd5e1",
+          "traceparent": "00-bcfebf8cca723e1f7f9dc84e42167047-3a678d44febc14e3-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "datadog-python--grpc-kafka--041e1951"
+          "x-sd-canary": "datadog-python--grpc-kafka--bea44ccd"
         }
       },
       "observed": {
@@ -346,19 +376,48 @@
       }
     },
     {
-      "boundary": "kafka-\u003ehttp",
-      "test_id": "datadog-python--kafka-http--840da21a",
+      "boundary": "grpc-\u003erabbitmq",
+      "test_id": "datadog-python--grpc-rabbitmq--610e9d7a",
       "delivered": true,
       "seeded": {
-        "trace_id": "2c0731eed7f8c6babc15fcfbf9941d47",
-        "span_id": "ac81d3e91eaba443",
-        "routing_key": "rk-e240a847",
+        "trace_id": "80a5459d96f223b241f34dd47648b4c3",
+        "span_id": "efadb4d83b926f04",
+        "routing_key": "rk-cafd9612",
         "headers": {
-          "baggage": "sd-routing-key=rk-e240a847,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-e240a847",
-          "traceparent": "00-2c0731eed7f8c6babc15fcfbf9941d47-ac81d3e91eaba443-01",
+          "baggage": "sd-routing-key=rk-cafd9612,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-cafd9612",
+          "traceparent": "00-80a5459d96f223b241f34dd47648b4c3-efadb4d83b926f04-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "datadog-python--kafka-http--840da21a"
+          "x-sd-canary": "datadog-python--grpc-rabbitmq--610e9d7a"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003ehttp",
+      "test_id": "datadog-python--kafka-http--54d4665e",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "803237a25ed8c7f40addc8a246c6a27f",
+        "span_id": "8329795c7599ccfa",
+        "routing_key": "rk-7eb9400f",
+        "headers": {
+          "baggage": "sd-routing-key=rk-7eb9400f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-7eb9400f",
+          "traceparent": "00-803237a25ed8c7f40addc8a246c6a27f-8329795c7599ccfa-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "datadog-python--kafka-http--54d4665e"
         }
       },
       "observed": {
@@ -380,25 +439,25 @@
             "application/json"
           ],
           "traceparent": [
-            "00-6a9b1cad00000000829bd5ee3902fbd0-a65514c0b609ebb1-01"
+            "00-6a9c11da0000000084a6f9828569119d-341dabe17f2c2fcb-01"
           ],
           "tracestate": [
-            "dd=p:a65514c0b609ebb1;s:1;t.dm:-0;t.tid:6a9b1cad00000000"
+            "dd=p:341dabe17f2c2fcb;s:1;t.dm:-0;t.tid:6a9c11da00000000"
           ],
           "user-agent": [
             "python-requests/2.34.2"
           ],
           "x-datadog-parent-id": [
-            "11985508801236822961"
+            "3755346649286455243"
           ],
           "x-datadog-sampling-priority": [
             "1"
           ],
           "x-datadog-tags": [
-            "_dd.p.dm=-0,_dd.p.tid=6a9b1cad00000000"
+            "_dd.p.dm=-0,_dd.p.tid=6a9c11da00000000"
           ],
           "x-datadog-trace-id": [
-            "9411351065456212944"
+            "9558601598119776669"
           ]
         }
       },
@@ -413,18 +472,18 @@
     },
     {
       "boundary": "kafka-\u003egrpc",
-      "test_id": "datadog-python--kafka-grpc--a144a96b",
+      "test_id": "datadog-python--kafka-grpc--173add46",
       "delivered": true,
       "seeded": {
-        "trace_id": "fb1cdb6ddcf63db6c5344e0023987380",
-        "span_id": "1ce3f38e7d752b68",
-        "routing_key": "rk-824f4a39",
+        "trace_id": "7c31f1eacaa3bf0aaeed7d60814549f8",
+        "span_id": "b0a6726b7b5e2146",
+        "routing_key": "rk-1692bcf8",
         "headers": {
-          "baggage": "sd-routing-key=rk-824f4a39,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-824f4a39",
-          "traceparent": "00-fb1cdb6ddcf63db6c5344e0023987380-1ce3f38e7d752b68-01",
+          "baggage": "sd-routing-key=rk-1692bcf8,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-1692bcf8",
+          "traceparent": "00-7c31f1eacaa3bf0aaeed7d60814549f8-b0a6726b7b5e2146-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "datadog-python--kafka-grpc--a144a96b"
+          "x-sd-canary": "datadog-python--kafka-grpc--173add46"
         }
       },
       "observed": {
@@ -440,25 +499,25 @@
             "identity, deflate, gzip"
           ],
           "traceparent": [
-            "00-6a9b1cae00000000a918b6b788d8aadb-33135cc5f64a525d-01"
+            "00-6a9c11db000000008cf174050eb28aac-f49ee3b206f19344-01"
           ],
           "tracestate": [
-            "dd=p:33135cc5f64a525d;s:1;t.dm:-0;t.tid:6a9b1cae00000000"
+            "dd=p:f49ee3b206f19344;s:1;t.dm:-0;t.tid:6a9c11db00000000"
           ],
           "user-agent": [
             "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
           ],
           "x-datadog-parent-id": [
-            "3680387325802205789"
+            "17626776345334879044"
           ],
           "x-datadog-sampling-priority": [
             "1"
           ],
           "x-datadog-tags": [
-            "_dd.p.dm=-0,_dd.p.tid=6a9b1cae00000000"
+            "_dd.p.dm=-0,_dd.p.tid=6a9c11db00000000"
           ],
           "x-datadog-trace-id": [
-            "12184689691242048219"
+            "10156026199767419564"
           ]
         }
       },
@@ -473,22 +532,235 @@
     },
     {
       "boundary": "kafka-\u003ekafka",
-      "test_id": "datadog-python--kafka-kafka--8edaa637",
+      "test_id": "datadog-python--kafka-kafka--cc278e5f",
       "delivered": true,
       "seeded": {
-        "trace_id": "18f64c54f9aa395cba15248c1f58ddf8",
-        "span_id": "960d4a29ecffe2a1",
-        "routing_key": "rk-ee935f7c",
+        "trace_id": "e87a83696ef781a93a376e83373ce4b4",
+        "span_id": "286e4190c21c05f8",
+        "routing_key": "rk-a3098dea",
         "headers": {
-          "baggage": "sd-routing-key=rk-ee935f7c,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-ee935f7c",
-          "traceparent": "00-18f64c54f9aa395cba15248c1f58ddf8-960d4a29ecffe2a1-01",
+          "baggage": "sd-routing-key=rk-a3098dea,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-a3098dea",
+          "traceparent": "00-e87a83696ef781a93a376e83373ce4b4-286e4190c21c05f8-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "datadog-python--kafka-kafka--8edaa637"
+          "x-sd-canary": "datadog-python--kafka-kafka--cc278e5f"
         }
       },
       "observed": {
         "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003erabbitmq",
+      "test_id": "datadog-python--kafka-rabbitmq--efceb766",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "1b56c3068ebd27323b2ff0e9c4ac662a",
+        "span_id": "26f8ed3c9a1d05b5",
+        "routing_key": "rk-725a3b50",
+        "headers": {
+          "baggage": "sd-routing-key=rk-725a3b50,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-725a3b50",
+          "traceparent": "00-1b56c3068ebd27323b2ff0e9c4ac662a-26f8ed3c9a1d05b5-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "datadog-python--kafka-rabbitmq--efceb766"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003ehttp",
+      "test_id": "datadog-python--rabbitmq-http--abefa0d4",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "8d248e9bda5be2362760143493eaa068",
+        "span_id": "812d8feba0ec23c7",
+        "routing_key": "rk-092a9b20",
+        "headers": {
+          "baggage": "sd-routing-key=rk-092a9b20,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-092a9b20",
+          "traceparent": "00-8d248e9bda5be2362760143493eaa068-812d8feba0ec23c7-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "datadog-python--rabbitmq-http--abefa0d4"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "accept-encoding": [
+            "gzip, deflate"
+          ],
+          "connection": [
+            "keep-alive"
+          ],
+          "content-length": [
+            "54"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "traceparent": [
+            "00-6a9c11dc00000000057d465c2dedac62-d67b523ae07e8a72-01"
+          ],
+          "tracestate": [
+            "dd=p:d67b523ae07e8a72;s:1;t.dm:-0;t.tid:6a9c11dc00000000"
+          ],
+          "user-agent": [
+            "python-requests/2.34.2"
+          ],
+          "x-datadog-parent-id": [
+            "15455036959079959154"
+          ],
+          "x-datadog-sampling-priority": [
+            "1"
+          ],
+          "x-datadog-tags": [
+            "_dd.p.dm=-0,_dd.p.tid=6a9c11dc00000000"
+          ],
+          "x-datadog-trace-id": [
+            "395549703999958114"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "new_trace",
+        "tracestate": "present_entry_lost",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "present_new_trace",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003egrpc",
+      "test_id": "datadog-python--rabbitmq-grpc--8c26df42",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "5b2eb8a8524b82beb473d21ccda8ba7f",
+        "span_id": "b995d845c2730dcf",
+        "routing_key": "rk-99bef140",
+        "headers": {
+          "baggage": "sd-routing-key=rk-99bef140,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-99bef140",
+          "traceparent": "00-5b2eb8a8524b82beb473d21ccda8ba7f-b995d845c2730dcf-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "datadog-python--rabbitmq-grpc--8c26df42"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "traceparent": [
+            "00-6a9c11dd0000000026708547b0abdd20-91bf3e34657b87c4-01"
+          ],
+          "tracestate": [
+            "dd=p:91bf3e34657b87c4;s:1;t.dm:-0;t.tid:6a9c11dd00000000"
+          ],
+          "user-agent": [
+            "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ],
+          "x-datadog-parent-id": [
+            "10502181250813102020"
+          ],
+          "x-datadog-sampling-priority": [
+            "1"
+          ],
+          "x-datadog-tags": [
+            "_dd.p.dm=-0,_dd.p.tid=6a9c11dd00000000"
+          ],
+          "x-datadog-trace-id": [
+            "2769860313786080544"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "new_trace",
+        "tracestate": "present_entry_lost",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "present_new_trace",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003ekafka",
+      "test_id": "datadog-python--rabbitmq-kafka--9677a97b",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "aed577e3d119685cd0d60d77fcb9269a",
+        "span_id": "096949de9bfee8d5",
+        "routing_key": "rk-e59331ac",
+        "headers": {
+          "baggage": "sd-routing-key=rk-e59331ac,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-e59331ac",
+          "traceparent": "00-aed577e3d119685cd0d60d77fcb9269a-096949de9bfee8d5-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "datadog-python--rabbitmq-kafka--9677a97b"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003erabbitmq",
+      "test_id": "datadog-python--rabbitmq-rabbitmq--0c32c208",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "f66dbe86c38b126f1fbb5f92723893fe",
+        "span_id": "90cfee28b74e9ce5",
+        "routing_key": "rk-9a194cee",
+        "headers": {
+          "baggage": "sd-routing-key=rk-9a194cee,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-9a194cee",
+          "traceparent": "00-f66dbe86c38b126f1fbb5f92723893fe-90cfee28b74e9ce5-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "datadog-python--rabbitmq-rabbitmq--0c32c208"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
         "headers": {}
       },
       "status": {

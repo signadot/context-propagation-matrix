@@ -50,7 +50,7 @@ Endpoints (identical for every variant):
 - gRPC: `cpmatrix.Relay/Handle` on `:8081`, same fields
 - Kafka: consume topic `relay-in-{variant}` (JSON value, same fields), group `relay-{variant}`, `auto.offset.reset=earliest`
 - RabbitMQ: consume queue `relay-rmq-{variant}` (JSON body, same fields) from
-  `RABBIT_URL` (default `amqp://guest:guest@rabbitmq:5672/`). Queue
+  `RABBIT_URL` (default `amqp://guest:guest@rabbitmq:5672`). Queue
   properties (must match on declare): durable=false, auto-delete=false,
   exclusive=false. The driver declares the queue before publishing, so
   messages published before the relay subscribes are held by the broker — no

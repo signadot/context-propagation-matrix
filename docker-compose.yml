@@ -4,7 +4,7 @@ x-relay-common-env: &relay-common-env
   KAFKA_BROKERS: kafka:9092
   SINK_HTTP: http://sink:9080
   SINK_GRPC: sink:9081
-  RABBIT_URL: amqp://guest:guest@rabbitmq:5672/
+  RABBIT_URL: amqp://guest:guest@rabbitmq:5672
   SINK_RABBIT_QUEUE: sink-rmq
 
 x-relay-depends: &relay-depends
@@ -51,7 +51,7 @@ services:
     environment:
       KAFKA_BROKERS: kafka:9092
       SINK_DATA_FILE: /data/observations.jsonl
-      RABBIT_URL: amqp://guest:guest@rabbitmq:5672/
+      RABBIT_URL: amqp://guest:guest@rabbitmq:5672
     volumes:
       - ./results/data:/data
     depends_on:
@@ -69,7 +69,7 @@ services:
     environment:
       KAFKA_BROKERS: kafka:9092
       SINK_URL: http://sink:9080
-      RABBIT_URL: amqp://guest:guest@rabbitmq:5672/
+      RABBIT_URL: amqp://guest:guest@rabbitmq:5672
     volumes:
       - ./results/raw:/results
     depends_on:

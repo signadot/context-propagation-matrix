@@ -12,7 +12,10 @@ require 'bunny'
 # message properties, headers or tracing APIs; inbound AMQP properties are
 # simply ignored (we only parse the JSON body).
 module RabbitAdapter
-  URL = ENV.fetch('RABBIT_URL', 'amqp://guest:guest@rabbitmq:5672/')
+  # NB: no trailing slash — Bunny parses a "/" path as an *empty* vhost name
+  # (NOT_ALLOWED - vhost '' not found), unlike every other AMQP client where
+  # it means the default vhost. Strip one defensively.
+  URL = ENV.fetch('RABBIT_URL', 'amqp://guest:guest@rabbitmq:5672').chomp('/')
   VARIANT = ENV.fetch('VARIANT') { "#{ENV.fetch('TOOL', 'unknown')}-ruby" }
   QUEUE = ENV.fetch('RELAY_RABBIT_QUEUE') { "relay-rmq-#{VARIANT}" }
   SINK_QUEUE = ENV.fetch('SINK_RABBIT_QUEUE', 'sink-rmq')
