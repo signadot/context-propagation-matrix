@@ -1,0 +1,109 @@
+# syntax=docker/dockerfile:1
+# Build context is the repo root (so proto/ is reachable).
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src/relays/dotnet
+# Mirror the repo layout so Relay.csproj's ../../proto/relay.proto resolves.
+COPY proto/relay.proto /src/proto/relay.proto
+COPY relays/dotnet/Relay.csproj relays/dotnet/Program.cs ./
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet publish -c Release -o /out Relay.csproj
+
+# ---- base runtime (uninstrumented) ----
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+COPY --from=build /out /app
+ENV TRACER_VERSION_FILE=/agent/version.txt
+EXPOSE 8080 8081
+ENTRYPOINT ["dotnet", "/app/Relay.dll"]
+
+# ---- otel: OpenTelemetry .NET automatic (zero-code) instrumentation ----
+# https://opentelemetry.io/docs/zero-code/dotnet/
+# Kafka (Confluent.Kafka) is a default bytecode instrumentation; HTTP, ASP.NET
+# Core and Grpc.Net.Client are default source instrumentations.
+
+FROM base AS otel
+ENV OTEL_DOTNET_AUTO_HOME=/otel-dotnet-auto
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl unzip \
+ && mkdir -p /agent \
+ # Resolve the latest release tag, then install that exact version so
+ # /agent/version.txt is guaranteed to match the installed bits.
+ && OTEL_VERSION="$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+      https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/releases/latest \
+      | sed 's#.*/tag/v##')" \
+ && curl -fsSL -o /tmp/otel-dotnet-auto-install.sh \
+      "https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/releases/download/v${OTEL_VERSION}/otel-dotnet-auto-install.sh" \
+ && sh /tmp/otel-dotnet-auto-install.sh \
+ && echo "${OTEL_VERSION}" > /agent/version.txt \
+ && cat /agent/version.txt \
+ && rm -f /tmp/otel-dotnet-auto-install.sh \
+ && apt-get purge -y -qq unzip curl && apt-get autoremove -y -qq && rm -rf /var/lib/apt/lists/*
+# instrument.sh exports the required CLR profiler env vars at container start
+# (CORECLR_ENABLE_PROFILING, CORECLR_PROFILER, CORECLR_PROFILER_PATH,
+# DOTNET_ADDITIONAL_DEPS, DOTNET_SHARED_STORE, DOTNET_STARTUP_HOOKS) with the
+# arch-appropriate profiler path, so the image works on amd64 and arm64.
+ENTRYPOINT ["/bin/sh", "-c", ". \"$OTEL_DOTNET_AUTO_HOME/instrument.sh\" && exec dotnet /app/Relay.dll"]
+
+# ---- datadog: dd-trace-dotnet (datadog-dotnet-apm) ----
+# https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/dotnet-core/
+
+FROM base AS datadog
+ARG TARGETARCH
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl \
+ && mkdir -p /agent /opt/datadog \
+ && DD_VERSION="$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+      https://github.com/DataDog/dd-trace-dotnet/releases/latest \
+      | sed 's#.*/tag/v##')" \
+ && case "${TARGETARCH:-amd64}" in \
+      arm64) DD_ASSET="datadog-dotnet-apm-${DD_VERSION}.arm64.tar.gz" ;; \
+      *)     DD_ASSET="datadog-dotnet-apm-${DD_VERSION}.tar.gz" ;; \
+    esac \
+ && curl -fsSL -o /tmp/datadog.tar.gz \
+      "https://github.com/DataDog/dd-trace-dotnet/releases/download/v${DD_VERSION}/${DD_ASSET}" \
+ && tar -C /opt/datadog -xzf /tmp/datadog.tar.gz \
+ && bash /opt/datadog/createLogPath.sh \
+ && echo "${DD_VERSION}" > /agent/version.txt \
+ && cat /agent/version.txt \
+ && rm -f /tmp/datadog.tar.gz \
+ && apt-get purge -y -qq curl && apt-get autoremove -y -qq && rm -rf /var/lib/apt/lists/*
+# Both arch tarballs ship the loader at the /opt/datadog root, so this path is
+# arch-safe (it dispatches to linux-x64/ or linux-arm64/ underneath).
+ENV CORECLR_ENABLE_PROFILING=1 \
+    CORECLR_PROFILER="{846F5F1C-F9AE-4B07-969E-05C26BC060D8}" \
+    CORECLR_PROFILER_PATH=/opt/datadog/Datadog.Trace.ClrProfiler.Native.so \
+    DD_DOTNET_TRACER_HOME=/opt/datadog
+
+# ---- newrelic: New Relic .NET agent ----
+# https://docs.newrelic.com/install/dotnet/ (Linux tarball install)
+
+FROM base AS newrelic
+ARG TARGETARCH
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl \
+ && mkdir -p /agent \
+ && case "${TARGETARCH:-amd64}" in \
+      arm64) NR_ARCH=arm64 ;; \
+      *)     NR_ARCH=amd64 ;; \
+    esac \
+ # The tarball carries no version metadata, so scrape the version from the
+ # latest_release index; fall back to the unversioned "latest" tarball.
+ && NR_VERSION="$(curl -fsSL https://download.newrelic.com/dot_net_agent/latest_release/ \
+      | grep -oE 'newrelic-dotnet-agent_[0-9]+\.[0-9]+\.[0-9]+' | head -1 | cut -d_ -f2 || true)" \
+ && if [ -n "${NR_VERSION}" ]; then \
+      NR_TARBALL="newrelic-dotnet-agent_${NR_VERSION}_${NR_ARCH}.tar.gz"; \
+    else \
+      NR_TARBALL="newrelic-dotnet-agent_${NR_ARCH}.tar.gz"; NR_VERSION=unknown; \
+    fi \
+ && curl -fsSL -o /tmp/newrelic.tar.gz \
+      "https://download.newrelic.com/dot_net_agent/latest_release/${NR_TARBALL}" \
+ && tar -xzf /tmp/newrelic.tar.gz -C /usr/local \
+ && echo "${NR_VERSION}" > /agent/version.txt \
+ && cat /agent/version.txt \
+ && rm -f /tmp/newrelic.tar.gz \
+ && apt-get purge -y -qq curl && apt-get autoremove -y -qq && rm -rf /var/lib/apt/lists/*
+# libNewRelicProfiler.so at the agent home root is the correct arch build in
+# each per-arch tarball.
+ENV CORECLR_ENABLE_PROFILING=1 \
+    CORECLR_PROFILER="{36032161-FFC0-4B61-B559-F6C5D41BAE5A}" \
+    CORECLR_NEWRELIC_HOME=/usr/local/newrelic-dotnet-agent \
+    CORECLR_PROFILER_PATH=/usr/local/newrelic-dotnet-agent/libNewRelicProfiler.so

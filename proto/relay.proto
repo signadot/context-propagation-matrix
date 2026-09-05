@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package cpmatrix;
+
+option go_package = "github.com/signadot/context-propagation-matrix/gen/cpmatrix";
+option java_package = "com.signadot.cpmatrix";
+option java_multiple_files = true;
+option csharp_namespace = "CpMatrix";
+
+// Relay is implemented by every relay app. The driver (or another relay hop)
+// calls Handle; the relay then forwards to the sink over `forward_via`.
+service Relay {
+  rpc Handle(RelayRequest) returns (RelayResponse);
+}
+
+// Sink is implemented by the uninstrumented sink recorder.
+service Sink {
+  rpc Deliver(SinkRequest) returns (SinkResponse);
+}
+
+message RelayRequest {
+  string test_id = 1;
+  // one of: "http", "grpc", "kafka"
+  string forward_via = 2;
+}
+
+message RelayResponse {
+  string status = 1;
+}
+
+message SinkRequest {
+  string test_id = 1;
+}
+
+message SinkResponse {
+  string status = 1;
+}

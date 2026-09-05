@@ -1,0 +1,15 @@
+# Gemfile for the datadog target.
+#
+# Kafka client is karafka (+ its waterdrop producer), NOT rdkafka/ruby-kafka:
+# dd-trace-rb has no rdkafka integration and its ruby-kafka integration only
+# creates spans (no context propagation). See README.
+source 'https://rubygems.org'
+
+gem 'grpc', '~> 1.70'
+gem 'karafka', '~> 2.6'
+gem 'puma', '~> 8.0'
+gem 'rackup', '~> 2.2'
+gem 'sinatra', '~> 4.1'
+gem 'waterdrop', '~> 2.10'
+
+gem 'datadog', '~> 2.42'
