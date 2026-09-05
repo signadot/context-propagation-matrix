@@ -171,8 +171,11 @@ consumes; topics are auto-created; every message is self-describing via
 - **newrelic**: distributed tracing enabled (`NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true`),
   which is the agents' default W3C mode. New Relic agents require a successful
   connect handshake (license key) before they create traces, so these variants
-  need `NEW_RELIC_LICENSE_KEY` in the environment (free-tier key is fine).
-  Without a key the driver records the variant as `not_run`.
+  need `NEW_RELIC_LICENSE_KEY` in `.env` (free-tier key is fine; `run.sh`
+  skips newrelic variants when it is unset). Some agents connect lazily on
+  first traffic (python, php), so `run.sh` primes each newrelic variant with
+  a discarded driver pass and measures the steady state. See FINDINGS.md §9
+  for the no-key and `Enabled: false` control runs (`results/nokey/`).
 
 ## Results schema
 

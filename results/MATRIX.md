@@ -4,7 +4,7 @@ Generated from empirical runs of this harness — every cell is the observed
 result of an actual request/message hop, not a reading of vendor docs.
 Regenerate with `go run ./matrixgen` after `./run.sh`.
 
-Last generated: 2026-09-05 16:00 UTC
+Last generated: 2026-09-05 18:10 UTC
 
 Boundaries are `inbound protocol → outbound protocol` through a single
 instrumented service (the relay). Legend: ✅ propagated/preserved ·
@@ -221,6 +221,64 @@ instrumented service (the relay). Legend: ✅ propagated/preserved ·
 | ruby · 4.9.0 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | php · elastic_apm 1.17.0 | ❌ | ❌ | ❌ | ❌ | 🚫 | 🚫 | 🚫 | 🚫 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
+## New Relic
+
+### W3C `baggage`
+
+`propagated` = the seeded `sd-routing-key` baggage member arrived intact.
+
+| variant | http→http | http→grpc | http→kafka | http→rmq | grpc→http | grpc→grpc | grpc→kafka | grpc→rmq | kafka→http | kafka→grpc | kafka→kafka | kafka→rmq | rmq→http | rmq→grpc | rmq→kafka | rmq→rmq |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| java · 9.4.0 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| node · 14.3.10 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| python · 13.5.0 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| go · v3.44.2 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| dotnet · 10.54.0 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| ruby · 10.7.1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| php · newrelic 12.10.0.39 | ❌ | ❌ | ❌ | ❌ | 🚫 | 🚫 | 🚫 | 🚫 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+### W3C `tracestate`
+
+`preserved` = the seeded foreign vendor entry (`sdtest=v1`) survived.
+
+| variant | http→http | http→grpc | http→kafka | http→rmq | grpc→http | grpc→grpc | grpc→kafka | grpc→rmq | kafka→http | kafka→grpc | kafka→kafka | kafka→rmq | rmq→http | rmq→grpc | rmq→kafka | rmq→rmq |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| java · 9.4.0 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| node · 14.3.10 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
+| python · 13.5.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| go · v3.44.2 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| dotnet · 10.54.0 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| ruby · 10.7.1 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |
+| php · newrelic 12.10.0.39 | ✅ | ❌ | ❌ | ✅ | 🚫 | 🚫 | 🚫 | 🚫 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+### W3C `traceparent` (trace continuity)
+
+`same trace` = the seeded trace-id was continued (span-id may differ, as expected).
+
+| variant | http→http | http→grpc | http→kafka | http→rmq | grpc→http | grpc→grpc | grpc→kafka | grpc→rmq | kafka→http | kafka→grpc | kafka→kafka | kafka→rmq | rmq→http | rmq→grpc | rmq→kafka | rmq→rmq |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| java · 9.4.0 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| node · 14.3.10 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
+| python · 13.5.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| go · v3.44.2 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| dotnet · 10.54.0 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| ruby · 10.7.1 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |
+| php · newrelic 12.10.0.39 | ✅ | ❌ | ❌ | ✅ | 🚫 | 🚫 | 🚫 | 🚫 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+### `ot-baggage-*` (OpenTracing legacy)
+
+`propagated` = `ot-baggage-sd-routing-key` arrived with the seeded value.
+
+| variant | http→http | http→grpc | http→kafka | http→rmq | grpc→http | grpc→grpc | grpc→kafka | grpc→rmq | kafka→http | kafka→grpc | kafka→kafka | kafka→rmq | rmq→http | rmq→grpc | rmq→kafka | rmq→rmq |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| java · 9.4.0 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| node · 14.3.10 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| python · 13.5.0 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| go · v3.44.2 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| dotnet · 10.54.0 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| ruby · 10.7.1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| php · newrelic 12.10.0.39 | ❌ | ❌ | ❌ | ❌ | 🚫 | 🚫 | 🚫 | 🚫 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
 ## Baseline (no instrumentation attached)
 
 ### W3C `baggage`
@@ -307,6 +365,13 @@ instrumented service (the relay). Legend: ✅ propagated/preserved ·
 - **elastic-dotnet** — tracer 1.34.7, .NET 8.0.30 (CLR 8.0.30); libs: grpc Grpc.AspNetCore + Grpc.Net.Client 2.83.0, http HttpClient, kafka Confluent.Kafka 2.14.2, rabbitmq RabbitMQ.Client 7.2.2; config: ; ran 2026-09-05
 - **elastic-ruby** — tracer 4.9.0, ruby 3.3.12; libs: grpc grpc 1.83.1, http-client net/http (stdlib), http-server sinatra 4.2.1 (puma 8.0.2), kafka rdkafka 0.29.1, rabbitmq bunny 3.3.0; config: ; ran 2026-09-05
 - **elastic-php** — tracer elastic_apm 1.17.0, php 8.3.33; libs: grpc ext-grpc 1.83.1 / grpc/grpc 1.82.0, http_client ext-curl 8.14.1, kafka ext-rdkafka 6.0.5, rabbitmq php-amqplib v3.7.4, server apache2 mod_php / slim 4.15.3; config: ELASTIC_APM_SERVICE_NAME=relay-elastic-php; ran 2026-09-05
+- **newrelic-java** — tracer 9.4.0, java 17.0.20; libs: grpc grpc-java, http-client RestTemplate (HttpURLConnection), kafka spring-kafka, kafka-clients 3.7.2, rabbitmq spring-rabbit (amqp-client 5.21.0), spring-boot 3.3.13; config: NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true; ran 2026-09-05
+- **newrelic-node** — tracer 14.3.10, node v22.23.2; libs: express 4.22.2, grpc-js 1.14.4, http_client axios 1.20.0, kafkajs 2.2.4, rabbitmq amqplib 0.10.9; config: NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true; ran 2026-09-05
+- **newrelic-python** — tracer 13.5.0, python 3.12.14; libs: confluent-kafka 2.15.0, flask 3.1.3, grpcio 1.83.1, rabbitmq pika 1.4.4, requests 2.34.2; config: NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true; ran 2026-09-05
+- **newrelic-go** — tracer v3.44.2, go1.25.14; libs: grpc nrgrpc v1.4.10, http newrelic.WrapHandleFunc + newrelic.NewRoundTripper (go-agent v3.44.2), kafka nrsarama v1.0.2 + manual AcceptDistributedTraceHeaders (Shopify/sarama v1.38.1), rabbitmq nramqp v1.0.3 (amqp091-go v1.14.0); config: NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true; ran 2026-09-05
+- **newrelic-dotnet** — tracer 10.54.0, .NET 8.0.30 (CLR 8.0.30); libs: grpc Grpc.AspNetCore + Grpc.Net.Client 2.83.0, http HttpClient, kafka Confluent.Kafka 2.14.2, rabbitmq RabbitMQ.Client 7.2.2; config: NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true; ran 2026-09-05
+- **newrelic-ruby** — tracer 10.7.1, ruby 3.3.12; libs: grpc grpc 1.83.1, http-client net/http (stdlib), http-server sinatra 4.2.1 (puma 8.0.2), kafka rdkafka 0.29.1, rabbitmq bunny 3.3.0; config: NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true; ran 2026-09-05
+- **newrelic-php** — tracer newrelic 12.10.0.39, php 8.3.33; libs: grpc ext-grpc 1.83.1 / grpc/grpc 1.82.0, http_client ext-curl 8.14.1, kafka ext-rdkafka 6.0.5, rabbitmq php-amqplib v3.7.4, server apache2 mod_php / slim 4.15.3; config: NEW_RELIC_APP_NAME=relay-newrelic-php NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true; ran 2026-09-05
 - **none-java** — tracer unknown, java 17.0.20; libs: grpc grpc-java, http-client RestTemplate (HttpURLConnection), kafka spring-kafka, kafka-clients 3.7.2, rabbitmq spring-rabbit (amqp-client 5.21.0), spring-boot 3.3.13; config: ; ran 2026-09-05
 - **none-node** — tracer unknown, node v22.23.2; libs: express 4.22.2, grpc-js 1.14.4, http_client axios 1.20.0, kafkajs 2.2.4, rabbitmq amqplib 0.10.9; config: ; ran 2026-09-05
 - **none-python** — tracer unknown, python 3.12.14; libs: confluent-kafka 2.15.0, flask 3.1.3, grpcio 1.83.1, rabbitmq pika 1.4.4, requests 2.34.2; config: ; ran 2026-09-05

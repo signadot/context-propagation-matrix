@@ -61,6 +61,16 @@ for v in "${variants[@]}"; do
     failures+=("$v")
     continue
   fi
+  # New Relic agents create DT headers only after their async collector
+  # handshake (connect) completes, and some (python, php) only *start*
+  # connecting on first traffic. Prime with a full discarded driver pass,
+  # then let the handshake settle, so the recorded run measures steady state.
+  if [[ "$v" == newrelic-* ]]; then
+    echo "==> priming $v (NR agents connect lazily; first pass discarded)"
+    sleep 5
+    docker compose run --rm driver -variant "$v" >/dev/null 2>&1 || true
+    sleep "${NEWRELIC_SETTLE_SECONDS:-10}"
+  fi
   if ! docker compose run --rm driver -variant "$v"; then
     echo "==> DRIVER FAILED: $v"
     failures+=("$v")

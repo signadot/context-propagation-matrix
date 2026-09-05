@@ -86,8 +86,10 @@ RUN set -eux; \
       | sed -E 's/newrelic-php5-([0-9.]+)-linux\.tar\.gz/\1/')"; \
     curl -fsSL "https://download.newrelic.com/php_agent/release/newrelic-php5-${ver}-linux.tar.gz" \
       | tar -xz -C /tmp; \
-    NR_INSTALL_SILENT=1 "/tmp/newrelic-php5-${ver}-linux/newrelic-install" install; \
-    rm -rf /tmp/newrelic-php5-* /tmp/nrinstall*
+    NR_INSTALL_SILENT=1 NR_INSTALL_USE_CP_NOT_LN=1 \
+      "/tmp/newrelic-php5-${ver}-linux/newrelic-install" install; \
+    rm -rf /tmp/newrelic-php5-* /tmp/nrinstall*; \
+    php -m | grep -qi newrelic
 COPY relays/php/docker/newrelic-entrypoint.sh /newrelic-entrypoint.sh
 RUN chmod +x /newrelic-entrypoint.sh
 ENTRYPOINT ["/newrelic-entrypoint.sh"]

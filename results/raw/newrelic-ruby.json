@@ -1,0 +1,736 @@
+{
+  "variant": "newrelic-ruby",
+  "tool": "newrelic",
+  "language": "ruby",
+  "config": {
+    "NEW_RELIC_DISTRIBUTED_TRACING_ENABLED": "true"
+  },
+  "info": {
+    "config": {
+      "NEW_RELIC_DISTRIBUTED_TRACING_ENABLED": "true"
+    },
+    "language": "ruby",
+    "libs": {
+      "grpc": "grpc 1.83.1",
+      "http-client": "net/http (stdlib)",
+      "http-server": "sinatra 4.2.1 (puma 8.0.2)",
+      "kafka": "rdkafka 0.29.1",
+      "rabbitmq": "bunny 3.3.0"
+    },
+    "runtime_version": "ruby 3.3.12",
+    "tool": "newrelic",
+    "tracer_version": "10.7.1",
+    "variant": "newrelic-ruby"
+  },
+  "ran_at": "2026-09-05T18:09:14.233854893Z",
+  "tests": [
+    {
+      "boundary": "http-\u003ehttp",
+      "test_id": "newrelic-ruby--http-http--a093c8ac",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "e368a18e31153a5dfcddd95fdc60474a",
+        "span_id": "a0449cb8de684432",
+        "routing_key": "rk-3aab3cdc",
+        "headers": {
+          "baggage": "sd-routing-key=rk-3aab3cdc,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-3aab3cdc",
+          "traceparent": "00-e368a18e31153a5dfcddd95fdc60474a-a0449cb8de684432-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--http-http--a093c8ac"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "accept-encoding": [
+            "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
+          ],
+          "content-length": [
+            "48"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIxYjcyYTdiMDdhM2U5NzNiIiwidHIiOiJlMzY4YTE4ZTMxMTUzYTVkZmNkZGQ5NWZkYzYwNDc0YSIsInNhIjpmYWxzZSwicHIiOjAuMTk0NjQ0LCJ0aSI6MTc4ODYzMTc1NDIzNSwiaWQiOiI2YWRkMjBmM2JiNmIwZDM0In19"
+          ],
+          "traceparent": [
+            "00-e368a18e31153a5dfcddd95fdc60474a-6add20f3bb6b0d34-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-6add20f3bb6b0d34-1b72a7b07a3e973b-0-0.194644-1788631754235,sdtest=v1"
+          ],
+          "user-agent": [
+            "Ruby"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003egrpc",
+      "test_id": "newrelic-ruby--http-grpc--b0838c5a",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "bc36fca0fe13f06f3d02d2decdcfb686",
+        "span_id": "1d5a433bbeca5bf0",
+        "routing_key": "rk-267b7707",
+        "headers": {
+          "baggage": "sd-routing-key=rk-267b7707,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-267b7707",
+          "traceparent": "00-bc36fca0fe13f06f3d02d2decdcfb686-1d5a433bbeca5bf0-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--http-grpc--b0838c5a"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJkOTJhMDViZWNiMzgyYjBkIiwidHIiOiJiYzM2ZmNhMGZlMTNmMDZmM2QwMmQyZGVjZGNmYjY4NiIsInNhIjpmYWxzZSwicHIiOjAuMjAzMTE3LCJ0aSI6MTc4ODYzMTc1NDIzOCwiaWQiOiIyM2I0NDM4YzY3NmU0Y2M1In19"
+          ],
+          "traceparent": [
+            "00-bc36fca0fe13f06f3d02d2decdcfb686-23b4438c676e4cc5-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-23b4438c676e4cc5-d92a05becb382b0d-0-0.203117-1788631754238,sdtest=v1"
+          ],
+          "user-agent": [
+            "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003ekafka",
+      "test_id": "newrelic-ruby--http-kafka--2c680e37",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "fd531eb01c46d23da3c38a2b7dcd7183",
+        "span_id": "21d5f3d88ec8c24d",
+        "routing_key": "rk-07c88ce4",
+        "headers": {
+          "baggage": "sd-routing-key=rk-07c88ce4,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-07c88ce4",
+          "traceparent": "00-fd531eb01c46d23da3c38a2b7dcd7183-21d5f3d88ec8c24d-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--http-kafka--2c680e37"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI5NzBiNDY5NGQ3MjViOGE1IiwidHIiOiJmZDUzMWViMDFjNDZkMjNkYTNjMzhhMmI3ZGNkNzE4MyIsInNhIjpmYWxzZSwicHIiOjAuNzMxOTc4LCJ0aSI6MTc4ODYzMTc1NDI0MSwiaWQiOiI5ZTMyOGEzZDkzOTFkNDViIn19"
+          ],
+          "traceparent": [
+            "00-fd531eb01c46d23da3c38a2b7dcd7183-9e328a3d9391d45b-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-9e328a3d9391d45b-970b4694d725b8a5-0-0.731978-1788631754241,sdtest=v1"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003erabbitmq",
+      "test_id": "newrelic-ruby--http-rabbitmq--c4963f1c",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "5d69a7c32a16a5b5db483d9973cfa852",
+        "span_id": "1f379763cbdf3b8d",
+        "routing_key": "rk-9ff89c3b",
+        "headers": {
+          "baggage": "sd-routing-key=rk-9ff89c3b,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-9ff89c3b",
+          "traceparent": "00-5d69a7c32a16a5b5db483d9973cfa852-1f379763cbdf3b8d-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--http-rabbitmq--c4963f1c"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI0ZDZlNGFiZjk0ZmQ2OGE5IiwidHIiOiI1ZDY5YTdjMzJhMTZhNWI1ZGI0ODNkOTk3M2NmYTg1MiIsInNhIjpmYWxzZSwicHIiOjAuNDQ4NzExLCJ0aSI6MTc4ODYzMTc1NDI1MywiaWQiOiI4YWU5NTAxNDQzNDJhNjQ0In19"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003ehttp",
+      "test_id": "newrelic-ruby--grpc-http--a7f359b0",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "81c3008979e2d4593402ba21baf7bed7",
+        "span_id": "c5c908bca6872428",
+        "routing_key": "rk-09e4f1b2",
+        "headers": {
+          "baggage": "sd-routing-key=rk-09e4f1b2,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-09e4f1b2",
+          "traceparent": "00-81c3008979e2d4593402ba21baf7bed7-c5c908bca6872428-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--grpc-http--a7f359b0"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "accept-encoding": [
+            "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
+          ],
+          "content-length": [
+            "48"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIwMDdiYWQ0NTVkMTAyZGVmIiwidHIiOiI4MWMzMDA4OTc5ZTJkNDU5MzQwMmJhMjFiYWY3YmVkNyIsInNhIjpmYWxzZSwicHIiOjAuODEwMzI4LCJ0aSI6MTc4ODYzMTc1NDc3MiwiaWQiOiJkMGNmYmE2NjBkNTA5N2RiIn19"
+          ],
+          "traceparent": [
+            "00-81c3008979e2d4593402ba21baf7bed7-d0cfba660d5097db-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-d0cfba660d5097db-007bad455d102def-0-0.810328-1788631754771,sdtest=v1"
+          ],
+          "user-agent": [
+            "Ruby"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003egrpc",
+      "test_id": "newrelic-ruby--grpc-grpc--346f96f2",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "9f4951c5c33d94ca65954a06970b78f5",
+        "span_id": "b9f836851a4901b5",
+        "routing_key": "rk-b6068814",
+        "headers": {
+          "baggage": "sd-routing-key=rk-b6068814,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-b6068814",
+          "traceparent": "00-9f4951c5c33d94ca65954a06970b78f5-b9f836851a4901b5-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--grpc-grpc--346f96f2"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJjYTU2MDI1YjdlNGMxM2I3IiwidHIiOiI5ZjQ5NTFjNWMzM2Q5NGNhNjU5NTRhMDY5NzBiNzhmNSIsInNhIjpmYWxzZSwicHIiOjAuMjcxODI3LCJ0aSI6MTc4ODYzMTc1NDc4NywiaWQiOiJmMGU3MjZiY2FjMmIxMjA2In19"
+          ],
+          "traceparent": [
+            "00-9f4951c5c33d94ca65954a06970b78f5-f0e726bcac2b1206-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-f0e726bcac2b1206-ca56025b7e4c13b7-0-0.271827-1788631754787,sdtest=v1"
+          ],
+          "user-agent": [
+            "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003ekafka",
+      "test_id": "newrelic-ruby--grpc-kafka--aab76701",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "c98f580c90584db501ea4ba216a4270a",
+        "span_id": "796a0543426312ec",
+        "routing_key": "rk-6a85ace2",
+        "headers": {
+          "baggage": "sd-routing-key=rk-6a85ace2,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-6a85ace2",
+          "traceparent": "00-c98f580c90584db501ea4ba216a4270a-796a0543426312ec-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--grpc-kafka--aab76701"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJhYWJhMzZkODRjYWI1M2UzIiwidHIiOiJjOThmNTgwYzkwNTg0ZGI1MDFlYTRiYTIxNmE0MjcwYSIsInNhIjpmYWxzZSwicHIiOjAuOTIwMzYsInRpIjoxNzg4NjMxNzU0NzkzLCJpZCI6ImI0NGI5MjcwMmI0MGNiMDkifX0="
+          ],
+          "traceparent": [
+            "00-c98f580c90584db501ea4ba216a4270a-b44b92702b40cb09-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-b44b92702b40cb09-aaba36d84cab53e3-0-0.920360-1788631754793,sdtest=v1"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003erabbitmq",
+      "test_id": "newrelic-ruby--grpc-rabbitmq--3284e542",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "813b5b4856510e89b16a5926e26db1e1",
+        "span_id": "adc68cf4c8169b0e",
+        "routing_key": "rk-d1951f43",
+        "headers": {
+          "baggage": "sd-routing-key=rk-d1951f43,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-d1951f43",
+          "traceparent": "00-813b5b4856510e89b16a5926e26db1e1-adc68cf4c8169b0e-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--grpc-rabbitmq--3284e542"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJkNjZhNjUxM2VlNDEyNjc0IiwidHIiOiI4MTNiNWI0ODU2NTEwZTg5YjE2YTU5MjZlMjZkYjFlMSIsInNhIjpmYWxzZSwicHIiOjAuNTkyMTY0LCJ0aSI6MTc4ODYzMTc1NDgwNywiaWQiOiJkNmI1YzQ4MGI3MzgyOTZmIn19"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003ehttp",
+      "test_id": "newrelic-ruby--kafka-http--fd83dcd1",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "294d682a03c3ed0c54b93bde46fd5736",
+        "span_id": "970751eb741c2e59",
+        "routing_key": "rk-08b98ddb",
+        "headers": {
+          "baggage": "sd-routing-key=rk-08b98ddb,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-08b98ddb",
+          "traceparent": "00-294d682a03c3ed0c54b93bde46fd5736-970751eb741c2e59-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--kafka-http--fd83dcd1"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "accept-encoding": [
+            "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
+          ],
+          "content-length": [
+            "49"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIyMTU4MTI0NzhjZjEzYTY0IiwidHIiOiIyOTRkNjgyYTAzYzNlZDBjNTRiOTNiZGU0NmZkNTczNiIsInNhIjpmYWxzZSwicHIiOjAuNTM3NDM5LCJ0aSI6MTc4ODYzMTc1NTgzNywiaWQiOiI4ZWMwMWMwMzZiZWNmNTllIn19"
+          ],
+          "traceparent": [
+            "00-294d682a03c3ed0c54b93bde46fd5736-8ec01c036becf59e-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-8ec01c036becf59e-215812478cf13a64-0-0.537439-1788631755837,sdtest=v1"
+          ],
+          "user-agent": [
+            "Ruby"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003egrpc",
+      "test_id": "newrelic-ruby--kafka-grpc--8053b3a1",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "fabb54fa8cc133b1f17bc6059c1f6b2f",
+        "span_id": "af5393ffba420738",
+        "routing_key": "rk-5b867e19",
+        "headers": {
+          "baggage": "sd-routing-key=rk-5b867e19,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-5b867e19",
+          "traceparent": "00-fabb54fa8cc133b1f17bc6059c1f6b2f-af5393ffba420738-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--kafka-grpc--8053b3a1"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIwMDhhZjc0MjU2YzRlMTcyIiwidHIiOiJmYWJiNTRmYThjYzEzM2IxZjE3YmM2MDU5YzFmNmIyZiIsInNhIjpmYWxzZSwicHIiOjAuODUwMTczLCJ0aSI6MTc4ODYzMTc1NjM0MCwiaWQiOiJlM2I4NzRlMzNhYTc3N2ZiIn19"
+          ],
+          "traceparent": [
+            "00-fabb54fa8cc133b1f17bc6059c1f6b2f-e3b874e33aa777fb-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-e3b874e33aa777fb-008af74256c4e172-0-0.850173-1788631756340,sdtest=v1"
+          ],
+          "user-agent": [
+            "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003ekafka",
+      "test_id": "newrelic-ruby--kafka-kafka--6d19ba0e",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "4c8e0c0d12ec73a478be303c25357fe8",
+        "span_id": "a4978fcbbdbfebc6",
+        "routing_key": "rk-9c4fb45b",
+        "headers": {
+          "baggage": "sd-routing-key=rk-9c4fb45b,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-9c4fb45b",
+          "traceparent": "00-4c8e0c0d12ec73a478be303c25357fe8-a4978fcbbdbfebc6-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--kafka-kafka--6d19ba0e"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJhMDU0M2RlYmI5Y2E3ZGIwIiwidHIiOiI0YzhlMGMwZDEyZWM3M2E0NzhiZTMwM2MyNTM1N2ZlOCIsInNhIjpmYWxzZSwicHIiOjAuNTg1ODM5LCJ0aSI6MTc4ODYzMTc1Njg0MiwiaWQiOiJhNWQ1OGU1ZGYxODBjNmFlIn19"
+          ],
+          "traceparent": [
+            "00-4c8e0c0d12ec73a478be303c25357fe8-a5d58e5df180c6ae-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-a5d58e5df180c6ae-a0543debb9ca7db0-0-0.585839-1788631756842,sdtest=v1"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003erabbitmq",
+      "test_id": "newrelic-ruby--kafka-rabbitmq--f5d6edf8",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "1e08851c1f61ce733aa54301153c80eb",
+        "span_id": "9071d96aac3441a0",
+        "routing_key": "rk-dd3d0c9a",
+        "headers": {
+          "baggage": "sd-routing-key=rk-dd3d0c9a,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-dd3d0c9a",
+          "traceparent": "00-1e08851c1f61ce733aa54301153c80eb-9071d96aac3441a0-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--kafka-rabbitmq--f5d6edf8"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJlZTE3NTgzOTI4NTQ2MGYyIiwidHIiOiIxZTA4ODUxYzFmNjFjZTczM2FhNTQzMDExNTNjODBlYiIsInNhIjpmYWxzZSwicHIiOjAuNzYzOTc5LCJ0aSI6MTc4ODYzMTc1NzM1MCwiaWQiOiI2YmIwMjQ2Y2NmYTljMmE4In19"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003ehttp",
+      "test_id": "newrelic-ruby--rabbitmq-http--054b8970",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "7eece4b08c51a4ab5d5885ebc666a70b",
+        "span_id": "e02b0e0427345cd2",
+        "routing_key": "rk-04802b70",
+        "headers": {
+          "baggage": "sd-routing-key=rk-04802b70,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-04802b70",
+          "traceparent": "00-7eece4b08c51a4ab5d5885ebc666a70b-e02b0e0427345cd2-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--rabbitmq-http--054b8970"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "accept-encoding": [
+            "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
+          ],
+          "content-length": [
+            "52"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI3NmU4Mzg5ZDZhN2M2NmQ4IiwidHIiOiI3ZWVjZTRiMDhjNTFhNGFiNWQ1ODg1ZWJjNjY2YTcwYiIsInNhIjpmYWxzZSwicHIiOjAuOTM0MTM2LCJ0aSI6MTc4ODYzMTc1Nzg1OCwiaWQiOiJkYTNmMzM0MWViY2NlZGRmIn19"
+          ],
+          "traceparent": [
+            "00-7eece4b08c51a4ab5d5885ebc666a70b-da3f3341ebcceddf-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-da3f3341ebcceddf-76e8389d6a7c66d8-0-0.934136-1788631757858,sdtest=v1"
+          ],
+          "user-agent": [
+            "Ruby"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003egrpc",
+      "test_id": "newrelic-ruby--rabbitmq-grpc--c89f5c2d",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "4d26c1e9c24f001eb774e0220c088bd3",
+        "span_id": "80155dc7ae76263c",
+        "routing_key": "rk-6eba379f",
+        "headers": {
+          "baggage": "sd-routing-key=rk-6eba379f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-6eba379f",
+          "traceparent": "00-4d26c1e9c24f001eb774e0220c088bd3-80155dc7ae76263c-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--rabbitmq-grpc--c89f5c2d"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIwNmU2Mjc1NzA0YTdjYTA0IiwidHIiOiI0ZDI2YzFlOWMyNGYwMDFlYjc3NGUwMjIwYzA4OGJkMyIsInNhIjpmYWxzZSwicHIiOjAuNDA4NDg1LCJ0aSI6MTc4ODYzMTc1ODM2MiwiaWQiOiJkMGUyOTg3ZDMzM2FhNDRmIn19"
+          ],
+          "traceparent": [
+            "00-4d26c1e9c24f001eb774e0220c088bd3-d0e2987d333aa44f-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-d0e2987d333aa44f-06e6275704a7ca04-0-0.408485-1788631758362,sdtest=v1"
+          ],
+          "user-agent": [
+            "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003ekafka",
+      "test_id": "newrelic-ruby--rabbitmq-kafka--89d3eaa8",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "ca7ad670109a4b1fef11986785726569",
+        "span_id": "4084d374b5673659",
+        "routing_key": "rk-d6b1932f",
+        "headers": {
+          "baggage": "sd-routing-key=rk-d6b1932f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-d6b1932f",
+          "traceparent": "00-ca7ad670109a4b1fef11986785726569-4084d374b5673659-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--rabbitmq-kafka--89d3eaa8"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJjZWZjMmM4MjY4MmE4ZDA4IiwidHIiOiJjYTdhZDY3MDEwOWE0YjFmZWYxMTk4Njc4NTcyNjU2OSIsInNhIjpmYWxzZSwicHIiOjAuMTE0OTc4LCJ0aSI6MTc4ODYzMTc1ODg3MCwiaWQiOiI2MTVhZTQ3NTYyMmM2MmUzIn19"
+          ],
+          "traceparent": [
+            "00-ca7ad670109a4b1fef11986785726569-615ae475622c62e3-00"
+          ],
+          "tracestate": [
+            "8478732@nr=0-0-8478732-572432810-615ae475622c62e3-cefc2c82682a8d08-0-0.114978-1788631758870,sdtest=v1"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003erabbitmq",
+      "test_id": "newrelic-ruby--rabbitmq-rabbitmq--06e6dc24",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "db291425692944571eea9aebc7c3bdc1",
+        "span_id": "560e1dc4d5226069",
+        "routing_key": "rk-3eaad35f",
+        "headers": {
+          "baggage": "sd-routing-key=rk-3eaad35f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-3eaad35f",
+          "traceparent": "00-db291425692944571eea9aebc7c3bdc1-560e1dc4d5226069-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "newrelic-ruby--rabbitmq-rabbitmq--06e6dc24"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {
+          "newrelic": [
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJlNmVmMzNiYWFmNzMyYTZmIiwidHIiOiJkYjI5MTQyNTY5Mjk0NDU3MWVlYTlhZWJjN2MzYmRjMSIsInNhIjpmYWxzZSwicHIiOjAuOTU1MTIyLCJ0aSI6MTc4ODYzMTc1OTM3OSwiaWQiOiIwMmE1YjVlZmU4MzhkZmQ1In19"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    }
+  ]
+}

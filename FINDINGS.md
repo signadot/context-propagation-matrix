@@ -3,8 +3,8 @@
 Empirical results are in [`results/MATRIX.md`](results/MATRIX.md) (raw header
 dumps per test in `results/raw/*.json`). This file documents *why* the notable
 cells look the way they do, with upstream citations. Runs dated 2026-09-05;
-30 variants × 16 boundaries ({http, grpc, kafka, rabbitmq}²); tracer versions
-as recorded per variant.
+37 tracer variants plus 8 no-instrumentation baselines × 16 boundaries
+({http, grpc, kafka, rabbitmq}²); tracer versions as recorded per variant.
 
 ## 1. Datadog Java: W3C `baggage` survives only HTTP→HTTP — 1 of 16 boundaries
 
@@ -210,7 +210,77 @@ Everywhere else, coverage collapses by language:
 Practical summary: outside Java (and HTTP-only stacks on .NET/Node), Elastic
 APM cannot currently carry application baggage across protocol boundaries.
 
-## 9. Rust: manual-by-design, and both tools ace it
+## 9. New Relic: no baggage, ever — and seven agents that disagree with each other
+
+Run with a real free-tier license key: New Relic's trace identity is
+account-scoped (the `tracestate` entry is
+`<trustedAccountKey>@nr=0-0-<accountId>-<appId>-…` and the vendor `newrelic`
+header embeds the same ids), and agents only learn those values from the
+collector connect handshake. No connect, no headers — verified three ways in
+`results/nokey/`: the Node agent without a key halts (yet its require-time
+hooks still half-propagate bare W3C on gRPC/AMQP-inbound paths — an
+accident, not a mode), and the Go agent with `ConfigEnabled(false)` (the
+documented dev/CI answer in
+[newrelic/go-agent#46](https://github.com/newrelic/go-agent/issues/46)) is a
+total no-op: zero headers on all 16 boundaries, propagation included.
+Because several agents also *connect lazily* on first traffic (Python, PHP),
+`run.sh` primes each newrelic variant with a discarded driver pass and
+measures steady state — the unprimed Python run scored 4/16 instead of its
+real 16/16.
+
+**Baggage: zero, everywhere.** No New Relic agent carries W3C `baggage` or
+`ot-baggage-*` on any boundary — the concept does not exist in their DT
+model, and the headers are not forwarded. If you route on baggage, New Relic
+contributes nothing on any protocol.
+
+**Trace context: every agent has a different shape** (W3C boundaries out of
+16, all zero-code except Go):
+
+- **Python (13.5.0): 16/16** — flask, requests, grpcio, confluent-kafka and
+  pika are all instrumented in both directions; the only perfect NR agent.
+  Emits W3C only (no vendor `newrelic` header).
+- **Ruby (10.7.1): 12/16 W3C, 16/16 vendor** — everything works, but bunny
+  *publish* injects only the legacy `newrelic` header: on all four `*→rmq`
+  boundaries `traceparent`/`tracestate` are absent, so a W3C-only consumer
+  downstream (or another vendor's agent) sees nothing.
+- **Go (v3.44.2): 12/16** — manual wiring per vendor docs (nrgrpc, nrsarama
+  with explicit `AcceptDistributedTraceHeaders` on consume, nramqp). All
+  Kafka-*outbound* legs are dead: nrsarama's producer wrapper creates spans
+  but exposes no header-injection path in the documented flow.
+- **Node (14.3.10): 9/16** — HTTP/gRPC/RabbitMQ full in both directions;
+  Kafka dead in both directions (the kafkajs instrumentation records
+  MessageBroker telemetry but did not inject or accept DT headers here).
+  Emits W3C only, like Python.
+- **Java (9.4.0): 6/16** — HTTP/gRPC-inbound → HTTP/gRPC/RabbitMQ-outbound
+  only. kafka-clients instrumentation is telemetry-only *by default*: Kafka
+  DT header injection is opt-in via
+  `class_transformer: com.newrelic.instrumentation.kafka-clients-spans-0.11.0.0: enabled: true`
+  ([docs](https://docs.newrelic.com/docs/apm/agents/java-agent/instrumentation/java-agent-instrument-kafka-message-queues/)
+  — New Relic warns it adds 150–200 bytes per message). Untested here;
+  backlog as a `newrelic-java-kafkaspans` variant. spring-rabbit publish
+  injects but the listener never accepts, and the Kafka consumer never
+  accepts — every messaging-inbound row is dead.
+- **.NET (10.54.0): 6/16** — the mirror image of Java on the produce side:
+  Confluent.Kafka *is* instrumented (all `*→kafka` legs inject) but the
+  `*→rmq` legs are dead: the agent instruments the classic
+  `IModel.BasicPublish` surface, while this relay uses RabbitMQ.Client
+  7.2.2's async-only `IChannel.BasicPublishAsync` API — the v7 async
+  instrumentation PR
+  ([newrelic-dotnet-agent#2890](https://github.com/newrelic/newrelic-dotnet-agent/pull/2890))
+  was closed on a ValueTask blocker. Messaging-inbound all dead.
+- **PHP (12.10.0.39): 2/16** — `http→http` (curl) and `http→rmq`
+  (php-amqplib ≥ 3.7 publish instrumentation, agent ≥ 11.6) carry all three
+  headers; rdkafka and ext-grpc are unsupported; the long-running CLI
+  consumers never accept inbound context. Docker footgun: `newrelic-install`
+  *symlinks* the extension into the extracted tarball directory by default —
+  deleting the tarball leaves a dangling symlink and a silently
+  uninstrumented app; build with `NR_INSTALL_USE_CP_NOT_LN=1`.
+
+**`tracestate` hygiene is perfect**: every NR agent that continued a trace
+appended its `@nr` entry and preserved our foreign `sdtest=v1` entry — no
+corruption in 112 delivered tests.
+
+## 10. Rust: manual-by-design, and both tools ace it
 
 No auto-instrumentation exists for Rust; the relay uses the documented
 carrier/propagator APIs (opentelemetry-rust 0.32 + opentelemetry-http;
@@ -228,7 +298,7 @@ The catch: none of it happens unless the developer wires the carriers at
 every hop — "supported" here means "the API exists", not "your service is
 covered by attaching an agent".
 
-## 10. Baseline (no instrumentation): seven clean zeros — and .NET
+## 11. Baseline (no instrumentation): seven clean zeros — and .NET
 
 Control runs: every language's relay with no agent, wrapper, or tracing gem
 attached (`none-*` variants, 128 hops). Seven of eight languages behave as
@@ -257,7 +327,7 @@ a strict W3C propagator](https://learn.microsoft.com/en-us/dotnet/core/compatibi
 back) — an *uninstrumented* .NET service changes its propagation behavior on
 a runtime upgrade. Harness runs used .NET 8.
 
-## 11. Positive results worth stating
+## 12. Positive results worth stating
 
 - **All 16 boundaries, all headers**: OTel Java agent 2.31.1, OTel Node
   auto-instrumentations 0.80.0, OTel Go (otelhttp/otelgrpc/kotel + documented
@@ -267,20 +337,28 @@ a runtime upgrade. Harness runs used .NET 8.
 - **New Relic Go** ships an official amqp091 integration
   ([nramqp](https://pkg.go.dev/github.com/newrelic/go-agent/v3/integrations/nramqp))
   that both inserts and accepts DT headers per delivery — unlike its Kafka
-  contrib, no manual accept step is needed (runs pending license key).
+  contrib, no manual accept step is needed (verified: all 8 RabbitMQ legs
+  pass, §9).
+- **New Relic Python (13.5.0)** is a quiet star: 16/16 boundaries with
+  zero code — the only New Relic agent, and one of very few agents of any
+  vendor, to activate consumed context on both Kafka and RabbitMQ (§9).
 - **tracestate foreign-entry preservation** was honored by every tracer that
-  continued a trace, with one exception: elastic-apm Python's gRPC path (§8).
-- **Canary**: `x-sd-canary` never leaked in any of the 608 recorded tests
-  (480 instrumented + 128 baseline) — relays re-emit, not proxy.
+  continued a trace — including all seven New Relic agents, which append
+  their `@nr` entry alongside foreign entries — with one exception:
+  elastic-apm Python's gRPC path (§8).
+- **Canary**: `x-sd-canary` never leaked in any of the 720 recorded tests
+  (592 instrumented + 128 baseline) — relays re-emit, not proxy.
 
-## 12. Cross-cutting conclusions
+## 13. Cross-cutting conclusions
 
-1. **The dominant failure class is consume-side context activation.** Five
-   independent instrumentations inject correctly but fail to make the
+1. **The dominant failure class is consume-side context activation.** Across
+   all four vendors, instrumentations inject correctly but fail to make the
    extracted context current for user code: OTel Python (confluent-kafka),
    OTel .NET (Kafka links; RabbitMQ baggage), OTel Ruby (bunny), dd-py
-   (kafka), dd-php (rdkafka). Injection is table stakes; the consumer is
-   where propagation actually dies.
+   (kafka), dd-php (rdkafka), NR Java (kafka + spring-rabbit listeners),
+   NR .NET (kafka + rabbitmq), NR Node (kafkajs), NR PHP (both workers).
+   Injection is table stakes; the consumer is where propagation actually
+   dies.
 2. **Span-centric inject sites** (dd-java, #11286) lose exactly the data that
    lives on context and not on spans — baggage — while trace identity
    survives, making the failure invisible to trace-waterfall debugging.
@@ -298,3 +376,16 @@ a runtime upgrade. Harness runs used .NET 8.
 6. The OpenTracing-era `ot-baggage-*` headers outlive their deprecation for a
    reason: in dd-trace-java they cross all sixteen boundaries while the
    modern `baggage` header crosses one.
+7. **A vendor is not a behavior.** New Relic's seven agents produce seven
+   different coverage shapes from identical applications (16/16 down to
+   2/16), disagree on which protocols inject (Kafka-out: .NET/Ruby/Python
+   only; RabbitMQ-out: everyone *except* .NET), and even on which headers to
+   send (Node/Python emit W3C only; Ruby's bunny publish emits the vendor
+   header only). "We support distributed tracing" tells you nothing about a
+   specific language × protocol cell.
+8. **Propagation can be backend-gated.** Unlike OTel/Datadog/Elastic, whose
+   propagation works with no backend at all, New Relic agents create no
+   headers until their collector handshake supplies account identity — and
+   `Enabled: false` (the documented dev/CI switch) kills propagation
+   entirely (§9). A New Relic outage or misconfigured key silently degrades
+   *propagation*, not just telemetry.
