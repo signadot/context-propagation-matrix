@@ -21,12 +21,17 @@ final class Info
             ),
             'datadog' => 'ddtrace ' . (phpversion('ddtrace') ?: 'absent'),
             'elastic' => 'elastic_apm ' . (phpversion('elastic_apm') ?: 'absent'),
+            'newrelic' => 'newrelic ' . (phpversion('newrelic') ?: 'absent'),
+            'none' => 'none',
             default => 'unknown',
         };
 
         $config = [];
         foreach (getenv() as $key => $value) {
-            if (preg_match('/^(DD_|OTEL_|ELASTIC_)/', $key)) {
+            if ($key === 'NEW_RELIC_LICENSE_KEY') {
+                continue; // never echo the secret
+            }
+            if (preg_match('/^(DD_|OTEL_|ELASTIC_|NEW_RELIC_)/', $key)) {
                 $config[$key] = $value;
             }
         }

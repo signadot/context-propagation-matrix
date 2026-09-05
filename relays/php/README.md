@@ -1,7 +1,8 @@
 # PHP relay
 
-One Slim application, three Docker targets (`otel` | `datadog` | `elastic`)
-that differ only in which instrumentation is installed. Build context is the
+One Slim application, four Docker targets (`otel` | `datadog` | `elastic` |
+`newrelic`) that differ only in which instrumentation is installed (plus the
+uninstrumented `app` base stage, used as the `none` baseline). Build context is the
 repo root; gRPC stubs are generated from `proto/relay.proto` at image build
 time.
 
@@ -60,12 +61,12 @@ exists for PHP.
 
 ## Client libraries per protocol (and who instruments them)
 
-| protocol | library | otel | datadog | elastic |
-|---|---|---|---|---|
-| HTTP out | ext-curl (raw `curl_exec`) | ✓ `opentelemetry-auto-curl` (injects `traceparent` on `curl_exec`/`curl_multi_exec`) | ✓ curl integration (all supported PHP versions) | ✓ curl is the agent's documented outgoing-HTTP instrumentation |
-| gRPC out | ext-grpc (PECL) + `grpc/grpc`, `google/protobuf` (composer) | ✗ no auto-instr package exists | ✗ no grpc integration in dd-trace-php | ✗ not in supported technologies |
-| Kafka | ext-rdkafka (PECL, pinned **6.0.5**) | ✓ `opentelemetry-auto-ext-rdkafka` (extracts + activates on `KafkaConsumer::consume`, injects on `ProducerTopic::producev`, ends span on `commit`) | ✓ Kafka integration (ext-rdkafka; 6.0.5 is the version in Datadog's tested matrix — hence the pin) | ✗ no Kafka support |
-| RabbitMQ | php-amqplib (composer) | ✗ no php-amqplib package (only `opentelemetry-auto-ext-amqp`, a different client, publish-side only) | ✓ AMQP integration (php-amqplib 2.x–3.x, publish inject + consume extract) | ✗ no AMQP support |
+| protocol | library | otel | datadog | elastic | newrelic |
+|---|---|---|---|---|---|
+| HTTP out | ext-curl (raw `curl_exec`) | ✓ `opentelemetry-auto-curl` (injects `traceparent` on `curl_exec`/`curl_multi_exec`) | ✓ curl integration (all supported PHP versions) | ✓ curl is the agent's documented outgoing-HTTP instrumentation | ✓ `curl_exec`/`curl_multi_exec` are in the agent's documented DT list |
+| gRPC out | ext-grpc (PECL) + `grpc/grpc`, `google/protobuf` (composer) | ✗ no auto-instr package exists | ✗ no grpc integration in dd-trace-php | ✗ not in supported technologies | ✗ not in supported technologies |
+| Kafka | ext-rdkafka (PECL, pinned **6.0.5**) | ✓ `opentelemetry-auto-ext-rdkafka` (extracts + activates on `KafkaConsumer::consume`, injects on `ProducerTopic::producev`, ends span on `commit`) | ✓ Kafka integration (ext-rdkafka; 6.0.5 is the version in Datadog's tested matrix — hence the pin) | ✗ no Kafka support | ✗ no rdkafka support (manual API only) |
+| RabbitMQ | php-amqplib (composer) | ✗ no php-amqplib package (only `opentelemetry-auto-ext-amqp`, a different client, publish-side only) | ✓ AMQP integration (php-amqplib 2.x–3.x, publish inject + consume extract) | ✗ no AMQP support | ✓ php-amqplib 3.7 instrumentation (agent ≥ 11.6) |
 
 Notes on the choices:
 
@@ -103,6 +104,15 @@ Notes on the choices:
   documented `dpkg -i` install. The agent tolerates an unreachable
   `ELASTIC_APM_SERVER_URL` (logs errors, keeps serving; verified in the
   smoke test with no APM server present).
+- **newrelic**: latest release tarball from
+  `download.newrelic.com/php_agent/release/` (multi-arch: x64 + aarch64),
+  installed with `NR_INSTALL_SILENT=1 newrelic-install install`. The license
+  key is written at container start by `docker/newrelic-entrypoint.sh` from
+  `NEW_RELIC_LICENSE_KEY` (it cannot be baked into the image); the agent
+  spawns its local daemon on demand. Unlike the other tools, header
+  *creation* requires a successful connect to New Relic's collector — the
+  agent learns its trusted-account key from the handshake — so runs need a
+  real (free-tier) license key and outbound network.
 
 ## gRPC stubs
 
@@ -124,14 +134,16 @@ as the python/ruby relays.
 `amqp://guest:guest@rabbitmq:5672/`), `SINK_HTTP` (default
 `http://sink:9080`), `SINK_GRPC` (default `sink:9081`),
 `SINK_RABBIT_QUEUE` (default `sink-rmq`), plus each tool's own
-`OTEL_*` / `DD_*` / `ELASTIC_*` config. `GET /info` reports
-`tracer_version`, lib versions, and every `DD_*`/`OTEL_*`/`ELASTIC_*` env
-var under `config`.
+`OTEL_*` / `DD_*` / `ELASTIC_*` / `NEW_RELIC_*` config. `GET /info` reports
+`tracer_version`, lib versions, and every
+`DD_*`/`OTEL_*`/`ELASTIC_*`/`NEW_RELIC_*` env var under `config`
+(`NEW_RELIC_LICENSE_KEY` is never echoed).
 
 ## Build
 
 ```
-docker build -f relays/php/Dockerfile --target otel    .
-docker build -f relays/php/Dockerfile --target datadog .
-docker build -f relays/php/Dockerfile --target elastic .
+docker build -f relays/php/Dockerfile --target otel     .
+docker build -f relays/php/Dockerfile --target datadog  .
+docker build -f relays/php/Dockerfile --target elastic  .
+docker build -f relays/php/Dockerfile --target newrelic .
 ```

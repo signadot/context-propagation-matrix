@@ -71,6 +71,27 @@ RUN curl -fLo /tmp/datadog-setup.php \
  && php /tmp/datadog-setup.php --php-bin=all \
  && rm /tmp/datadog-setup.php
 
+# --- New Relic: official PHP agent, latest release tarball (multi-arch:
+# agent/{x64,aarch64} + newrelic-install handle arch detection). The license
+# key cannot be baked at build time, so a wrapper entrypoint writes it from
+# NEW_RELIC_* env into an ini before handing off to the shared entrypoint;
+# the agent auto-spawns its local daemon on first request.
+# Coverage (see README.md): inbound HTTP (mod_php) and outbound curl/Guzzle
+# are auto-instrumented for distributed tracing; php-amqplib has agent
+# instrumentation (agent >= 11.6); ext-rdkafka and ext-grpc are unsupported.
+FROM app AS newrelic
+RUN set -eux; \
+    ver="$(curl -fsS https://download.newrelic.com/php_agent/release/ \
+      | grep -oE 'newrelic-php5-[0-9.]+-linux\.tar\.gz' | head -1 \
+      | sed -E 's/newrelic-php5-([0-9.]+)-linux\.tar\.gz/\1/')"; \
+    curl -fsSL "https://download.newrelic.com/php_agent/release/newrelic-php5-${ver}-linux.tar.gz" \
+      | tar -xz -C /tmp; \
+    NR_INSTALL_SILENT=1 "/tmp/newrelic-php5-${ver}-linux/newrelic-install" install; \
+    rm -rf /tmp/newrelic-php5-* /tmp/nrinstall*
+COPY relays/php/docker/newrelic-entrypoint.sh /newrelic-entrypoint.sh
+RUN chmod +x /newrelic-entrypoint.sh
+ENTRYPOINT ["/newrelic-entrypoint.sh"]
+
 # --- Elastic: APM PHP agent via the documented .deb package (per-arch).
 # Must tolerate an unreachable ELASTIC_APM_SERVER_URL (it logs and drops).
 FROM app AS elastic
