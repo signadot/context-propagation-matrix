@@ -11,6 +11,11 @@
 //     not itself accept inbound trace headers, so the message handler applies
 //     New Relic's documented manual message-queue pattern:
 //     txn.AcceptDistributedTraceHeaders(newrelic.TransportKafka, headers).
+//   - RabbitMQ via amqp091-go with the official nramqp integration:
+//     nramqp.PublishWithContext inserts the transaction's distributed trace
+//     headers into the message header table; nramqp.Consume starts one
+//     transaction per delivery and (unlike nrsarama) accepts the inbound
+//     headers itself via AcceptDistributedTraceHeaders(TransportAMQP).
 //
 // The app is created from the environment (NEW_RELIC_LICENSE_KEY etc.); if
 // that fails (missing/invalid key) it falls back to a disabled no-op agent so
@@ -29,9 +34,11 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/newrelic/go-agent/v3/integrations/nramqp"
 	"github.com/newrelic/go-agent/v3/integrations/nrgrpc"
 	"github.com/newrelic/go-agent/v3/integrations/nrsarama"
 	"github.com/newrelic/go-agent/v3/newrelic"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -43,6 +50,7 @@ type forwarder struct {
 	httpClient *http.Client
 	sink       cpmatrix.SinkClient
 	producer   sarama.SyncProducer
+	rabbit     *amqp.Channel
 }
 
 func (f *forwarder) forward(ctx context.Context, testID, via string) error {
@@ -81,6 +89,19 @@ func (f *forwarder) forward(ctx context.Context, testID, via string) error {
 		// and copies the headers onto the Kafka record before sending.
 		txn := newrelic.FromContext(ctx)
 		return nrsarama.NewProducerWrapper(f.producer, txn).SendMessage(common.SinkTopic, nil, value)
+	case "rabbitmq":
+		value, err := json.Marshal(common.SinkMessage{TestID: testID})
+		if err != nil {
+			return err
+		}
+		// nramqp's publish wrapper reads the transaction from ctx, creates a
+		// producer segment and injects the distributed trace headers
+		// (newrelic + traceparent + tracestate) into the header table.
+		return nramqp.PublishWithContext(f.rabbit, ctx, "", common.SinkRabbitQueue(),
+			common.RabbitURL(), false, false, amqp.Publishing{
+				ContentType: "application/json",
+				Body:        value,
+			})
 	default:
 		return fmt.Errorf("unknown forward_via: %q", via)
 	}
@@ -128,10 +149,16 @@ func main() {
 		log.Fatalf("grpc client: %v", err)
 	}
 
+	_, rabbitCh, err := common.DialRabbit()
+	if err != nil {
+		log.Fatalf("rabbitmq: %v", err)
+	}
+
 	fwd := &forwarder{
 		httpClient: &http.Client{Transport: newrelic.NewRoundTripper(nil)},
 		sink:       cpmatrix.NewSinkClient(conn),
 		producer:   producer,
+		rabbit:     rabbitCh,
 	}
 
 	// gRPC server on :8081.
@@ -186,6 +213,30 @@ func main() {
 		}
 	}()
 
+	// RabbitMQ consumer via nramqp.Consume: the integration starts one
+	// transaction per delivery and accepts the inbound distributed trace
+	// headers (TransportAMQP) itself; the returned txnOf function yields that
+	// transaction for each delivery.
+	var txnOf func(amqp.Delivery) *newrelic.Transaction
+	go common.RabbitConsumeLoop(func(ch *amqp.Channel) (<-chan amqp.Delivery, error) {
+		handler, deliveries, err := nramqp.Consume(app, ch,
+			common.RelayRabbitQueue(), "", true, false, false, false, nil)
+		txnOf = handler
+		return deliveries, err
+	}, func(d amqp.Delivery) {
+		txn := txnOf(d)
+		defer txn.End()
+		ctx := newrelic.NewContext(context.Background(), txn)
+		var req common.RelayRequest
+		if err := json.Unmarshal(d.Body, &req); err != nil {
+			log.Printf("rabbitmq: bad message: %v", err)
+			return
+		}
+		if err := fwd.forward(ctx, req.TestID, req.ForwardVia); err != nil {
+			log.Printf("rabbitmq: forward: %v", err)
+		}
+	})
+
 	agentVersion := common.ModuleVersion("github.com/newrelic/go-agent/v3")
 	libs := map[string]string{
 		"http": "newrelic.WrapHandleFunc + newrelic.NewRoundTripper (go-agent " + agentVersion + ")",
@@ -193,14 +244,16 @@ func main() {
 		"kafka": "nrsarama " + common.ModuleVersion("github.com/newrelic/go-agent/v3/integrations/nrsarama") +
 			" + manual AcceptDistributedTraceHeaders (Shopify/sarama " +
 			common.ModuleVersion("github.com/Shopify/sarama") + ")",
+		"rabbitmq": "nramqp " + common.ModuleVersion("github.com/newrelic/go-agent/v3/integrations/nramqp") +
+			" (amqp091-go " + common.ModuleVersion("github.com/rabbitmq/amqp091-go") + ")",
 	}
 
 	// HTTP server on :8080.
 	mux := http.NewServeMux()
 	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/relay", common.RelayHandler(fwd.forward)))
-	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/info", common.InfoHandler("github.com/newrelic/go-agent/v3", libs)))
-	log.Printf("relay %s listening on :8080 (http), :8081 (grpc); consuming %s",
-		common.Variant(), common.RelayTopic())
+	mux.HandleFunc(newrelic.WrapHandleFunc(app, "/info", common.InfoHandler("newrelic", "github.com/newrelic/go-agent/v3", libs)))
+	log.Printf("relay %s listening on :8080 (http), :8081 (grpc); consuming %s (kafka), %s (rabbitmq)",
+		common.Variant(), common.RelayTopic(), common.RelayRabbitQueue())
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		log.Fatalf("http serve: %v", err)
 	}

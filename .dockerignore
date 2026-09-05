@@ -1,0 +1,6 @@
+# Keep the (repo-root) build context small: results/evidence and local build
+# artifacts are never needed inside images.
+results/
+relays/rust/target/
+relays/node/node_modules/
+**/.DS_Store

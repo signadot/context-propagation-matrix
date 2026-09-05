@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// RelayRequest is the payload received on any of the three inbound protocols.
+// RelayRequest is the payload received on any of the four inbound protocols.
 type RelayRequest struct {
 	TestID     string `json:"test_id"`
 	ForwardVia string `json:"forward_via"`
@@ -25,8 +25,8 @@ type SinkMessage struct {
 }
 
 // ForwardFunc forwards a test message to the sink over the named protocol
-// ("http", "grpc" or "kafka"), with ctx carrying whatever notion of current
-// trace context the tool under test uses.
+// ("http", "grpc", "kafka" or "rabbitmq"), with ctx carrying whatever notion
+// of current trace context the tool under test uses.
 type ForwardFunc func(ctx context.Context, testID, via string) error
 
 // Env returns the value of the environment variable key, or dflt if unset or
@@ -67,6 +67,7 @@ var configKeys = []string{
 	"OTEL_TRACES_EXPORTER",
 	"DD_TRACE_PROPAGATION_STYLE",
 	"NEW_RELIC_DISTRIBUTED_TRACING_ENABLED",
+	"ELASTIC_APM_SERVER_URL",
 }
 
 // ModuleVersion returns the version of the named module as recorded in the
@@ -87,10 +88,11 @@ func ModuleVersion(path string) string {
 	return "unknown"
 }
 
-// Info assembles the /info document. tracerModule is the module whose version
-// is reported as tracer_version; libs names the instrumentation libraries in
+// Info assembles the /info document. tool is the tool name reported when the
+// TOOL env override is unset; tracerModule is the module whose version is
+// reported as tracer_version; libs names the instrumentation libraries in
 // use.
-func Info(tracerModule string, libs map[string]string) map[string]any {
+func Info(tool, tracerModule string, libs map[string]string) map[string]any {
 	config := map[string]string{}
 	for _, k := range configKeys {
 		if v := os.Getenv(k); v != "" {
@@ -99,7 +101,7 @@ func Info(tracerModule string, libs map[string]string) map[string]any {
 	}
 	return map[string]any{
 		"variant":         Variant(),
-		"tool":            Env("TOOL", "unknown"),
+		"tool":            Env("TOOL", tool),
 		"language":        "go",
 		"tracer_version":  ModuleVersion(tracerModule),
 		"runtime_version": runtime.Version(),
@@ -109,9 +111,9 @@ func Info(tracerModule string, libs map[string]string) map[string]any {
 }
 
 // InfoHandler serves GET /info.
-func InfoHandler(tracerModule string, libs map[string]string) http.HandlerFunc {
+func InfoHandler(tool, tracerModule string, libs map[string]string) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		WriteJSON(w, http.StatusOK, Info(tracerModule, libs))
+		WriteJSON(w, http.StatusOK, Info(tool, tracerModule, libs))
 	}
 }
 

@@ -579,3 +579,78 @@ services:
       ELASTIC_APM_DISABLE_SEND: "true"
       ELASTIC_APM_CENTRAL_CONFIG: "false"
     depends_on: *relay-depends
+
+  # ---------------- PHP relays (no gRPC server: grpc-inbound undeliverable) ----------------
+
+  relay-otel-php:
+    build: { context: ., dockerfile: relays/php/Dockerfile, target: otel }
+    profiles: [otel-php]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: otel-php
+      TOOL: otel
+      RELAY_TOPIC: relay-in-otel-php
+      OTEL_SERVICE_NAME: relay-otel-php
+      OTEL_TRACES_EXPORTER: none
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_PROPAGATORS: tracecontext,baggage
+    depends_on: *relay-depends
+
+  relay-datadog-php:
+    build: { context: ., dockerfile: relays/php/Dockerfile, target: datadog }
+    profiles: [datadog-php]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: datadog-php
+      TOOL: datadog
+      RELAY_TOPIC: relay-in-datadog-php
+      DD_SERVICE: relay-datadog-php
+      DD_TRACE_PROPAGATION_STYLE: datadog,tracecontext,baggage
+      DD_TRACE_STARTUP_LOGS: "false"
+      DD_INSTRUMENTATION_TELEMETRY_ENABLED: "false"
+      DD_REMOTE_CONFIG_ENABLED: "false"
+    depends_on: *relay-depends
+
+  relay-elastic-php:
+    build: { context: ., dockerfile: relays/php/Dockerfile, target: elastic }
+    profiles: [elastic-php]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: elastic-php
+      TOOL: elastic
+      RELAY_TOPIC: relay-in-elastic-php
+      ELASTIC_APM_SERVICE_NAME: relay-elastic-php
+    depends_on: *relay-depends
+
+  # ---------------- Rust relays (manual instrumentation, see relays/rust/README.md) ----------------
+
+  relay-otel-rust:
+    build: { context: ., dockerfile: relays/rust/Dockerfile, args: { TOOL: otel } }
+    profiles: [otel-rust]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: otel-rust
+      TOOL: otel
+      RELAY_TOPIC: relay-in-otel-rust
+      OTEL_SERVICE_NAME: relay-otel-rust
+      OTEL_TRACES_EXPORTER: none
+      OTEL_PROPAGATORS: tracecontext,baggage
+    depends_on: *relay-depends
+
+  relay-datadog-rust:
+    build: { context: ., dockerfile: relays/rust/Dockerfile, args: { TOOL: datadog } }
+    profiles: [datadog-rust]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: datadog-rust
+      TOOL: datadog
+      RELAY_TOPIC: relay-in-datadog-rust
+      DD_SERVICE: relay-datadog-rust
+      DD_TRACE_PROPAGATION_STYLE: datadog,tracecontext,baggage
+    depends_on: *relay-depends

@@ -1,0 +1,52 @@
+[package]
+name = "cpmatrix-relay"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "relay"
+path = "src/lib.rs"
+
+# Two build targets, one per tool (mirrors relays/go's multi-main layout).
+[[bin]]
+name = "relay-otel"
+path = "src/bin/relay-otel.rs"
+
+[[bin]]
+name = "relay-datadog"
+path = "src/bin/relay-datadog.rs"
+
+[dependencies]
+# Transports (deliberately naive application libraries).
+axum = "0.8"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time", "sync"] }
+# No TLS backend: the sink is plain http, and this keeps the build image lean.
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
+tonic = "0.14"
+tonic-prost = "0.14"
+prost = "0.14"
+# cmake-build: compile the vendored librdkafka with cmake (no system lib).
+# libz-static: statically link zlib so the runtime image needs nothing extra.
+rdkafka = { version = "0.39", features = ["cmake-build", "libz-static", "tokio"] }
+# tokio runtime only; no TLS backend needed for plain amqp://.
+lapin = { version = "4", default-features = false, features = ["tokio"] }
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+http = "1"
+
+# Instrumentation. Both tools speak the same OpenTelemetry API surface;
+# datadog-opentelemetry 0.5.x pins opentelemetry 0.32, so all carriers and
+# global propagator calls resolve to a single copy of the API crate.
+opentelemetry = "0.32"
+opentelemetry_sdk = "0.32"
+opentelemetry-http = "0.32"
+datadog-opentelemetry = "0.5"
+
+[build-dependencies]
+# tonic 0.14 moved protobuf codegen out of tonic-build into tonic-prost-build.
+tonic-prost-build = "0.14"
+
+[profile.release]
+strip = true

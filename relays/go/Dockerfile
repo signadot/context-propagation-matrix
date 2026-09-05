@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Build context is the repo root (so gen/ and the root go.mod are reachable,
 # mirroring relays/java/Dockerfile). Select the relay binary with
-# --build-arg TOOL=otel|datadog|newrelic.
+# --build-arg TOOL=otel|datadog|newrelic|elastic.
 
 FROM golang:1.25 AS build
 WORKDIR /src

@@ -1,0 +1,30 @@
+{
+    "name": "cpmatrix/relay-php",
+    "description": "Naive relay for the context propagation matrix (PHP). Never touches headers or tracing APIs.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.2",
+        "ext-curl": "*",
+        "ext-grpc": "*",
+        "ext-rdkafka": "*",
+        "slim/slim": "^4.14",
+        "slim/psr7": "^1.7",
+        "php-amqplib/php-amqplib": "^3.7",
+        "grpc/grpc": "^1.57",
+        "google/protobuf": "^4.27"
+    },
+    "autoload": {
+        "psr-4": {
+            "Relay\\": "src/",
+            "Cpmatrix\\": "gen/Cpmatrix/",
+            "GPBMetadata\\": "gen/GPBMetadata/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": false
+        }
+    }
+}

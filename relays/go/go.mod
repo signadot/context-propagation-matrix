@@ -14,15 +14,21 @@ require (
 	github.com/DataDog/dd-trace-go/v2 v2.10.1
 	github.com/IBM/sarama v1.60.2
 	github.com/newrelic/go-agent/v3 v3.44.2
+	github.com/newrelic/go-agent/v3/integrations/nramqp v1.0.3
 	github.com/newrelic/go-agent/v3/integrations/nrgrpc v1.4.10
 	github.com/newrelic/go-agent/v3/integrations/nrsarama v1.0.2
+	github.com/rabbitmq/amqp091-go v1.14.0
 	github.com/signadot/context-propagation-matrix v0.0.0-00010101000000-000000000000
 	github.com/twmb/franz-go v1.21.6
 	github.com/twmb/franz-go/plugin/kotel v1.7.0
+	go.elastic.co/apm/module/apmgrpc/v2 v2.7.12
+	go.elastic.co/apm/module/apmhttp/v2 v2.7.12
+	go.elastic.co/apm/v2 v2.7.12
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.71.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0
 	go.opentelemetry.io/otel v1.46.0
 	go.opentelemetry.io/otel/sdk v1.46.0
+	go.opentelemetry.io/otel/trace v1.46.0
 	google.golang.org/grpc v1.83.2
 )
 
@@ -81,7 +87,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/newrelic/csec-go-agent v1.6.0 // indirect
-	github.com/newrelic/go-agent/v3/integrations/nramqp v1.0.3 // indirect
 	github.com/outcaste-io/ristretto v0.2.3 // indirect
 	github.com/petermattis/goid v0.0.0-20260226131333-17d1149c6ac6 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
@@ -91,7 +96,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
-	github.com/rabbitmq/amqp091-go v1.14.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.11.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
@@ -101,9 +105,6 @@ require (
 	github.com/trailofbits/go-mutexasserts v0.0.0-20250514102930-c1f3d2e37561 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.13.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.elastic.co/apm/module/apmgrpc/v2 v2.7.12 // indirect
-	go.elastic.co/apm/module/apmhttp/v2 v2.7.12 // indirect
-	go.elastic.co/apm/v2 v2.7.12 // indirect
 	go.elastic.co/fastjson v1.5.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/collector/component v1.61.0 // indirect
@@ -111,7 +112,6 @@ require (
 	go.opentelemetry.io/collector/pdata v1.61.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.155.0 // indirect
 	go.opentelemetry.io/otel/metric v1.46.0 // indirect
-	go.opentelemetry.io/otel/trace v1.46.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect

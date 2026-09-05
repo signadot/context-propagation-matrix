@@ -1,0 +1,548 @@
+{
+  "variant": "otel-php",
+  "tool": "otel",
+  "language": "php",
+  "config": {
+    "OTEL_LOGS_EXPORTER": "none",
+    "OTEL_METRICS_EXPORTER": "none",
+    "OTEL_PHP_AUTOLOAD_ENABLED": "true",
+    "OTEL_PROPAGATORS": "tracecontext,baggage",
+    "OTEL_SERVICE_NAME": "relay-otel-php",
+    "OTEL_TRACES_EXPORTER": "none"
+  },
+  "info": {
+    "config": {
+      "OTEL_LOGS_EXPORTER": "none",
+      "OTEL_METRICS_EXPORTER": "none",
+      "OTEL_PHP_AUTOLOAD_ENABLED": "true",
+      "OTEL_PROPAGATORS": "tracecontext,baggage",
+      "OTEL_SERVICE_NAME": "relay-otel-php",
+      "OTEL_TRACES_EXPORTER": "none"
+    },
+    "language": "php",
+    "libs": {
+      "grpc": "ext-grpc 1.83.1 / grpc/grpc 1.82.0",
+      "http_client": "ext-curl 8.14.1",
+      "kafka": "ext-rdkafka 6.0.5",
+      "rabbitmq": "php-amqplib v3.7.4",
+      "server": "apache2 mod_php / slim 4.15.3"
+    },
+    "runtime_version": "php 8.3.33",
+    "tool": "otel",
+    "tracer_version": "open-telemetry/sdk 1.15.0 (ext-opentelemetry 1.2.1)",
+    "variant": "otel-php"
+  },
+  "ran_at": "2026-09-05T13:35:34.654183609Z",
+  "tests": [
+    {
+      "boundary": "http-\u003ehttp",
+      "test_id": "otel-php--http-http--f1fb191e",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "af0f219481f824ace30746f669f17f70",
+        "span_id": "8cc25bbd58c3b1ef",
+        "routing_key": "rk-74999324",
+        "headers": {
+          "baggage": "sd-routing-key=rk-74999324,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-74999324",
+          "traceparent": "00-af0f219481f824ace30746f669f17f70-8cc25bbd58c3b1ef-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--http-http--f1fb191e"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "baggage": [
+            "sd-routing-key=rk-74999324,team=alpha"
+          ],
+          "content-length": [
+            "43"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "traceparent": [
+            "00-af0f219481f824ace30746f669f17f70-fae8534a6a929dce-01"
+          ],
+          "tracestate": [
+            "sdtest=v1"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "propagated",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003egrpc",
+      "test_id": "otel-php--http-grpc--047e74ab",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "a7283425fa9b7384f9fff323ff616744",
+        "span_id": "80c4e0fc24e49fd9",
+        "routing_key": "rk-556bf773",
+        "headers": {
+          "baggage": "sd-routing-key=rk-556bf773,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-556bf773",
+          "traceparent": "00-a7283425fa9b7384f9fff323ff616744-80c4e0fc24e49fd9-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--http-grpc--047e74ab"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "user-agent": [
+            "grpc-php/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003ekafka",
+      "test_id": "otel-php--http-kafka--647ade1c",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "44af51c663a54cc67e4947a4acbde9b2",
+        "span_id": "6878f76e6ce18415",
+        "routing_key": "rk-b6c04179",
+        "headers": {
+          "baggage": "sd-routing-key=rk-b6c04179,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-b6c04179",
+          "traceparent": "00-44af51c663a54cc67e4947a4acbde9b2-6878f76e6ce18415-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--http-kafka--647ade1c"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003erabbitmq",
+      "test_id": "otel-php--http-rabbitmq--9de73ffa",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "c09b1028a3af04f91bc0174a6c386e82",
+        "span_id": "fb93f3a5202d118f",
+        "routing_key": "rk-b1e557ef",
+        "headers": {
+          "baggage": "sd-routing-key=rk-b1e557ef,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-b1e557ef",
+          "traceparent": "00-c09b1028a3af04f91bc0174a6c386e82-fb93f3a5202d118f-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--http-rabbitmq--9de73ffa"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003ehttp",
+      "test_id": "otel-php--grpc-http--4755f7a4",
+      "delivered": false,
+      "seeded": {
+        "trace_id": "9ed6659e8fe5688f399c9b24013e033e",
+        "span_id": "ba807e34d834790d",
+        "routing_key": "rk-0831b883",
+        "headers": {
+          "baggage": "sd-routing-key=rk-0831b883,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-0831b883",
+          "traceparent": "00-9ed6659e8fe5688f399c9b24013e033e-ba807e34d834790d-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--grpc-http--4755f7a4"
+        }
+      },
+      "error": "send: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 192.168.117.5:8081: connect: connection refused\""
+    },
+    {
+      "boundary": "grpc-\u003egrpc",
+      "test_id": "otel-php--grpc-grpc--e7ce199b",
+      "delivered": false,
+      "seeded": {
+        "trace_id": "f87c92fa0515f9bd779c036fd07881f4",
+        "span_id": "63f880d426b999f5",
+        "routing_key": "rk-c2c4cb26",
+        "headers": {
+          "baggage": "sd-routing-key=rk-c2c4cb26,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-c2c4cb26",
+          "traceparent": "00-f87c92fa0515f9bd779c036fd07881f4-63f880d426b999f5-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--grpc-grpc--e7ce199b"
+        }
+      },
+      "error": "send: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 192.168.117.5:8081: connect: connection refused\""
+    },
+    {
+      "boundary": "grpc-\u003ekafka",
+      "test_id": "otel-php--grpc-kafka--1b9a6287",
+      "delivered": false,
+      "seeded": {
+        "trace_id": "9a88b75af78124418b18090bdb41069d",
+        "span_id": "da9cd5cce49674e6",
+        "routing_key": "rk-adcdaf1c",
+        "headers": {
+          "baggage": "sd-routing-key=rk-adcdaf1c,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-adcdaf1c",
+          "traceparent": "00-9a88b75af78124418b18090bdb41069d-da9cd5cce49674e6-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--grpc-kafka--1b9a6287"
+        }
+      },
+      "error": "send: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 192.168.117.5:8081: connect: connection refused\""
+    },
+    {
+      "boundary": "grpc-\u003erabbitmq",
+      "test_id": "otel-php--grpc-rabbitmq--562b9993",
+      "delivered": false,
+      "seeded": {
+        "trace_id": "9c7addccaf1646dcdd376e2f0447c826",
+        "span_id": "24dd653055ffd12b",
+        "routing_key": "rk-d96b675e",
+        "headers": {
+          "baggage": "sd-routing-key=rk-d96b675e,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-d96b675e",
+          "traceparent": "00-9c7addccaf1646dcdd376e2f0447c826-24dd653055ffd12b-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--grpc-rabbitmq--562b9993"
+        }
+      },
+      "error": "send: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 192.168.117.5:8081: connect: connection refused\""
+    },
+    {
+      "boundary": "kafka-\u003ehttp",
+      "test_id": "otel-php--kafka-http--0e8e1918",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "4efaf609659306d08768573f6d21a62b",
+        "span_id": "6b76822c5e53c202",
+        "routing_key": "rk-96634705",
+        "headers": {
+          "baggage": "sd-routing-key=rk-96634705,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-96634705",
+          "traceparent": "00-4efaf609659306d08768573f6d21a62b-6b76822c5e53c202-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--kafka-http--0e8e1918"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "baggage": [
+            "sd-routing-key=rk-96634705,team=alpha"
+          ],
+          "content-length": [
+            "44"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "traceparent": [
+            "00-4efaf609659306d08768573f6d21a62b-f4484c8f50e46f0d-01"
+          ],
+          "tracestate": [
+            "sdtest=v1"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "same_trace",
+        "tracestate": "preserved",
+        "baggage": "propagated",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003egrpc",
+      "test_id": "otel-php--kafka-grpc--f468fe0b",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "3713f84883ffe732014abfc6f5bf01cf",
+        "span_id": "be4aab045b7e90b2",
+        "routing_key": "rk-6f201561",
+        "headers": {
+          "baggage": "sd-routing-key=rk-6f201561,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-6f201561",
+          "traceparent": "00-3713f84883ffe732014abfc6f5bf01cf-be4aab045b7e90b2-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--kafka-grpc--f468fe0b"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "user-agent": [
+            "grpc-php/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003ekafka",
+      "test_id": "otel-php--kafka-kafka--45f72454",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "7a66610180164c3c13d3846dcbf66f99",
+        "span_id": "50b34d6aa7426f66",
+        "routing_key": "rk-adfbdb8f",
+        "headers": {
+          "baggage": "sd-routing-key=rk-adfbdb8f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-adfbdb8f",
+          "traceparent": "00-7a66610180164c3c13d3846dcbf66f99-50b34d6aa7426f66-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--kafka-kafka--45f72454"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003erabbitmq",
+      "test_id": "otel-php--kafka-rabbitmq--726427b5",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "1efdd0eb45f69669a1d82066fbb4b06d",
+        "span_id": "1d6d0d70abd4daf4",
+        "routing_key": "rk-f1e72b99",
+        "headers": {
+          "baggage": "sd-routing-key=rk-f1e72b99,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-f1e72b99",
+          "traceparent": "00-1efdd0eb45f69669a1d82066fbb4b06d-1d6d0d70abd4daf4-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--kafka-rabbitmq--726427b5"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003ehttp",
+      "test_id": "otel-php--rabbitmq-http--4565b0f2",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "46461d58b8f48c938046a41221bc0730",
+        "span_id": "a7834d6923fe7b97",
+        "routing_key": "rk-c57ce50b",
+        "headers": {
+          "baggage": "sd-routing-key=rk-c57ce50b,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-c57ce50b",
+          "traceparent": "00-46461d58b8f48c938046a41221bc0730-a7834d6923fe7b97-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--rabbitmq-http--4565b0f2"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "content-length": [
+            "47"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "traceparent": [
+            "00-ff0a60929950a483477984afdea65123-9a7694c359c10ce3-01"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "new_trace",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003egrpc",
+      "test_id": "otel-php--rabbitmq-grpc--f75095b0",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "def972fe31076b34d509ac354aa0f749",
+        "span_id": "963849a502c77f77",
+        "routing_key": "rk-3bc98657",
+        "headers": {
+          "baggage": "sd-routing-key=rk-3bc98657,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-3bc98657",
+          "traceparent": "00-def972fe31076b34d509ac354aa0f749-963849a502c77f77-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--rabbitmq-grpc--f75095b0"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "user-agent": [
+            "grpc-php/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003ekafka",
+      "test_id": "otel-php--rabbitmq-kafka--5374eb8a",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "ca66225590f3094c83b323ededa0fb38",
+        "span_id": "1e613bdb56e7a8ef",
+        "routing_key": "rk-59d77b8b",
+        "headers": {
+          "baggage": "sd-routing-key=rk-59d77b8b,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-59d77b8b",
+          "traceparent": "00-ca66225590f3094c83b323ededa0fb38-1e613bdb56e7a8ef-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--rabbitmq-kafka--5374eb8a"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003erabbitmq",
+      "test_id": "otel-php--rabbitmq-rabbitmq--b2681540",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "6b9105ea88d2ac9ffabe1779787d40fd",
+        "span_id": "b4e4b84d4bac6f44",
+        "routing_key": "rk-14db8f5e",
+        "headers": {
+          "baggage": "sd-routing-key=rk-14db8f5e,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-14db8f5e",
+          "traceparent": "00-6b9105ea88d2ac9ffabe1779787d40fd-b4e4b84d4bac6f44-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "otel-php--rabbitmq-rabbitmq--b2681540"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    }
+  ]
+}

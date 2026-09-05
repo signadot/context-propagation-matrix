@@ -12,6 +12,12 @@
 //     the documented pattern extracts the message's span context with
 //     tracer.Extract(NewConsumerMessageCarrier(msg)) and starts a child span
 //     whose context is used for the outbound call.
+//   - RabbitMQ via amqp091-go. dd-trace-go has NO contrib for amqp091, so
+//     this leg uses the vendor's documented propagator API directly:
+//     tracer.Inject into (and tracer.Extract from, with tracer.ChildOf) a
+//     TextMapWriter/TextMapReader carrier over the AMQP header table — the
+//     same carrier pattern the sarama contrib documents for its message
+//     carriers.
 //
 // tracer.Start() reads all configuration (DD_TRACE_PROPAGATION_STYLE, ...)
 // from the environment.
@@ -33,6 +39,7 @@ import (
 	httptrace "github.com/DataDog/dd-trace-go/contrib/net/http/v2"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/IBM/sarama"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -40,10 +47,32 @@ import (
 	"github.com/signadot/context-propagation-matrix/relays/go/internal/common"
 )
 
+// amqpHeaderCarrier implements tracer.TextMapWriter and tracer.TextMapReader
+// over an AMQP header table, mirroring the sarama contrib's message carriers
+// (dd-trace-go has no amqp091 contrib). Only string-typed table values
+// participate in extraction.
+type amqpHeaderCarrier amqp.Table
+
+func (c amqpHeaderCarrier) Set(key, val string) { amqp.Table(c)[key] = val }
+
+func (c amqpHeaderCarrier) ForeachKey(handler func(key, val string) error) error {
+	for k, v := range c {
+		s, ok := v.(string)
+		if !ok {
+			continue
+		}
+		if err := handler(k, s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type forwarder struct {
 	httpClient *http.Client
 	sink       cpmatrix.SinkClient
 	producer   sarama.SyncProducer
+	rabbit     *amqp.Channel
 }
 
 func (f *forwarder) forward(ctx context.Context, testID, via string) error {
@@ -89,6 +118,23 @@ func (f *forwarder) forward(ctx context.Context, testID, via string) error {
 		}
 		_, _, err = f.producer.SendMessage(msg)
 		return err
+	case "rabbitmq":
+		value, err := json.Marshal(common.SinkMessage{TestID: testID})
+		if err != nil {
+			return err
+		}
+		// No amqp091 contrib: start a produce span from ctx and inject its
+		// span context into the AMQP header table with the vendor's
+		// propagator API (what the sarama contrib's wrapped producer does
+		// internally for Kafka).
+		span, ctx := tracer.StartSpanFromContext(ctx, "rabbitmq.produce",
+			tracer.ResourceName(common.SinkRabbitQueue()))
+		defer span.Finish()
+		headers := amqp.Table{}
+		if err := tracer.Inject(span.Context(), amqpHeaderCarrier(headers)); err != nil {
+			log.Printf("rabbitmq: inject: %v", err)
+		}
+		return common.RabbitPublish(ctx, f.rabbit, headers, value)
 	default:
 		return fmt.Errorf("unknown forward_via: %q", via)
 	}
@@ -159,10 +205,16 @@ func main() {
 		log.Fatalf("grpc client: %v", err)
 	}
 
+	_, rabbitCh, err := common.DialRabbit()
+	if err != nil {
+		log.Fatalf("rabbitmq: %v", err)
+	}
+
 	fwd := &forwarder{
 		httpClient: httptrace.WrapClient(&http.Client{}),
 		sink:       cpmatrix.NewSinkClient(conn),
 		producer:   producer,
+		rabbit:     rabbitCh,
 	}
 
 	// gRPC server on :8081.
@@ -195,19 +247,42 @@ func main() {
 		}
 	}()
 
+	// RabbitMQ consumer loop: documented consume pattern (as for the sarama
+	// contrib) — extract the remote span context from the message headers and
+	// start a child span whose context is used for the outbound call.
+	go common.RabbitConsumeLoop(common.RabbitConsume, func(d amqp.Delivery) {
+		opts := []tracer.StartSpanOption{tracer.ResourceName("relay.process")}
+		if spanctx, err := tracer.Extract(amqpHeaderCarrier(d.Headers)); err == nil {
+			opts = append(opts, tracer.ChildOf(spanctx))
+		}
+		span := tracer.StartSpan("rabbitmq.process", opts...)
+		defer span.Finish()
+		ctx := tracer.ContextWithSpan(context.Background(), span)
+		var req common.RelayRequest
+		if err := json.Unmarshal(d.Body, &req); err != nil {
+			log.Printf("rabbitmq: bad message: %v", err)
+			return
+		}
+		if err := fwd.forward(ctx, req.TestID, req.ForwardVia); err != nil {
+			log.Printf("rabbitmq: forward: %v", err)
+		}
+	})
+
 	libs := map[string]string{
 		"http": "dd contrib net/http " + common.ModuleVersion("github.com/DataDog/dd-trace-go/contrib/net/http/v2"),
 		"grpc": "dd contrib google.golang.org/grpc " + common.ModuleVersion("github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2"),
 		"kafka": "dd contrib IBM/sarama " + common.ModuleVersion("github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2") +
 			" (sarama " + common.ModuleVersion("github.com/IBM/sarama") + ")",
+		"rabbitmq": "amqp091-go " + common.ModuleVersion("github.com/rabbitmq/amqp091-go") +
+			" (manual tracer.Inject/Extract carrier; no dd contrib)",
 	}
 
 	// HTTP server on :8080 via the traced ServeMux.
 	mux := httptrace.NewServeMux()
 	mux.HandleFunc("/relay", common.RelayHandler(fwd.forward))
-	mux.HandleFunc("/info", common.InfoHandler("github.com/DataDog/dd-trace-go/v2", libs))
-	log.Printf("relay %s listening on :8080 (http), :8081 (grpc); consuming %s",
-		common.Variant(), common.RelayTopic())
+	mux.HandleFunc("/info", common.InfoHandler("datadog", "github.com/DataDog/dd-trace-go/v2", libs))
+	log.Printf("relay %s listening on :8080 (http), :8081 (grpc); consuming %s (kafka), %s (rabbitmq)",
+		common.Variant(), common.RelayTopic(), common.RelayRabbitQueue())
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		log.Fatalf("http serve: %v", err)
 	}
