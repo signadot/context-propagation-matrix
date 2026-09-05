@@ -28,6 +28,10 @@ FROM app AS datadog
 RUN pip install --no-cache-dir ddtrace
 ENTRYPOINT ["ddtrace-run", "python", "app.py"]
 
+FROM app AS newrelic
+RUN pip install --no-cache-dir newrelic
+ENTRYPOINT ["newrelic-admin", "run-program", "python", "app.py"]
+
 FROM app AS elastic
 # No zero-code runner: app.py conditionally applies the documented Flask
 # middleware + elasticapm.instrument() when TOOL=elastic.

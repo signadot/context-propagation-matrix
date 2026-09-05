@@ -6,9 +6,9 @@ require 'bunny'
 # RabbitMQ adapter, using the bunny gem (same file for every tool target).
 #
 # Whether this leg is instrumented depends on the tool (see README): otel
-# patches bunny via opentelemetry-instrumentation-bunny; datadog and elastic
-# have no bunny instrumentation (plain uninstrumented bunny - a measured
-# finding, not a bug). Nothing here touches
+# patches bunny via opentelemetry-instrumentation-bunny, newrelic_rpm ships
+# built-in bunny instrumentation, datadog and elastic have none (plain
+# uninstrumented bunny - a measured finding, not a bug). Nothing here touches
 # message properties, headers or tracing APIs; inbound AMQP properties are
 # simply ignored (we only parse the JSON body).
 module RabbitAdapter

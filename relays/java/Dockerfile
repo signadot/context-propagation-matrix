@@ -28,6 +28,15 @@ RUN mkdir -p /agent /tmp/mf \
  && (grep -i '^Implementation-Version' META-INF/MANIFEST.MF | head -1 | cut -d: -f2- | tr -d ' \r' > /agent/version.txt) \
  && cat /agent/version.txt
 
+FROM maven:3.9-eclipse-temurin-17 AS fetch-newrelic
+RUN mkdir -p /agent /tmp/mf \
+ && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
+ && curl -fsSL -o /agent/agent.jar \
+    "https://download.newrelic.com/newrelic/java-agent/newrelic-agent/current/newrelic-agent.jar" \
+ && cd /tmp/mf && jar xf /agent/agent.jar META-INF/MANIFEST.MF \
+ && (grep -i '^Implementation-Version' META-INF/MANIFEST.MF | head -1 | cut -d: -f2- | tr -d ' \r' > /agent/version.txt) \
+ && cat /agent/version.txt
+
 FROM maven:3.9-eclipse-temurin-17 AS fetch-elastic
 RUN mkdir -p /agent \
  && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
@@ -53,6 +62,10 @@ ENV JAVA_TOOL_OPTIONS="-javaagent:/agent/agent.jar"
 
 FROM base AS datadog
 COPY --from=fetch-datadog /agent /agent
+ENV JAVA_TOOL_OPTIONS="-javaagent:/agent/agent.jar"
+
+FROM base AS newrelic
+COPY --from=fetch-newrelic /agent /agent
 ENV JAVA_TOOL_OPTIONS="-javaagent:/agent/agent.jar"
 
 FROM base AS elastic

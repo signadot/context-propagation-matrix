@@ -3,6 +3,7 @@
 #
 #   ./run.sh otel-java datadog-node
 #   ./run.sh all
+#   NEW_RELIC_LICENSE_KEY=... ./run.sh newrelic-java
 set -uo pipefail
 cd "$(dirname "$0")"
 
@@ -15,8 +16,16 @@ ALL_VARIANTS=(
   datadog-python-kafkaprop
   elastic-java elastic-node elastic-python elastic-go elastic-dotnet elastic-ruby
   elastic-php
+  newrelic-java newrelic-node newrelic-python newrelic-go newrelic-dotnet newrelic-ruby
+  newrelic-php
   none-java none-node none-python none-go none-dotnet none-ruby none-php none-rust
 )
+
+# Load .env (gitignored) so the newrelic skip check below sees the license
+# key; docker compose reads the same file for ${NEW_RELIC_LICENSE_KEY}.
+if [[ -f .env ]]; then
+  set -a; source .env; set +a
+fi
 
 if [[ $# -eq 0 ]]; then
   echo "usage: $0 <variant>...|all" >&2
@@ -36,6 +45,10 @@ docker compose build driver || exit 1
 
 failures=()
 for v in "${variants[@]}"; do
+  if [[ "$v" == newrelic-* && -z "${NEW_RELIC_LICENSE_KEY:-}" ]]; then
+    echo "==> SKIP $v (NEW_RELIC_LICENSE_KEY not set)"
+    continue
+  fi
   echo "==> running variant $v"
   # Pre-create topics: some Kafka clients (e.g. kafkajs) crash at startup if
   # the subscribed topic does not exist yet.

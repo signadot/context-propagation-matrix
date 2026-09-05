@@ -1,32 +1,28 @@
 # Go relays
 
-Go has no auto-instrumentation for any of the tools, so there is one relay
-program per tool, each built exclusively from that vendor's documented
-contrib/instrumentation libraries with idiomatic `context.Context` plumbing
-(one of the languages where explicit context plumbing is allowed — see
-DESIGN.md). No relay constructs or copies propagation headers by hand; header
-injection/extraction is always done by the vendor's propagator or
-instrumentation API.
+Go has no auto-instrumentation for any of the four tools, so there are four
+separate relay programs, one per tool, each built exclusively from that
+vendor's documented contrib/instrumentation libraries with idiomatic
+`context.Context` plumbing (the one language where explicit context plumbing
+is allowed — see DESIGN.md). No relay constructs or copies propagation
+headers by hand; header injection/extraction is always done by the vendor's
+propagator or instrumentation API.
 
-One Go module (`relays/go/go.mod`) with three main packages (`./otel`,
-`./datadog`, `./elastic`) and a shared `./internal/common` package (env
-handling, JSON types, `/info` assembly, `/relay` handler and RabbitMQ
-dial/declare/consume-loop plumbing — nothing tracing-related). The module
-`replace`s the repo root module so it can import the pre-generated gRPC stubs
-at `gen/cpmatrix`.
+One Go module (`relays/go/go.mod`) with four main packages (`./otel`,
+`./datadog`, `./newrelic`, `./elastic`) and a shared `./internal/common`
+package (env handling, JSON types, `/info` assembly, `/relay` handler and
+RabbitMQ dial/declare/consume-loop plumbing — nothing tracing-related). The
+module `replace`s the repo root module so it can import the pre-generated
+gRPC stubs at `gen/cpmatrix`.
 
-RabbitMQ client for all relays: `github.com/rabbitmq/amqp091-go` v1.14.0.
-Queues are declared idempotently on startup with the contract's properties
-(durable=false, auto-delete=false, exclusive=false); outbound messages go to
-the sink queue via the default exchange.
+RabbitMQ client for all four relays: `github.com/rabbitmq/amqp091-go`
+v1.14.0. Queues are declared idempotently on startup with the contract's
+properties (durable=false, auto-delete=false, exclusive=false); outbound
+messages go to the sink queue via the default exchange.
 
 Build: `relays/go/Dockerfile` with build context = repo root and
-`--build-arg TOOL=otel|datadog|elastic` (single Dockerfile, `ARG`-selected
-binary; pure Go, `CGO_ENABLED=0`).
-
-(A New Relic relay previously lived at `./newrelic` — removed for now because
-runs require a license key; see the Roadmap section in the repo DESIGN.md and
-this repo's git history to restore it.)
+`--build-arg TOOL=otel|datadog|newrelic|elastic` (single Dockerfile,
+`ARG`-selected binary; pure Go, `CGO_ENABLED=0`).
 
 ## otel (`./otel`)
 
@@ -99,6 +95,51 @@ Caveats:
   documented consume pattern above. The tracer's configured propagation
   styles decide which headers are written; the relay writes none itself.
 
+## newrelic (`./newrelic`)
+
+| leg | library |
+|---|---|
+| HTTP server / client | `go-agent/v3` v3.44.2 (`newrelic.WrapHandleFunc` / `newrelic.NewRoundTripper`) |
+| gRPC server / client | `nrgrpc` v1.4.10 (`UnaryServerInterceptor(app)` / `UnaryClientInterceptor`) |
+| Kafka | `nrsarama` v1.0.2 on `github.com/Shopify/sarama` v1.38.1, plus manual `AcceptDistributedTraceHeaders` on consume (see below) |
+| RabbitMQ | `nramqp` v1.0.3 (official integration) on `amqp091-go` v1.14.0 |
+
+Caveats:
+
+- **nrsarama requires the archived Shopify/sarama fork** (its API takes
+  Shopify types), so this relay uses `github.com/Shopify/sarama` v1.38.1 —
+  the last release published under that module path; the repo now redirects
+  to IBM/sarama whose tags declare the IBM module path, hence the pin in
+  `go.mod`. The Datadog relay independently uses `github.com/IBM/sarama`.
+- Producer: `nrsarama.NewProducerWrapper(producer, txn).SendMessage(...)` —
+  the integration calls `txn.InsertDistributedTraceHeaders` and copies the
+  headers onto the Kafka record.
+- Consumer: `nrsarama.NewConsumerHandlerFromApp` starts one transaction per
+  message and passes a transaction-bearing context to the message handler —
+  but (as of v1.0.2) **it never accepts the inbound record's distributed
+  trace headers**, so on its own the trace would not continue across the
+  Kafka hop. The message handler therefore applies New Relic's documented
+  manual message-queue pattern: copy the record headers into an
+  `http.Header` and call
+  `txn.AcceptDistributedTraceHeaders(newrelic.TransportKafka, hdrs)`
+  (the insert/accept pattern from New Relic's distributed-tracing docs and
+  the go-agent GUIDE). Reading inbound headers into the vendor's Accept API
+  is the documented approach; the relay never writes headers itself.
+- **RabbitMQ needed no manual pattern**: unlike Kafka, New Relic ships an
+  official amqp091 integration,
+  [`nramqp`](https://pkg.go.dev/github.com/newrelic/go-agent/v3/integrations/nramqp)
+  v1.0.3. `nramqp.PublishWithContext` reads the transaction from ctx,
+  creates a producer segment and injects the DT headers
+  (`newrelic`/`traceparent`/`tracestate`) into the message header table;
+  `nramqp.Consume` starts one transaction per delivery and — unlike
+  nrsarama — accepts the inbound headers itself via
+  `txn.AcceptDistributedTraceHeaders(newrelic.TransportAMQP, hdrs)`.
+- If `NEW_RELIC_LICENSE_KEY` is missing/invalid, `newrelic.NewApplication`
+  fails; the relay falls back to `newrelic.ConfigEnabled(false)` (no-op
+  agent) so it still starts and serves `/info`. With a valid key the relay
+  calls `app.WaitForConnection(15s)` at startup, because NR agents inject
+  nothing until the connect handshake completes.
+
 ## elastic (`./elastic`)
 
 | leg | library |
@@ -151,11 +192,11 @@ Caveats:
 
 ## Shared notes
 
-- The sarama-based relay sets `cfg.Version = sarama.V2_1_0_0` (record
+- Both sarama-based relays set `cfg.Version = sarama.V2_1_0_0` (record
   headers need >= 0.11) and `Consumer.Offsets.Initial = OffsetOldest`;
   consumer group id is `relay-{VARIANT}`. Driver-produced messages carry
-  record headers; both sarama and franz-go consumers handle these fine.
-- RabbitMQ: all relays consume `RELAY_RABBIT_QUEUE` (default
+  record headers; both sarama consumers and franz-go handle these fine.
+- RabbitMQ: all four relays consume `RELAY_RABBIT_QUEUE` (default
   `relay-rmq-{VARIANT}`) with auto-ack from `RABBIT_URL`, publish to
   `SINK_RABBIT_QUEUE` (default `sink-rmq`) via the default exchange, and
   declare both queues idempotently on startup (durable=false,
@@ -166,4 +207,5 @@ Caveats:
   approach) read from `runtime/debug.ReadBuildInfo`, `runtime_version` from
   `runtime.Version()`, and echoes whichever of `OTEL_PROPAGATORS` /
   `OTEL_TRACES_EXPORTER` / `DD_TRACE_PROPAGATION_STYLE` /
-  `ELASTIC_APM_SERVER_URL` are set.
+  `NEW_RELIC_DISTRIBUTED_TRACING_ENABLED` / `ELASTIC_APM_SERVER_URL` are
+  set.

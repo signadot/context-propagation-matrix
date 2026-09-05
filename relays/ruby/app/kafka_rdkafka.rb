@@ -3,11 +3,11 @@
 require 'json'
 require 'rdkafka'
 
-# Kafka adapter for the non-datadog targets, using the rdkafka gem.
+# Kafka adapter for the otel and newrelic targets, using the rdkafka gem.
 #
-# Where the tool instruments rdkafka (otel patches Rdkafka::Producer#produce
-# for header injection and Rdkafka::Consumer#each for extraction), the code
-# below stays header- and tracing-API-free. Record headers on inbound
+# Both tools patch Rdkafka::Producer#produce (header injection) and
+# Rdkafka::Consumer#each (header extraction / consume transaction), so the
+# code below stays header- and tracing-API-free. Record headers on inbound
 # messages are simply ignored (we only parse the JSON payload).
 module KafkaAdapter
   BROKERS = ENV.fetch('KAFKA_BROKERS', 'kafka:9092')

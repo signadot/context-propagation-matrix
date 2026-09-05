@@ -74,6 +74,40 @@ ENV CORECLR_ENABLE_PROFILING=1 \
     CORECLR_PROFILER_PATH=/opt/datadog/Datadog.Trace.ClrProfiler.Native.so \
     DD_DOTNET_TRACER_HOME=/opt/datadog
 
+# ---- newrelic: New Relic .NET agent ----
+# https://docs.newrelic.com/install/dotnet/ (Linux tarball install)
+
+FROM base AS newrelic
+ARG TARGETARCH
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl \
+ && mkdir -p /agent \
+ && case "${TARGETARCH:-amd64}" in \
+      arm64) NR_ARCH=arm64 ;; \
+      *)     NR_ARCH=amd64 ;; \
+    esac \
+ # The tarball carries no version metadata, so scrape the version from the
+ # latest_release index; fall back to the unversioned "latest" tarball.
+ && NR_VERSION="$(curl -fsSL https://download.newrelic.com/dot_net_agent/latest_release/ \
+      | grep -oE 'newrelic-dotnet-agent_[0-9]+\.[0-9]+\.[0-9]+' | head -1 | cut -d_ -f2 || true)" \
+ && if [ -n "${NR_VERSION}" ]; then \
+      NR_TARBALL="newrelic-dotnet-agent_${NR_VERSION}_${NR_ARCH}.tar.gz"; \
+    else \
+      NR_TARBALL="newrelic-dotnet-agent_${NR_ARCH}.tar.gz"; NR_VERSION=unknown; \
+    fi \
+ && curl -fsSL -o /tmp/newrelic.tar.gz \
+      "https://download.newrelic.com/dot_net_agent/latest_release/${NR_TARBALL}" \
+ && tar -xzf /tmp/newrelic.tar.gz -C /usr/local \
+ && echo "${NR_VERSION}" > /agent/version.txt \
+ && cat /agent/version.txt \
+ && rm -f /tmp/newrelic.tar.gz \
+ && apt-get purge -y -qq curl && apt-get autoremove -y -qq && rm -rf /var/lib/apt/lists/*
+# libNewRelicProfiler.so at the agent home root is the correct arch build in
+# each per-arch tarball.
+ENV CORECLR_ENABLE_PROFILING=1 \
+    CORECLR_PROFILER="{36032161-FFC0-4B61-B559-F6C5D41BAE5A}" \
+    CORECLR_NEWRELIC_HOME=/usr/local/newrelic-dotnet-agent \
+    CORECLR_PROFILER_PATH=/usr/local/newrelic-dotnet-agent/libNewRelicProfiler.so
+
 # ---- elastic: Elastic APM .NET agent (zero-code startup hook) ----
 # https://www.elastic.co/docs/reference/apm/agents/dotnet/setup-dotnet-net-core
 # "Zero code change setup on .NET 8+": the ElasticApmAgent zip is injected via

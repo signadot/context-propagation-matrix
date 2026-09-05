@@ -60,8 +60,8 @@ func RabbitPublish(ctx context.Context, ch *amqp.Channel, headers amqp.Table, bo
 }
 
 // RabbitConsume starts a plain auto-ack consumer on the relay queue. It is
-// the default `consume` argument for RabbitConsumeLoop; a tool main can
-// substitute a traced Consume implementation instead.
+// the default `consume` argument for RabbitConsumeLoop; the newrelic relay
+// substitutes nramqp's traced Consume.
 func RabbitConsume(ch *amqp.Channel) (<-chan amqp.Delivery, error) {
 	return ch.Consume(RelayRabbitQueue(), "", true, false, false, false, nil)
 }

@@ -22,7 +22,7 @@ require_relative 'forwarder'
 require_relative 'grpc_server'
 
 # Kafka client differs per tool (see README): datadog has no rdkafka/ruby-kafka
-# propagation support, so it uses the karafka framework; the other tools use
+# propagation support, so it uses the karafka framework; otel and newrelic use
 # plain rdkafka.
 if ENV['TOOL'] == 'datadog'
   require_relative 'kafka_karafka'

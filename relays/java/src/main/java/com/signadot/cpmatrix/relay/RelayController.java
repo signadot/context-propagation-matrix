@@ -42,6 +42,7 @@ public class RelayController {
         for (String key : new String[]{
                 "OTEL_PROPAGATORS", "OTEL_TRACES_EXPORTER",
                 "DD_TRACE_PROPAGATION_STYLE",
+                "NEW_RELIC_DISTRIBUTED_TRACING_ENABLED",
                 "ELASTIC_APM_SERVER_URL"}) {
             String v = System.getenv(key);
             if (v != null && !v.isEmpty()) {

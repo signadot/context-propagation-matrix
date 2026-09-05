@@ -264,6 +264,10 @@ a runtime upgrade. Harness runs used .NET 8.
   propagator plumbing), otel-rust 0.32, dd-trace-js 6.14.0, dd-trace-go
   v2.10.1, dd-trace-dotnet 3.52.0, datadog-rust 0.5.2, and (trace context +
   baggage) Elastic Java 1.56.0.
+- **New Relic Go** ships an official amqp091 integration
+  ([nramqp](https://pkg.go.dev/github.com/newrelic/go-agent/v3/integrations/nramqp))
+  that both inserts and accepts DT headers per delivery — unlike its Kafka
+  contrib, no manual accept step is needed (runs pending license key).
 - **tracestate foreign-entry preservation** was honored by every tracer that
   continued a trace, with one exception: elastic-apm Python's gRPC path (§8).
 - **Canary**: `x-sd-canary` never leaked in any of the 608 recorded tests

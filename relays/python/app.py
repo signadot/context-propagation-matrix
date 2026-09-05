@@ -92,6 +92,7 @@ def info():
     tracer_pkg = {
         "otel": "opentelemetry-distro",
         "datadog": "ddtrace",
+        "newrelic": "newrelic",
         "elastic": "elastic-apm",
     }.get(TOOL)
     config = {}
@@ -100,6 +101,7 @@ def info():
         "OTEL_TRACES_EXPORTER",
         "DD_TRACE_PROPAGATION_STYLE",
         "DD_KAFKA_PROPAGATION_ENABLED",
+        "NEW_RELIC_DISTRIBUTED_TRACING_ENABLED",
         "ELASTIC_APM_SERVER_URL",
     ):
         if os.getenv(key):
