@@ -12,7 +12,11 @@ combination, never by quoting vendor documentation.
 ## Dimensions
 
 - **Tools**: `otel` (OpenTelemetry), `datadog` (dd-trace), `elastic` (Elastic
-  APM classic agents). See Roadmap below for candidates.
+  APM classic agents), plus a `none` **baseline** per language — the same
+  naive app with no agent/wrapper/gem attached, proving that nothing
+  propagates unless a tool provides it (and surfacing anything the platform
+  itself propagates, e.g. .NET's built-in `Activity` machinery). See Roadmap
+  below for tool candidates.
 - **Languages**: `java`, `node`, `python`, `go`, `dotnet`, `ruby`, `php`, `rust`
 - **Boundaries** (inbound protocol → outbound protocol): all 16 of
   `{http, grpc, kafka, rabbitmq} × {http, grpc, kafka, rabbitmq}`

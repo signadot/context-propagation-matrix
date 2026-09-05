@@ -1,0 +1,578 @@
+{
+  "variant": "none-go",
+  "tool": "none",
+  "language": "go",
+  "info": {
+    "config": {},
+    "language": "go",
+    "libs": {
+      "grpc": "google.golang.org/grpc (plain)",
+      "http": "net/http (plain)",
+      "kafka": "franz-go v1.21.6 (plain)",
+      "rabbitmq": "amqp091-go v1.14.0 (plain)"
+    },
+    "runtime_version": "go1.25.14",
+    "tool": "none",
+    "tracer_version": "none",
+    "variant": "none-go"
+  },
+  "ran_at": "2026-09-05T15:56:56.507933396Z",
+  "tests": [
+    {
+      "boundary": "http-\u003ehttp",
+      "test_id": "none-go--http-http--9b49b594",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "c1924f7d7d50e2c2041f64354cf868f0",
+        "span_id": "ddd78e57e76dd730",
+        "routing_key": "rk-36960347",
+        "headers": {
+          "baggage": "sd-routing-key=rk-36960347,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-36960347",
+          "traceparent": "00-c1924f7d7d50e2c2041f64354cf868f0-ddd78e57e76dd730-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--http-http--9b49b594"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept-encoding": [
+            "gzip"
+          ],
+          "content-length": [
+            "42"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "user-agent": [
+            "Go-http-client/1.1"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003egrpc",
+      "test_id": "none-go--http-grpc--a71fe4dc",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "0f3b57bca1e3c02c510b5eac1e40d2df",
+        "span_id": "0074945c39e57fae",
+        "routing_key": "rk-da23a762",
+        "headers": {
+          "baggage": "sd-routing-key=rk-da23a762,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-da23a762",
+          "traceparent": "00-0f3b57bca1e3c02c510b5eac1e40d2df-0074945c39e57fae-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--http-grpc--a71fe4dc"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "user-agent": [
+            "grpc-go/1.83.2"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003ekafka",
+      "test_id": "none-go--http-kafka--ec19c172",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "85035b5af9927792abf1d135d6503d11",
+        "span_id": "dfb37bad0f9ffc35",
+        "routing_key": "rk-3aace17f",
+        "headers": {
+          "baggage": "sd-routing-key=rk-3aace17f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-3aace17f",
+          "traceparent": "00-85035b5af9927792abf1d135d6503d11-dfb37bad0f9ffc35-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--http-kafka--ec19c172"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003erabbitmq",
+      "test_id": "none-go--http-rabbitmq--78486a76",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "57eb97bdcd4d657922d783af20848fa9",
+        "span_id": "785e4239044d713e",
+        "routing_key": "rk-6cfc5310",
+        "headers": {
+          "baggage": "sd-routing-key=rk-6cfc5310,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-6cfc5310",
+          "traceparent": "00-57eb97bdcd4d657922d783af20848fa9-785e4239044d713e-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--http-rabbitmq--78486a76"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003ehttp",
+      "test_id": "none-go--grpc-http--acd199c4",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "214e7084d9a6447a168ea122a219a1a0",
+        "span_id": "7472094110df15f2",
+        "routing_key": "rk-ac42f9c6",
+        "headers": {
+          "baggage": "sd-routing-key=rk-ac42f9c6,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-ac42f9c6",
+          "traceparent": "00-214e7084d9a6447a168ea122a219a1a0-7472094110df15f2-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--grpc-http--acd199c4"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept-encoding": [
+            "gzip"
+          ],
+          "content-length": [
+            "42"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "user-agent": [
+            "Go-http-client/1.1"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003egrpc",
+      "test_id": "none-go--grpc-grpc--373e9f94",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "7795087da8a79b5dea94b409273778df",
+        "span_id": "bce2733da96b873e",
+        "routing_key": "rk-1be7098d",
+        "headers": {
+          "baggage": "sd-routing-key=rk-1be7098d,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-1be7098d",
+          "traceparent": "00-7795087da8a79b5dea94b409273778df-bce2733da96b873e-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--grpc-grpc--373e9f94"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "user-agent": [
+            "grpc-go/1.83.2"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003ekafka",
+      "test_id": "none-go--grpc-kafka--84b49b88",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "4fbf3379fb5cc69314eee795b0606545",
+        "span_id": "4772126e3f7fcb88",
+        "routing_key": "rk-d1203543",
+        "headers": {
+          "baggage": "sd-routing-key=rk-d1203543,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-d1203543",
+          "traceparent": "00-4fbf3379fb5cc69314eee795b0606545-4772126e3f7fcb88-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--grpc-kafka--84b49b88"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003erabbitmq",
+      "test_id": "none-go--grpc-rabbitmq--66fb21db",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "7dfade12d60cd92d7817b64472526e83",
+        "span_id": "b59d70bda97761f2",
+        "routing_key": "rk-39d1ef0d",
+        "headers": {
+          "baggage": "sd-routing-key=rk-39d1ef0d,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-39d1ef0d",
+          "traceparent": "00-7dfade12d60cd92d7817b64472526e83-b59d70bda97761f2-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--grpc-rabbitmq--66fb21db"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003ehttp",
+      "test_id": "none-go--kafka-http--c8ee87f3",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "6469d56df424a62f8da471a065e9ea0d",
+        "span_id": "50cb6066ae7f9392",
+        "routing_key": "rk-73f5a01d",
+        "headers": {
+          "baggage": "sd-routing-key=rk-73f5a01d,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-73f5a01d",
+          "traceparent": "00-6469d56df424a62f8da471a065e9ea0d-50cb6066ae7f9392-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--kafka-http--c8ee87f3"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept-encoding": [
+            "gzip"
+          ],
+          "content-length": [
+            "43"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "user-agent": [
+            "Go-http-client/1.1"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003egrpc",
+      "test_id": "none-go--kafka-grpc--9f17e23c",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "663466b8f377d4883335692805fbaf70",
+        "span_id": "ce5879b1c78422b1",
+        "routing_key": "rk-2a6d69f1",
+        "headers": {
+          "baggage": "sd-routing-key=rk-2a6d69f1,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-2a6d69f1",
+          "traceparent": "00-663466b8f377d4883335692805fbaf70-ce5879b1c78422b1-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--kafka-grpc--9f17e23c"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "user-agent": [
+            "grpc-go/1.83.2"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003ekafka",
+      "test_id": "none-go--kafka-kafka--3635d07f",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "aaa34e46c22b3de7fd556a1bcd0268a7",
+        "span_id": "2894f668df894762",
+        "routing_key": "rk-9e227133",
+        "headers": {
+          "baggage": "sd-routing-key=rk-9e227133,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-9e227133",
+          "traceparent": "00-aaa34e46c22b3de7fd556a1bcd0268a7-2894f668df894762-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--kafka-kafka--3635d07f"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003erabbitmq",
+      "test_id": "none-go--kafka-rabbitmq--bc15dc92",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "8b6ec512dd06c6deaf49afd05a25264a",
+        "span_id": "e213e55ff2480b1b",
+        "routing_key": "rk-a989bdb1",
+        "headers": {
+          "baggage": "sd-routing-key=rk-a989bdb1,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-a989bdb1",
+          "traceparent": "00-8b6ec512dd06c6deaf49afd05a25264a-e213e55ff2480b1b-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--kafka-rabbitmq--bc15dc92"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003ehttp",
+      "test_id": "none-go--rabbitmq-http--4689ef93",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "fd071962b1e1b9fc893d57b0ff39d679",
+        "span_id": "3e6fb7b134dd81c8",
+        "routing_key": "rk-b6ca7fa3",
+        "headers": {
+          "baggage": "sd-routing-key=rk-b6ca7fa3,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-b6ca7fa3",
+          "traceparent": "00-fd071962b1e1b9fc893d57b0ff39d679-3e6fb7b134dd81c8-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--rabbitmq-http--4689ef93"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept-encoding": [
+            "gzip"
+          ],
+          "content-length": [
+            "46"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "user-agent": [
+            "Go-http-client/1.1"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003egrpc",
+      "test_id": "none-go--rabbitmq-grpc--90f8ccb0",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "35504b45c1552c00a85119696a3a99ef",
+        "span_id": "ee0c0db9a9a9dd22",
+        "routing_key": "rk-c1ed7b89",
+        "headers": {
+          "baggage": "sd-routing-key=rk-c1ed7b89,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-c1ed7b89",
+          "traceparent": "00-35504b45c1552c00a85119696a3a99ef-ee0c0db9a9a9dd22-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--rabbitmq-grpc--90f8ccb0"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "user-agent": [
+            "grpc-go/1.83.2"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003ekafka",
+      "test_id": "none-go--rabbitmq-kafka--2e2f87a7",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "bbcd07521fef7a7c981e89a9e176c1bc",
+        "span_id": "bdfd535a40a2096b",
+        "routing_key": "rk-1274d53e",
+        "headers": {
+          "baggage": "sd-routing-key=rk-1274d53e,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-1274d53e",
+          "traceparent": "00-bbcd07521fef7a7c981e89a9e176c1bc-bdfd535a40a2096b-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--rabbitmq-kafka--2e2f87a7"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003erabbitmq",
+      "test_id": "none-go--rabbitmq-rabbitmq--b4abcb2d",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "8549bfc96b5b73de6c6f0292fcebeadf",
+        "span_id": "79abb1e19e2a043b",
+        "routing_key": "rk-7f99e344",
+        "headers": {
+          "baggage": "sd-routing-key=rk-7f99e344,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-7f99e344",
+          "traceparent": "00-8549bfc96b5b73de6c6f0292fcebeadf-79abb1e19e2a043b-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-go--rabbitmq-rabbitmq--b4abcb2d"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    }
+  ]
+}

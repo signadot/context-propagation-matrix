@@ -10,6 +10,10 @@ RUN python -m grpc_tools.protoc -Iproto --python_out=. --grpc_python_out=. proto
 COPY relays/python/app.py .
 EXPOSE 8080 8081
 
+# Baseline: no instrumentation at all.
+FROM app AS none
+ENTRYPOINT ["python", "app.py"]
+
 FROM app AS otel
 RUN pip install --no-cache-dir \
       opentelemetry-distro \

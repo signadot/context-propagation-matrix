@@ -34,6 +34,13 @@ EXPOSE 8080 8081
 # Tracer version is read at runtime from Gem.loaded_specs (see app/info.rb),
 # so no /agent/version.txt is written.
 
+FROM base AS none
+COPY relays/ruby/Gemfile.none Gemfile
+RUN bundle install
+COPY relays/ruby/app app
+ENV TOOL=none
+CMD ["ruby", "app/boot_none.rb"]
+
 FROM base AS otel
 COPY relays/ruby/Gemfile.otel Gemfile
 RUN bundle install

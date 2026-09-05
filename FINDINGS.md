@@ -228,7 +228,36 @@ The catch: none of it happens unless the developer wires the carriers at
 every hop — "supported" here means "the API exists", not "your service is
 covered by attaching an agent".
 
-## 10. Positive results worth stating
+## 10. Baseline (no instrumentation): seven clean zeros — and .NET
+
+Control runs: every language's relay with no agent, wrapper, or tracing gem
+attached (`none-*` variants, 128 hops). Seven of eight languages behave as
+expected — nothing propagates on any of the 16 boundaries, confirming that
+everything in the instrumented tables is attributable to the tool under
+test, not to the apps or the harness.
+
+The exception is .NET. With **no agent attached**, ASP.NET Core + HttpClient
+propagate on all four http/grpc → http/grpc boundaries:
+
+- `traceparent`: same trace-id, fresh span-id — the runtime genuinely
+  participates in the trace. ASP.NET Core hosting creates an `Activity` per
+  request, and `HttpClient`'s DiagnosticsHandler injects it on the way out
+  (gRPC inherits this because `Grpc.Net.Client` rides on HttpClient).
+- `tracestate`: preserved verbatim.
+- W3C `baggage` in → **`Correlation-Context` out**. The default
+  `DistributedContextPropagator` on .NET 8/9 is the pre-W3C "legacy"
+  propagator: it reads the standard `baggage` header into `Activity.Baggage`
+  but re-emits it under the obsolete draft name, so values survive one hop
+  and are then invisible to any W3C-only reader downstream.
+
+Nothing propagates on Kafka/RabbitMQ legs (no built-in messaging
+propagation). Note the version dependence: [.NET 10 switches the default to
+a strict W3C propagator](https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/10.0/default-trace-context-propagator)
+(`baggage` header out, strict encoding, `CreatePreW3CPropagator()` to opt
+back) — an *uninstrumented* .NET service changes its propagation behavior on
+a runtime upgrade. Harness runs used .NET 8.
+
+## 11. Positive results worth stating
 
 - **All 16 boundaries, all headers**: OTel Java agent 2.31.1, OTel Node
   auto-instrumentations 0.80.0, OTel Go (otelhttp/otelgrpc/kotel + documented
@@ -237,10 +266,10 @@ covered by attaching an agent".
   baggage) Elastic Java 1.56.0.
 - **tracestate foreign-entry preservation** was honored by every tracer that
   continued a trace, with one exception: elastic-apm Python's gRPC path (§8).
-- **Canary**: `x-sd-canary` never leaked in any of the 480 recorded tests
-  (relays re-emit, not proxy).
+- **Canary**: `x-sd-canary` never leaked in any of the 608 recorded tests
+  (480 instrumented + 128 baseline) — relays re-emit, not proxy.
 
-## 11. Cross-cutting conclusions
+## 12. Cross-cutting conclusions
 
 1. **The dominant failure class is consume-side context activation.** Five
    independent instrumentations inject correctly but fail to make the

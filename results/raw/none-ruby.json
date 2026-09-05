@@ -1,0 +1,603 @@
+{
+  "variant": "none-ruby",
+  "tool": "none",
+  "language": "ruby",
+  "info": {
+    "config": {},
+    "language": "ruby",
+    "libs": {
+      "grpc": "grpc 1.83.1",
+      "http-client": "net/http (stdlib)",
+      "http-server": "sinatra 4.2.1 (puma 8.0.2)",
+      "kafka": "rdkafka 0.29.1",
+      "rabbitmq": "bunny 3.3.0"
+    },
+    "runtime_version": "ruby 3.3.12",
+    "tool": "none",
+    "tracer_version": "none",
+    "variant": "none-ruby"
+  },
+  "ran_at": "2026-09-05T15:57:35.946183423Z",
+  "tests": [
+    {
+      "boundary": "http-\u003ehttp",
+      "test_id": "none-ruby--http-http--b7f6bbd4",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "8021d93541542598ab893928d2876735",
+        "span_id": "27993b4d81d69a52",
+        "routing_key": "rk-0131e37f",
+        "headers": {
+          "baggage": "sd-routing-key=rk-0131e37f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-0131e37f",
+          "traceparent": "00-8021d93541542598ab893928d2876735-27993b4d81d69a52-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--http-http--b7f6bbd4"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "accept-encoding": [
+            "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
+          ],
+          "content-length": [
+            "44"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "user-agent": [
+            "Ruby"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003egrpc",
+      "test_id": "none-ruby--http-grpc--17e5b9a3",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "9cebe0d9b4edcce9aea7b59d28114f40",
+        "span_id": "1ee79155ed1c8eb0",
+        "routing_key": "rk-abd5f33f",
+        "headers": {
+          "baggage": "sd-routing-key=rk-abd5f33f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-abd5f33f",
+          "traceparent": "00-9cebe0d9b4edcce9aea7b59d28114f40-1ee79155ed1c8eb0-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--http-grpc--17e5b9a3"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "user-agent": [
+            "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003ekafka",
+      "test_id": "none-ruby--http-kafka--68023930",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "a760b4749e083b87b9da644670def878",
+        "span_id": "f95cad01976a782b",
+        "routing_key": "rk-efa3bf14",
+        "headers": {
+          "baggage": "sd-routing-key=rk-efa3bf14,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-efa3bf14",
+          "traceparent": "00-a760b4749e083b87b9da644670def878-f95cad01976a782b-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--http-kafka--68023930"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "http-\u003erabbitmq",
+      "test_id": "none-ruby--http-rabbitmq--7f8d079d",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "5536bbf87d03f7fcfda91cbdfc8fd2ef",
+        "span_id": "b77e183901a90d2b",
+        "routing_key": "rk-10fe8b4d",
+        "headers": {
+          "baggage": "sd-routing-key=rk-10fe8b4d,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-10fe8b4d",
+          "traceparent": "00-5536bbf87d03f7fcfda91cbdfc8fd2ef-b77e183901a90d2b-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--http-rabbitmq--7f8d079d"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003ehttp",
+      "test_id": "none-ruby--grpc-http--ee0efd94",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "7e3b52fab35876f388cb1bbce9abf589",
+        "span_id": "725342443dd6f765",
+        "routing_key": "rk-067be728",
+        "headers": {
+          "baggage": "sd-routing-key=rk-067be728,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-067be728",
+          "traceparent": "00-7e3b52fab35876f388cb1bbce9abf589-725342443dd6f765-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--grpc-http--ee0efd94"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "accept-encoding": [
+            "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
+          ],
+          "content-length": [
+            "44"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "user-agent": [
+            "Ruby"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003egrpc",
+      "test_id": "none-ruby--grpc-grpc--5fcc0baf",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "c665c9f1863426bc76be2bb5ba1f30ba",
+        "span_id": "f980bfd906681b9a",
+        "routing_key": "rk-94cb2690",
+        "headers": {
+          "baggage": "sd-routing-key=rk-94cb2690,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-94cb2690",
+          "traceparent": "00-c665c9f1863426bc76be2bb5ba1f30ba-f980bfd906681b9a-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--grpc-grpc--5fcc0baf"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "user-agent": [
+            "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003ekafka",
+      "test_id": "none-ruby--grpc-kafka--74374c55",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "d9074de12b1541fed4ae4e276b1dfb83",
+        "span_id": "dc6f3dca7aeb4d44",
+        "routing_key": "rk-1bb91d36",
+        "headers": {
+          "baggage": "sd-routing-key=rk-1bb91d36,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-1bb91d36",
+          "traceparent": "00-d9074de12b1541fed4ae4e276b1dfb83-dc6f3dca7aeb4d44-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--grpc-kafka--74374c55"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "grpc-\u003erabbitmq",
+      "test_id": "none-ruby--grpc-rabbitmq--7af129b5",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "16c11e10dc2829fca7983e9f5d83729e",
+        "span_id": "7d425afb870721cb",
+        "routing_key": "rk-416c044e",
+        "headers": {
+          "baggage": "sd-routing-key=rk-416c044e,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-416c044e",
+          "traceparent": "00-16c11e10dc2829fca7983e9f5d83729e-7d425afb870721cb-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--grpc-rabbitmq--7af129b5"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003ehttp",
+      "test_id": "none-ruby--kafka-http--8ab8a648",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "d7c05f81a1d7e65d9529ac1265ef336f",
+        "span_id": "0278a3ce96472b51",
+        "routing_key": "rk-db96f164",
+        "headers": {
+          "baggage": "sd-routing-key=rk-db96f164,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-db96f164",
+          "traceparent": "00-d7c05f81a1d7e65d9529ac1265ef336f-0278a3ce96472b51-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--kafka-http--8ab8a648"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "accept-encoding": [
+            "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
+          ],
+          "content-length": [
+            "45"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "user-agent": [
+            "Ruby"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003egrpc",
+      "test_id": "none-ruby--kafka-grpc--63c888a6",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "94fa90236736ffe999475f886b00e1b7",
+        "span_id": "6afbad0ee8d3c974",
+        "routing_key": "rk-c66dfb69",
+        "headers": {
+          "baggage": "sd-routing-key=rk-c66dfb69,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-c66dfb69",
+          "traceparent": "00-94fa90236736ffe999475f886b00e1b7-6afbad0ee8d3c974-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--kafka-grpc--63c888a6"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "user-agent": [
+            "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003ekafka",
+      "test_id": "none-ruby--kafka-kafka--eada961e",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "5eb5950899332c565d67ce3c20b80246",
+        "span_id": "f451bbeebd6ab2a6",
+        "routing_key": "rk-cc537899",
+        "headers": {
+          "baggage": "sd-routing-key=rk-cc537899,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-cc537899",
+          "traceparent": "00-5eb5950899332c565d67ce3c20b80246-f451bbeebd6ab2a6-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--kafka-kafka--eada961e"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "kafka-\u003erabbitmq",
+      "test_id": "none-ruby--kafka-rabbitmq--f71943df",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "6f8f72979889059f0f6aa7d48a4b8ba9",
+        "span_id": "a43a0b2400d3fed7",
+        "routing_key": "rk-118720ce",
+        "headers": {
+          "baggage": "sd-routing-key=rk-118720ce,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-118720ce",
+          "traceparent": "00-6f8f72979889059f0f6aa7d48a4b8ba9-a43a0b2400d3fed7-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--kafka-rabbitmq--f71943df"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003ehttp",
+      "test_id": "none-ruby--rabbitmq-http--7d6e6848",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "2510dd857aac02900abf43ed3179dbcf",
+        "span_id": "642808269dd1be25",
+        "routing_key": "rk-4da5d39c",
+        "headers": {
+          "baggage": "sd-routing-key=rk-4da5d39c,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-4da5d39c",
+          "traceparent": "00-2510dd857aac02900abf43ed3179dbcf-642808269dd1be25-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--rabbitmq-http--7d6e6848"
+        }
+      },
+      "observed": {
+        "transport": "http",
+        "headers": {
+          "accept": [
+            "*/*"
+          ],
+          "accept-encoding": [
+            "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
+          ],
+          "content-length": [
+            "48"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "user-agent": [
+            "Ruby"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003egrpc",
+      "test_id": "none-ruby--rabbitmq-grpc--710e7041",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "938b8ee1f5b3bb9c4de9a25cb31361ee",
+        "span_id": "52c032a82fa68f1d",
+        "routing_key": "rk-c34e5391",
+        "headers": {
+          "baggage": "sd-routing-key=rk-c34e5391,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-c34e5391",
+          "traceparent": "00-938b8ee1f5b3bb9c4de9a25cb31361ee-52c032a82fa68f1d-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--rabbitmq-grpc--710e7041"
+        }
+      },
+      "observed": {
+        "transport": "grpc",
+        "headers": {
+          ":authority": [
+            "sink:9081"
+          ],
+          "content-type": [
+            "application/grpc"
+          ],
+          "grpc-accept-encoding": [
+            "identity, deflate, gzip"
+          ],
+          "user-agent": [
+            "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
+          ]
+        }
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003ekafka",
+      "test_id": "none-ruby--rabbitmq-kafka--a8867968",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "6828ba6d35ab7e3ae10a58556a7cdb64",
+        "span_id": "3c7ec9c3e357e9b3",
+        "routing_key": "rk-1344f6cf",
+        "headers": {
+          "baggage": "sd-routing-key=rk-1344f6cf,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-1344f6cf",
+          "traceparent": "00-6828ba6d35ab7e3ae10a58556a7cdb64-3c7ec9c3e357e9b3-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--rabbitmq-kafka--a8867968"
+        }
+      },
+      "observed": {
+        "transport": "kafka",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    },
+    {
+      "boundary": "rabbitmq-\u003erabbitmq",
+      "test_id": "none-ruby--rabbitmq-rabbitmq--89259339",
+      "delivered": true,
+      "seeded": {
+        "trace_id": "7d675733b2e6690a8b578d7f306883cd",
+        "span_id": "27af4faf0143e16e",
+        "routing_key": "rk-f4efbfbd",
+        "headers": {
+          "baggage": "sd-routing-key=rk-f4efbfbd,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-f4efbfbd",
+          "traceparent": "00-7d675733b2e6690a8b578d7f306883cd-27af4faf0143e16e-01",
+          "tracestate": "sdtest=v1",
+          "x-sd-canary": "none-ruby--rabbitmq-rabbitmq--89259339"
+        }
+      },
+      "observed": {
+        "transport": "rabbitmq",
+        "headers": {}
+      },
+      "status": {
+        "traceparent": "absent",
+        "tracestate": "absent",
+        "baggage": "absent",
+        "ot_baggage": "absent",
+        "datadog_native": "absent",
+        "canary_leak": false
+      }
+    }
+  ]
+}

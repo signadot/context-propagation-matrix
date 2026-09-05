@@ -3,7 +3,9 @@
 An empirical, re-runnable test harness that measures **context propagation**
 support — which trace/baggage headers actually survive a hop — across:
 
-- **Tools**: OpenTelemetry, Datadog (`dd-trace-*`), Elastic APM
+- **Tools**: OpenTelemetry, Datadog (`dd-trace-*`), Elastic APM — plus a
+  no-instrumentation `none` baseline per language (control runs; see
+  FINDINGS.md §10 for the one language that propagates anyway)
 - **Languages**: Java, Node.js, Python, Go, .NET, Ruby, PHP, Rust
 - **Protocol boundaries**: every combination of
   `{HTTP, gRPC, Kafka, RabbitMQ} → {HTTP, gRPC, Kafka, RabbitMQ}`

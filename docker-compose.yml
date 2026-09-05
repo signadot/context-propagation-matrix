@@ -562,3 +562,96 @@ services:
       DD_SERVICE: relay-datadog-rust
       DD_TRACE_PROPAGATION_STYLE: datadog,tracecontext,baggage
     depends_on: *relay-depends
+
+  # ---------------- Baseline relays (no instrumentation attached) ----------------
+  # Control runs: the same naive apps with no agent, wrapper, or tracing gem.
+  # Expected: nothing propagates — any header that does survive is coming from
+  # the app platform itself, not from a tracing tool (see FINDINGS.md).
+
+  relay-none-java:
+    build: { context: ., dockerfile: relays/java/Dockerfile, target: base }
+    profiles: [none-java]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: none-java
+      TOOL: none
+      RELAY_TOPIC: relay-in-none-java
+    depends_on: *relay-depends
+
+  relay-none-node:
+    build: { context: ., dockerfile: relays/node/Dockerfile, target: app }
+    profiles: [none-node]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: none-node
+      TOOL: none
+      RELAY_TOPIC: relay-in-none-node
+    depends_on: *relay-depends
+
+  relay-none-python:
+    build: { context: ., dockerfile: relays/python/Dockerfile, target: none }
+    profiles: [none-python]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: none-python
+      TOOL: none
+      RELAY_TOPIC: relay-in-none-python
+    depends_on: *relay-depends
+
+  relay-none-go:
+    build: { context: ., dockerfile: relays/go/Dockerfile, args: { TOOL: none } }
+    profiles: [none-go]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: none-go
+      TOOL: none
+      RELAY_TOPIC: relay-in-none-go
+    depends_on: *relay-depends
+
+  relay-none-dotnet:
+    build: { context: ., dockerfile: relays/dotnet/Dockerfile, target: base }
+    profiles: [none-dotnet]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: none-dotnet
+      TOOL: none
+      RELAY_TOPIC: relay-in-none-dotnet
+    depends_on: *relay-depends
+
+  relay-none-ruby:
+    build: { context: ., dockerfile: relays/ruby/Dockerfile, target: none }
+    profiles: [none-ruby]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: none-ruby
+      TOOL: none
+      RELAY_TOPIC: relay-in-none-ruby
+    depends_on: *relay-depends
+
+  relay-none-php:
+    build: { context: ., dockerfile: relays/php/Dockerfile, target: app }
+    profiles: [none-php]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: none-php
+      TOOL: none
+      RELAY_TOPIC: relay-in-none-php
+    depends_on: *relay-depends
+
+  relay-none-rust:
+    build: { context: ., dockerfile: relays/rust/Dockerfile, args: { TOOL: none } }
+    profiles: [none-rust]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: none-rust
+      TOOL: none
+      RELAY_TOPIC: relay-in-none-rust
+    depends_on: *relay-depends

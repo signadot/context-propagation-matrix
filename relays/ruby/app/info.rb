@@ -21,7 +21,7 @@ module Info
       variant: ENV.fetch('VARIANT', 'unknown'),
       tool: tool,
       language: 'ruby',
-      tracer_version: gem_version(TRACER_GEMS[tool]),
+      tracer_version: tool == 'none' ? 'none' : gem_version(TRACER_GEMS[tool]),
       runtime_version: "ruby #{RUBY_VERSION}",
       config: config_echo,
       libs: libs(tool)

@@ -45,12 +45,13 @@ var boundaries = []string{
 	"rabbitmq->http", "rabbitmq->grpc", "rabbitmq->kafka", "rabbitmq->rabbitmq",
 }
 
-var tools = []string{"otel", "datadog", "elastic"}
+var tools = []string{"otel", "datadog", "elastic", "none"}
 
 var toolTitles = map[string]string{
-	"otel":     "OpenTelemetry",
-	"datadog":  "Datadog (`dd-trace`)",
-	"elastic":  "Elastic APM (classic agents)",
+	"otel":    "OpenTelemetry",
+	"datadog": "Datadog (`dd-trace`)",
+	"elastic": "Elastic APM (classic agents)",
+	"none":    "Baseline (no instrumentation attached)",
 }
 
 var langOrder = map[string]int{
@@ -128,7 +129,7 @@ func rowLabel(v *VariantResult) string {
 	if suffix := strings.TrimPrefix(v.Variant, v.Tool+"-"+v.Language); suffix != "" {
 		label += " (" + strings.TrimPrefix(suffix, "-") + ")"
 	}
-	if tv := infoStr(v, "tracer_version"); tv != "" && tv != "unknown" {
+	if tv := infoStr(v, "tracer_version"); tv != "" && tv != "unknown" && tv != "none" {
 		label += " · " + tv
 	}
 	return label

@@ -15,6 +15,7 @@ ALL_VARIANTS=(
   datadog-python-kafkaprop
   elastic-java elastic-node elastic-python elastic-go elastic-dotnet elastic-ruby
   elastic-php
+  none-java none-node none-python none-go none-dotnet none-ruby none-php none-rust
 )
 
 if [[ $# -eq 0 ]]; then

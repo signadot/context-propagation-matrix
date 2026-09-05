@@ -8,7 +8,8 @@ publish = false
 name = "relay"
 path = "src/lib.rs"
 
-# Two build targets, one per tool (mirrors relays/go's multi-main layout).
+# One build target per tool (mirrors relays/go's multi-main layout), plus a
+# no-instrumentation baseline.
 [[bin]]
 name = "relay-otel"
 path = "src/bin/relay-otel.rs"
@@ -16,6 +17,10 @@ path = "src/bin/relay-otel.rs"
 [[bin]]
 name = "relay-datadog"
 path = "src/bin/relay-datadog.rs"
+
+[[bin]]
+name = "relay-none"
+path = "src/bin/relay-none.rs"
 
 [dependencies]
 # Transports (deliberately naive application libraries).

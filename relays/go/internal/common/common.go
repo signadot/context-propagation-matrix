@@ -98,11 +98,15 @@ func Info(tool, tracerModule string, libs map[string]string) map[string]any {
 			config[k] = v
 		}
 	}
+	tracerVersion := "none"
+	if tracerModule != "" {
+		tracerVersion = ModuleVersion(tracerModule)
+	}
 	return map[string]any{
 		"variant":         Variant(),
 		"tool":            Env("TOOL", tool),
 		"language":        "go",
-		"tracer_version":  ModuleVersion(tracerModule),
+		"tracer_version":  tracerVersion,
 		"runtime_version": runtime.Version(),
 		"config":          config,
 		"libs":            libs,
