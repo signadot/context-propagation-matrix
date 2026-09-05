@@ -1,4 +1,4 @@
-// Command driver runs the 9 protocol-boundary tests against one relay
+// Command driver runs the 16 protocol-boundary tests against one relay
 // variant, seeding context propagation headers on the inbound side and
 // evaluating what the sink observed on the outbound side.
 //
@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	pb "github.com/signadot/context-propagation-matrix/gen/cpmatrix"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -30,7 +31,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var protocols = []string{"http", "grpc", "kafka"}
+var protocols = []string{"http", "grpc", "kafka", "rabbitmq"}
 
 type Seeded struct {
 	TraceID    string            `json:"trace_id"`
@@ -74,15 +75,17 @@ type VariantResult struct {
 }
 
 type Env struct {
-	Variant     string
-	RelayHTTP   string // http://relay-{variant}:8080
-	RelayGRPC   string // relay-{variant}:8081
-	RelayTopic  string // relay-in-{variant}
-	SinkURL     string // http://sink:9080
-	Brokers     []string
-	Kafka       *kgo.Client
-	HTTP        *http.Client
-	PollTimeout time.Duration
+	Variant          string
+	RelayHTTP        string // http://relay-{variant}:8080
+	RelayGRPC        string // relay-{variant}:8081
+	RelayTopic       string // relay-in-{variant}
+	RelayRabbitQueue string // relay-rmq-{variant}
+	SinkURL          string // http://sink:9080
+	Brokers          []string
+	Kafka            *kgo.Client
+	Rabbit           *amqp.Channel
+	HTTP             *http.Client
+	PollTimeout      time.Duration
 }
 
 func randHex(nBytes int) string {
@@ -160,6 +163,21 @@ func (e *Env) sendKafka(seed Seeded, testID, forwardVia string) error {
 	return e.Kafka.ProduceSync(ctx, rec).FirstErr()
 }
 
+func (e *Env) sendRabbit(seed Seeded, testID, forwardVia string) error {
+	body, _ := json.Marshal(map[string]string{"test_id": testID, "forward_via": forwardVia})
+	headers := amqp.Table{}
+	for k, v := range seed.Headers {
+		headers[k] = v
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return e.Rabbit.PublishWithContext(ctx, "", e.RelayRabbitQueue, false, false, amqp.Publishing{
+		ContentType: "application/json",
+		Headers:     headers,
+		Body:        body,
+	})
+}
+
 func (e *Env) send(inbound string, seed Seeded, testID, forwardVia string) error {
 	switch inbound {
 	case "http":
@@ -168,6 +186,8 @@ func (e *Env) send(inbound string, seed Seeded, testID, forwardVia string) error
 		return e.sendGRPC(seed, testID, forwardVia)
 	case "kafka":
 		return e.sendKafka(seed, testID, forwardVia)
+	case "rabbitmq":
+		return e.sendRabbit(seed, testID, forwardVia)
 	}
 	return fmt.Errorf("unknown inbound %q", inbound)
 }
@@ -367,16 +387,39 @@ func main() {
 	}
 	defer kcl.Close()
 
+	rabbitURL := os.Getenv("RABBIT_URL")
+	if rabbitURL == "" {
+		rabbitURL = "amqp://guest:guest@rabbitmq:5672/"
+	}
+	rconn, err := amqp.Dial(rabbitURL)
+	if err != nil {
+		log.Fatalf("rabbitmq dial: %v", err)
+	}
+	defer rconn.Close()
+	rch, err := rconn.Channel()
+	if err != nil {
+		log.Fatalf("rabbitmq channel: %v", err)
+	}
+
 	env := &Env{
-		Variant:     *variant,
-		RelayHTTP:   "http://" + relayHost + ":8080",
-		RelayGRPC:   relayHost + ":8081",
-		RelayTopic:  "relay-in-" + *variant,
-		SinkURL:     sinkURL,
-		Brokers:     strings.Split(brokers, ","),
-		Kafka:       kcl,
-		HTTP:        &http.Client{Timeout: 30 * time.Second},
-		PollTimeout: 45 * time.Second,
+		Variant:          *variant,
+		RelayHTTP:        "http://" + relayHost + ":8080",
+		RelayGRPC:        relayHost + ":8081",
+		RelayTopic:       "relay-in-" + *variant,
+		RelayRabbitQueue: "relay-rmq-" + *variant,
+		SinkURL:          sinkURL,
+		Brokers:          strings.Split(brokers, ","),
+		Kafka:            kcl,
+		Rabbit:           rch,
+		HTTP:             &http.Client{Timeout: 30 * time.Second},
+		PollTimeout:      45 * time.Second,
+	}
+
+	// Declare the relay's inbound queue (idempotent; contract: non-durable,
+	// non-exclusive, no auto-delete). Messages published before the relay
+	// subscribes are held by the broker, so no warmup is needed for RabbitMQ.
+	if _, err := rch.QueueDeclare(env.RelayRabbitQueue, false, false, false, false, nil); err != nil {
+		log.Fatalf("rabbitmq queue declare: %v", err)
 	}
 
 	// Pre-create topics so consumer groups can join before first produce.

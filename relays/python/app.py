@@ -1,14 +1,18 @@
-"""Naive relay: receives {test_id, forward_via} over HTTP/gRPC/Kafka and
-forwards to the sink over the requested protocol. Never touches headers or
-tracing APIs — context propagation is the instrumentation's job."""
+"""Naive relay: receives {test_id, forward_via} over HTTP/gRPC/Kafka/RabbitMQ
+and forwards to the sink over the requested protocol. Never touches headers or
+tracing APIs — context propagation is the instrumentation's job. (The only
+exception is boot-time agent setup where a tool documents it, e.g. Elastic's
+Flask middleware below.)"""
 
 import json
 import os
 import threading
+import time
 from concurrent import futures
 from importlib.metadata import version as pkg_version
 
 import grpc
+import pika
 import requests
 from confluent_kafka import Consumer, Producer
 from flask import Flask, jsonify, request
@@ -22,6 +26,9 @@ RELAY_TOPIC = os.getenv("RELAY_TOPIC", f"relay-in-{VARIANT}")
 KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "kafka:9092")
 SINK_HTTP = os.getenv("SINK_HTTP", "http://sink:9080")
 SINK_GRPC = os.getenv("SINK_GRPC", "sink:9081")
+RABBIT_URL = os.getenv("RABBIT_URL", "amqp://guest:guest@rabbitmq:5672/")
+RELAY_RABBIT_QUEUE = os.getenv("RELAY_RABBIT_QUEUE", f"relay-rmq-{VARIANT}")
+SINK_RABBIT_QUEUE = os.getenv("SINK_RABBIT_QUEUE", "sink-rmq")
 
 producer = Producer({"bootstrap.servers": KAFKA_BROKERS})
 _sink_stub = None
@@ -45,6 +52,20 @@ def forward(test_id, via):
     elif via == "kafka":
         producer.produce("sink-in", json.dumps({"test_id": test_id}).encode())
         producer.flush(10)
+    elif via == "rabbitmq":
+        # pika connections are not thread-safe and forward() is called from
+        # several threads, so use a short-lived connection per publish.
+        conn = pika.BlockingConnection(pika.URLParameters(RABBIT_URL))
+        try:
+            ch = conn.channel()
+            ch.queue_declare(queue=SINK_RABBIT_QUEUE, durable=False)
+            ch.basic_publish(
+                exchange="",
+                routing_key=SINK_RABBIT_QUEUE,
+                body=json.dumps({"test_id": test_id}).encode(),
+            )
+        finally:
+            conn.close()
     else:
         raise ValueError(f"unknown forward_via: {via}")
 
@@ -72,13 +93,16 @@ def info():
         "otel": "opentelemetry-distro",
         "datadog": "ddtrace",
         "newrelic": "newrelic",
+        "elastic": "elastic-apm",
     }.get(TOOL)
     config = {}
     for key in (
         "OTEL_PROPAGATORS",
         "OTEL_TRACES_EXPORTER",
         "DD_TRACE_PROPAGATION_STYLE",
+        "DD_KAFKA_PROPAGATION_ENABLED",
         "NEW_RELIC_DISTRIBUTED_TRACING_ENABLED",
+        "ELASTIC_APM_SERVER_URL",
     ):
         if os.getenv(key):
             config[key] = os.environ[key]
@@ -94,6 +118,7 @@ def info():
             "requests": safe_version("requests"),
             "grpcio": safe_version("grpcio"),
             "confluent-kafka": safe_version("confluent-kafka"),
+            "rabbitmq": f"pika {safe_version('pika')}",
         },
     )
 
@@ -132,8 +157,45 @@ def consume():
             print("kafka relay error:", e, flush=True)
 
 
+def consume_rabbit():
+    while True:
+        try:
+            conn = pika.BlockingConnection(pika.URLParameters(RABBIT_URL))
+            ch = conn.channel()
+            # Contract queue properties: durable=False, auto_delete=False,
+            # exclusive=False (must match the driver's declare).
+            ch.queue_declare(queue=RELAY_RABBIT_QUEUE, durable=False)
+
+            def on_message(channel, method, properties, body):
+                try:
+                    req = json.loads(body)
+                    forward(req["test_id"], req["forward_via"])
+                except Exception as e:  # noqa: BLE001
+                    print("rabbitmq relay error:", e, flush=True)
+                channel.basic_ack(delivery_tag=method.delivery_tag)
+
+            ch.basic_consume(queue=RELAY_RABBIT_QUEUE, on_message_callback=on_message)
+            print(f"rabbitmq consumer on {RELAY_RABBIT_QUEUE}", flush=True)
+            ch.start_consuming()
+        except Exception as e:  # noqa: BLE001
+            print("rabbitmq consumer error:", e, "(retrying in 3s)", flush=True)
+            time.sleep(3)
+
+
+# Elastic APM has no zero-code runner for Python: the documented setup is the
+# Flask middleware plus elasticapm.instrument() for library patching. This is
+# boot-time agent setup (equivalent to ddtrace-run), not header handling.
+if TOOL == "elastic":
+    import elasticapm
+    from elasticapm.contrib.flask import ElasticAPM
+
+    elasticapm.instrument()
+    ElasticAPM(app)
+
+
 if __name__ == "__main__":
     threading.Thread(target=serve_grpc, daemon=True).start()
     threading.Thread(target=consume, daemon=True).start()
-    print(f"relay {VARIANT} on :8080 (http), :8081 (grpc), topic {RELAY_TOPIC}", flush=True)
+    threading.Thread(target=consume_rabbit, daemon=True).start()
+    print(f"relay {VARIANT} on :8080 (http), :8081 (grpc), topic {RELAY_TOPIC}, queue {RELAY_RABBIT_QUEUE}", flush=True)
     app.run(host="0.0.0.0", port=8080, threaded=True)

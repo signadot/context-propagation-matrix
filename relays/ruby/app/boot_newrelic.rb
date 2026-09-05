@@ -15,6 +15,10 @@ require 'sinatra/base'
 require 'net/http'
 require 'grpc'
 require 'rdkafka'
+# bunny is auto-instrumented by newrelic_rpm (since agent 4.3.0): DT headers
+# are inserted on Bunny::Exchange#publish and push-style consumers are
+# wrapped in a message transaction via Bunny::Consumer#call.
+require 'bunny'
 
 require 'newrelic_rpm'
 

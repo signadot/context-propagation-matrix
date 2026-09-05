@@ -12,6 +12,7 @@
     <PackageReference Include="Confluent.Kafka" Version="2.14.2" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.83.0" />
     <PackageReference Include="Grpc.Net.Client" Version="2.83.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
   </ItemGroup>
 
   <!-- The proto lives at the repo root (proto/relay.proto). The Dockerfile

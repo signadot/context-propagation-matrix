@@ -3,3 +3,4 @@ requests
 grpcio
 protobuf
 confluent-kafka
+pika

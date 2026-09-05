@@ -5,7 +5,8 @@ module Info
   TRACER_GEMS = {
     'otel' => 'opentelemetry-sdk',
     'datadog' => 'datadog',
-    'newrelic' => 'newrelic_rpm'
+    'newrelic' => 'newrelic_rpm',
+    'elastic' => 'elastic-apm'
   }.freeze
 
   CONFIG_KEYS = %w[
@@ -46,7 +47,8 @@ module Info
       'http-server' => "sinatra #{gem_version('sinatra')} (puma #{gem_version('puma')})",
       'http-client' => 'net/http (stdlib)',
       'grpc' => "grpc #{gem_version('grpc')}",
-      'kafka' => kafka
+      'kafka' => kafka,
+      'rabbitmq' => "bunny #{gem_version('bunny')}"
     }
   end
 

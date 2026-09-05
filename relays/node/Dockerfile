@@ -21,3 +21,7 @@ ENV NODE_OPTIONS="--require dd-trace/init"
 FROM app AS newrelic
 RUN npm install newrelic
 ENV NODE_OPTIONS="--require newrelic"
+
+FROM app AS elastic
+RUN npm install elastic-apm-node
+ENV NODE_OPTIONS="--require elastic-apm-node/start"

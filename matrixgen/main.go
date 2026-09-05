@@ -39,21 +39,24 @@ type VariantResult struct {
 }
 
 var boundaries = []string{
-	"http->http", "http->grpc", "http->kafka",
-	"grpc->http", "grpc->grpc", "grpc->kafka",
-	"kafka->http", "kafka->grpc", "kafka->kafka",
+	"http->http", "http->grpc", "http->kafka", "http->rabbitmq",
+	"grpc->http", "grpc->grpc", "grpc->kafka", "grpc->rabbitmq",
+	"kafka->http", "kafka->grpc", "kafka->kafka", "kafka->rabbitmq",
+	"rabbitmq->http", "rabbitmq->grpc", "rabbitmq->kafka", "rabbitmq->rabbitmq",
 }
 
-var tools = []string{"otel", "datadog", "newrelic"}
+var tools = []string{"otel", "datadog", "elastic", "newrelic"}
 
 var toolTitles = map[string]string{
 	"otel":     "OpenTelemetry",
 	"datadog":  "Datadog (`dd-trace`)",
+	"elastic":  "Elastic APM (classic agents)",
 	"newrelic": "New Relic",
 }
 
 var langOrder = map[string]int{
 	"java": 0, "node": 1, "python": 2, "go": 3, "dotnet": 4, "ruby": 5,
+	"php": 6, "rust": 7,
 }
 
 type headerView struct {
@@ -103,7 +106,10 @@ func glyph(key, val string, delivered bool) string {
 func boundaryHeader() string {
 	cols := make([]string, len(boundaries))
 	for i, b := range boundaries {
-		cols[i] = strings.ReplaceAll(b, "->", "→")
+		c := strings.ReplaceAll(b, "->", "→")
+		// Keep 16 columns readable.
+		c = strings.ReplaceAll(c, "rabbitmq", "rmq")
+		cols[i] = c
 	}
 	return "| variant | " + strings.Join(cols, " | ") + " |"
 }

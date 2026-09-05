@@ -16,7 +16,8 @@ RUN pip install --no-cache-dir \
       opentelemetry-instrumentation-flask \
       opentelemetry-instrumentation-requests \
       opentelemetry-instrumentation-grpc \
-      opentelemetry-instrumentation-confluent-kafka
+      opentelemetry-instrumentation-confluent-kafka \
+      opentelemetry-instrumentation-pika
 ENTRYPOINT ["opentelemetry-instrument", "python", "app.py"]
 
 FROM app AS datadog
@@ -26,3 +27,9 @@ ENTRYPOINT ["ddtrace-run", "python", "app.py"]
 FROM app AS newrelic
 RUN pip install --no-cache-dir newrelic
 ENTRYPOINT ["newrelic-admin", "run-program", "python", "app.py"]
+
+FROM app AS elastic
+# No zero-code runner: app.py conditionally applies the documented Flask
+# middleware + elasticapm.instrument() when TOOL=elastic.
+RUN pip install --no-cache-dir elastic-apm
+ENTRYPOINT ["python", "app.py"]

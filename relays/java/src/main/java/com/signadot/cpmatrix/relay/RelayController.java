@@ -42,7 +42,8 @@ public class RelayController {
         for (String key : new String[]{
                 "OTEL_PROPAGATORS", "OTEL_TRACES_EXPORTER",
                 "DD_TRACE_PROPAGATION_STYLE",
-                "NEW_RELIC_DISTRIBUTED_TRACING_ENABLED"}) {
+                "NEW_RELIC_DISTRIBUTED_TRACING_ENABLED",
+                "ELASTIC_APM_SERVER_URL"}) {
             String v = System.getenv(key);
             if (v != null && !v.isEmpty()) {
                 config.put(key, v);
@@ -56,6 +57,8 @@ public class RelayController {
         libs.put("http-client", "RestTemplate (HttpURLConnection)");
         libs.put("grpc", "grpc-java");
         libs.put("kafka", "spring-kafka");
+        libs.put("rabbitmq", "spring-rabbit (amqp-client "
+                + com.rabbitmq.client.impl.ClientVersion.VERSION + ")");
         out.put("libs", libs);
         return out;
     }

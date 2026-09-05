@@ -11,10 +11,12 @@ combination, never by quoting vendor documentation.
 
 ## Dimensions
 
-- **Tools**: `otel` (OpenTelemetry), `datadog` (dd-trace), `newrelic` (New Relic agents)
-- **Languages**: `java`, `node`, `python`, `go`, `dotnet`, `ruby`
-- **Boundaries** (inbound protocol → outbound protocol): all 9 of
-  `{http, grpc, kafka} × {http, grpc, kafka}`
+- **Tools**: `otel` (OpenTelemetry), `datadog` (dd-trace), `elastic` (Elastic
+  APM classic agents), `newrelic` (New Relic agents; deferred pending free-tier
+  license key)
+- **Languages**: `java`, `node`, `python`, `go`, `dotnet`, `ruby`, `php`, `rust`
+- **Boundaries** (inbound protocol → outbound protocol): all 16 of
+  `{http, grpc, kafka, rabbitmq} × {http, grpc, kafka, rabbitmq}`
 - **Headers observed** (primary): `traceparent`, `tracestate`, `baggage` (W3C),
   `ot-baggage-*` (OpenTracing legacy). Secondary observations recorded verbatim:
   `x-datadog-*`, `newrelic`, `b3`/`x-b3-*`, and everything else that arrives.
@@ -44,9 +46,15 @@ results with the exact libraries used.
 
 Endpoints (identical for every variant):
 
-- HTTP: `POST /relay` on `:8080`, body `{"test_id": "...", "forward_via": "http"|"grpc"|"kafka"}`
+- HTTP: `POST /relay` on `:8080`, body `{"test_id": "...", "forward_via": "http"|"grpc"|"kafka"|"rabbitmq"}`
 - gRPC: `cpmatrix.Relay/Handle` on `:8081`, same fields
 - Kafka: consume topic `relay-in-{variant}` (JSON value, same fields), group `relay-{variant}`, `auto.offset.reset=earliest`
+- RabbitMQ: consume queue `relay-rmq-{variant}` (JSON body, same fields) from
+  `RABBIT_URL` (default `amqp://guest:guest@rabbitmq:5672/`). Queue
+  properties (must match on declare): durable=false, auto-delete=false,
+  exclusive=false. The driver declares the queue before publishing, so
+  messages published before the relay subscribes are held by the broker — no
+  warmup needed, but relays should also declare it defensively on startup.
 - `GET /info` on `:8080` →
   `{"variant","tool","language","tracer_version","runtime_version","libs":{...}}`
   (used by the driver to stamp versions into results)
@@ -56,6 +64,8 @@ Forwarding targets (fixed):
 - http → `POST http://sink:9080/deliver` body `{"test_id": "..."}`
 - grpc → `cpmatrix.Sink/Deliver` at `sink:9081`
 - kafka → produce to topic `sink-in`, JSON value `{"test_id": "..."}`
+- rabbitmq → publish to queue `sink-rmq` (default exchange, routing key
+  `sink-rmq`, same queue properties), JSON body `{"test_id": "..."}`
 
 The relay handles the inbound message and performs the outbound call in
 whatever way is idiomatic for that platform (inside the HTTP handler / gRPC
@@ -69,6 +79,8 @@ Records exactly what arrives, verbatim:
 - HTTP `:9080 POST /deliver` → all request headers
 - gRPC `:9081 cpmatrix.Sink/Deliver` → all incoming metadata (`-bin` values base64-encoded)
 - Kafka: consume `sink-in` from earliest → all record headers (non-UTF-8 values recorded as `base64:<...>`)
+- RabbitMQ: consume `sink-rmq` → all AMQP header-table entries (strings pass
+  through; non-UTF-8 bytes as `base64:<...>`; other types via `%v`)
 
 Each arrival is an **observation**:
 

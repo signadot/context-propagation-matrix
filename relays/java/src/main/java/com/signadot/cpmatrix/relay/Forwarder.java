@@ -6,6 +6,8 @@ import com.signadot.cpmatrix.SinkRequest;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -23,15 +25,20 @@ public class Forwarder {
 
     private final RestTemplate http = new RestTemplate();
     private final KafkaTemplate<String, String> kafka;
+    private final RabbitTemplate rabbit;
     private final ObjectMapper om = new ObjectMapper();
 
     private final String sinkHttp = env("SINK_HTTP", "http://sink:9080");
     private final String sinkGrpc = env("SINK_GRPC", "sink:9081");
+    private final String sinkRabbitQueue;
 
     private volatile SinkGrpc.SinkBlockingStub sinkStub;
 
-    public Forwarder(KafkaTemplate<String, String> kafka) {
+    public Forwarder(KafkaTemplate<String, String> kafka, RabbitTemplate rabbit,
+                     @Value("${cpmatrix.sink-rabbit-queue}") String sinkRabbitQueue) {
         this.kafka = kafka;
+        this.rabbit = rabbit;
+        this.sinkRabbitQueue = sinkRabbitQueue;
     }
 
     public void forward(String testId, String via) {
@@ -42,6 +49,8 @@ public class Forwarder {
                 case "grpc" -> stub().deliver(
                         SinkRequest.newBuilder().setTestId(testId).build());
                 case "kafka" -> kafka.send("sink-in",
+                        om.writeValueAsString(Map.of("test_id", testId)));
+                case "rabbitmq" -> rabbit.convertAndSend(sinkRabbitQueue,
                         om.writeValueAsString(Map.of("test_id", testId)));
                 default -> throw new IllegalArgumentException("unknown forward_via: " + via);
             }

@@ -8,11 +8,14 @@ set -uo pipefail
 cd "$(dirname "$0")"
 
 ALL_VARIANTS=(
-  otel-java otel-node otel-python otel-go otel-dotnet otel-ruby
+  otel-java otel-node otel-python otel-go otel-dotnet otel-ruby otel-php otel-rust
   datadog-java datadog-node datadog-python datadog-go datadog-dotnet datadog-ruby
+  datadog-php datadog-rust
   datadog-java-defaults datadog-node-defaults datadog-python-defaults
   datadog-go-defaults datadog-dotnet-defaults datadog-ruby-defaults
   datadog-python-kafkaprop
+  elastic-java elastic-node elastic-python elastic-go elastic-dotnet elastic-ruby
+  elastic-php
   newrelic-java newrelic-node newrelic-python newrelic-go newrelic-dotnet newrelic-ruby
 )
 
@@ -28,8 +31,9 @@ else
   variants=("$@")
 fi
 
-echo "==> starting infra (kafka, sink)"
-docker compose up -d --build kafka sink || exit 1
+echo "==> starting infra (kafka, rabbitmq, sink)"
+docker compose up -d --build kafka rabbitmq sink || exit 1
+docker compose build driver || exit 1
 
 failures=()
 for v in "${variants[@]}"; do

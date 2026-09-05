@@ -1,6 +1,6 @@
 // Command sink is the uninstrumented recorder at the end of every test hop.
-// It listens on HTTP, gRPC and Kafka and records, verbatim, the headers /
-// metadata / record headers that arrive with each delivery.
+// It listens on HTTP, gRPC, Kafka and RabbitMQ and records, verbatim, the
+// headers / metadata / record headers that arrive with each delivery.
 package main
 
 import (
@@ -18,6 +18,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	pb "github.com/signadot/context-propagation-matrix/gen/cpmatrix"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/grpc"
@@ -26,7 +27,7 @@ import (
 
 type Observation struct {
 	TestID     string              `json:"test_id"`
-	Transport  string              `json:"transport"` // http | grpc | kafka
+	Transport  string              `json:"transport"` // http | grpc | kafka | rabbitmq
 	Headers    map[string][]string `json:"headers"`
 	ReceivedAt time.Time           `json:"received_at"`
 }
@@ -182,6 +183,67 @@ func kafkaConsume(store *Store, brokers string) {
 	}
 }
 
+// ---- RabbitMQ ----
+
+// amqpHeaderString renders an AMQP table value verbatim-ish: strings pass
+// through, non-UTF8 bytes are base64-tagged, everything else via %v.
+func amqpHeaderString(v any) string {
+	switch t := v.(type) {
+	case string:
+		return t
+	case []byte:
+		if utf8.Valid(t) {
+			return string(t)
+		}
+		return "base64:" + base64.StdEncoding.EncodeToString(t)
+	default:
+		return fmt.Sprintf("%v", t)
+	}
+}
+
+func rabbitConsume(store *Store, rabbitURL, queue string) {
+	for {
+		conn, err := amqp.Dial(rabbitURL)
+		if err != nil {
+			log.Printf("rabbitmq dial error: %v (retrying in 3s)", err)
+			time.Sleep(3 * time.Second)
+			continue
+		}
+		ch, err := conn.Channel()
+		if err == nil {
+			_, err = ch.QueueDeclare(queue, false, false, false, false, nil)
+		}
+		var deliveries <-chan amqp.Delivery
+		if err == nil {
+			deliveries, err = ch.Consume(queue, "sink", true, false, false, false, nil)
+		}
+		if err != nil {
+			log.Printf("rabbitmq setup error: %v (retrying in 3s)", err)
+			conn.Close()
+			time.Sleep(3 * time.Second)
+			continue
+		}
+		log.Printf("rabbitmq consumer started (queue=%s)", queue)
+		for d := range deliveries {
+			var body deliverBody
+			_ = json.Unmarshal(d.Body, &body)
+			headers := map[string][]string{}
+			for k, v := range d.Headers {
+				k = strings.ToLower(k)
+				headers[k] = append(headers[k], amqpHeaderString(v))
+			}
+			store.Add(Observation{
+				TestID:     body.TestID,
+				Transport:  "rabbitmq",
+				Headers:    headers,
+				ReceivedAt: time.Now().UTC(),
+			})
+		}
+		conn.Close()
+		time.Sleep(3 * time.Second)
+	}
+}
+
 func main() {
 	dataFile := os.Getenv("SINK_DATA_FILE")
 	if dataFile == "" {
@@ -190,6 +252,14 @@ func main() {
 	brokers := os.Getenv("KAFKA_BROKERS")
 	if brokers == "" {
 		brokers = "kafka:9092"
+	}
+	rabbitURL := os.Getenv("RABBIT_URL")
+	if rabbitURL == "" {
+		rabbitURL = "amqp://guest:guest@rabbitmq:5672/"
+	}
+	sinkRabbitQueue := os.Getenv("SINK_RABBIT_QUEUE")
+	if sinkRabbitQueue == "" {
+		sinkRabbitQueue = "sink-rmq"
 	}
 
 	store, err := NewStore(dataFile)
@@ -213,6 +283,9 @@ func main() {
 
 	// Kafka
 	go kafkaConsume(store, brokers)
+
+	// RabbitMQ
+	go rabbitConsume(store, rabbitURL, sinkRabbitQueue)
 
 	// HTTP (foreground)
 	log.Printf("http listening on :9080")

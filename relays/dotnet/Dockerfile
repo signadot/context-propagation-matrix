@@ -107,3 +107,33 @@ ENV CORECLR_ENABLE_PROFILING=1 \
     CORECLR_PROFILER="{36032161-FFC0-4B61-B559-F6C5D41BAE5A}" \
     CORECLR_NEWRELIC_HOME=/usr/local/newrelic-dotnet-agent \
     CORECLR_PROFILER_PATH=/usr/local/newrelic-dotnet-agent/libNewRelicProfiler.so
+
+# ---- elastic: Elastic APM .NET agent (zero-code startup hook) ----
+# https://www.elastic.co/docs/reference/apm/agents/dotnet/setup-dotnet-net-core
+# "Zero code change setup on .NET 8+": the ElasticApmAgent zip is injected via
+# DOTNET_STARTUP_HOOKS. Managed-only, so it works on amd64 and arm64 alike
+# (Elastic's alternative CLR-profiler zip is linux-x64 only). Note: Elastic's
+# Kafka and RabbitMQ integrations exist only in the CLR-profiler mechanism
+# (IL rewriting), so with the startup hook those legs measure as uninstrumented
+# — see supported technologies:
+# https://www.elastic.co/docs/reference/apm/agents/dotnet/setup-auto-instrumentation
+# No ELASTIC_APM_* config baked in: env only. With no reachable
+# ELASTIC_APM_SERVER_URL the agent logs send failures but the app runs fine.
+
+FROM base AS elastic
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl unzip \
+ && mkdir -p /agent /opt/elastic \
+ # Resolve the latest release tag, then install that exact version so
+ # /agent/version.txt is guaranteed to match the installed bits.
+ && ELASTIC_VERSION="$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+      https://github.com/elastic/apm-agent-dotnet/releases/latest \
+      | sed 's#.*/tag/v##')" \
+ && curl -fsSL -o /tmp/elastic-apm-agent.zip \
+      "https://github.com/elastic/apm-agent-dotnet/releases/download/v${ELASTIC_VERSION}/ElasticApmAgent_${ELASTIC_VERSION}.zip" \
+ # The startup-hook DLL sits at the zip root next to per-TFM agent dirs.
+ && unzip -q /tmp/elastic-apm-agent.zip -d /opt/elastic/apm-agent \
+ && echo "${ELASTIC_VERSION}" > /agent/version.txt \
+ && cat /agent/version.txt \
+ && rm -f /tmp/elastic-apm-agent.zip \
+ && apt-get purge -y -qq unzip curl && apt-get autoremove -y -qq && rm -rf /var/lib/apt/lists/*
+ENV DOTNET_STARTUP_HOOKS=/opt/elastic/apm-agent/ElasticApmAgentStartupHook.dll

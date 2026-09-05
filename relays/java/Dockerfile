@@ -37,6 +37,16 @@ RUN mkdir -p /agent /tmp/mf \
  && (grep -i '^Implementation-Version' META-INF/MANIFEST.MF | head -1 | cut -d: -f2- | tr -d ' \r' > /agent/version.txt) \
  && cat /agent/version.txt
 
+FROM maven:3.9-eclipse-temurin-17 AS fetch-elastic
+RUN mkdir -p /agent \
+ && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
+ && VER=$(curl -fsSL "https://repo1.maven.org/maven2/co/elastic/apm/elastic-apm-agent/maven-metadata.xml" \
+      | sed -n 's:.*<release>\(.*\)</release>.*:\1:p') \
+ && curl -fsSL -o /agent/agent.jar \
+    "https://repo1.maven.org/maven2/co/elastic/apm/elastic-apm-agent/${VER}/elastic-apm-agent-${VER}.jar" \
+ && echo "${VER}" > /agent/version.txt \
+ && cat /agent/version.txt
+
 # ---- runtime targets ----
 
 FROM eclipse-temurin:17-jre AS base
@@ -56,4 +66,8 @@ ENV JAVA_TOOL_OPTIONS="-javaagent:/agent/agent.jar"
 
 FROM base AS newrelic
 COPY --from=fetch-newrelic /agent /agent
+ENV JAVA_TOOL_OPTIONS="-javaagent:/agent/agent.jar"
+
+FROM base AS elastic
+COPY --from=fetch-elastic /agent /agent
 ENV JAVA_TOOL_OPTIONS="-javaagent:/agent/agent.jar"

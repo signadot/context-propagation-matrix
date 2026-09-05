@@ -1,6 +1,7 @@
 # Gemfile for the otel target.
 source 'https://rubygems.org'
 
+gem 'bunny', '~> 3.3'
 gem 'grpc', '~> 1.70'
 gem 'puma', '~> 8.0'
 gem 'rackup', '~> 2.2'
@@ -9,6 +10,7 @@ gem 'sinatra', '~> 4.1'
 
 gem 'opentelemetry-sdk', '~> 1.13'
 
+gem 'opentelemetry-instrumentation-bunny', '~> 0.25'  # needs ruby >= 3.3
 gem 'opentelemetry-instrumentation-grpc', '~> 0.5'    # client-side only
 gem 'opentelemetry-instrumentation-net_http', '~> 0.29'
 gem 'opentelemetry-instrumentation-rack', '~> 0.31'

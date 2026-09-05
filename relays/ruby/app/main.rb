@@ -5,6 +5,7 @@
 # Starts, in one process:
 #   - gRPC server on :8081 (background thread)
 #   - Kafka consumer (background thread; rdkafka or embedded karafka per tool)
+#   - RabbitMQ consumer (background thread; bunny, all tools)
 #   - Sinatra on :8080 via puma (main thread, blocks)
 
 require 'json'
@@ -29,10 +30,15 @@ else
   require_relative 'kafka_rdkafka'
 end
 
+# RabbitMQ client is bunny for every tool (see README for which tools
+# actually instrument it).
+require_relative 'rabbitmq_bunny'
+
 require_relative 'http_app'
 
 GrpcServer.start!
 KafkaAdapter.start!
+RabbitAdapter.start!
 
 HttpApp.set :environment, :production
 HttpApp.set :bind, '0.0.0.0'

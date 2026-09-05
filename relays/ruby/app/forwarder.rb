@@ -24,6 +24,8 @@ module Forwarder
       sink_stub.deliver(Cpmatrix::SinkRequest.new(test_id: test_id))
     when 'kafka'
       KafkaAdapter.produce('sink-in', JSON.generate({ test_id: test_id }))
+    when 'rabbitmq'
+      RabbitAdapter.produce(RabbitAdapter::SINK_QUEUE, JSON.generate({ test_id: test_id }))
     else
       raise ArgumentError, "unknown forward_via: #{via.inspect}"
     end

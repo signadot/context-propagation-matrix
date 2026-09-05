@@ -3,8 +3,13 @@
 # Kafka client is karafka (+ its waterdrop producer), NOT rdkafka/ruby-kafka:
 # dd-trace-rb has no rdkafka integration and its ruby-kafka integration only
 # creates spans (no context propagation). See README.
+#
+# bunny is present but UNINSTRUMENTED: dd-trace-rb has no bunny integration
+# (RabbitMQ support is limited to the Sneakers/Kicks worker framework). That
+# absence is a measured finding. See README.
 source 'https://rubygems.org'
 
+gem 'bunny', '~> 3.3'
 gem 'grpc', '~> 1.70'
 gem 'karafka', '~> 2.6'
 gem 'puma', '~> 8.0'

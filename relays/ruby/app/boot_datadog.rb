@@ -12,6 +12,11 @@ require 'net/http'
 require 'grpc'
 require 'karafka'
 require 'waterdrop'
+# bunny is loaded for consistency, but dd-trace-rb (2.x) has NO bunny
+# integration - its only RabbitMQ-related integration is the Sneakers/Kicks
+# worker framework. The rabbitmq leg therefore runs uninstrumented plain
+# bunny; that absence is a measured finding (see README).
+require 'bunny'
 
 require 'datadog'
 

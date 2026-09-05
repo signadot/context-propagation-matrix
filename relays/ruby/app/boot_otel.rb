@@ -14,6 +14,7 @@ require 'sinatra/base'
 require 'net/http'
 require 'grpc'
 require 'rdkafka'
+require 'bunny'
 
 require 'opentelemetry/sdk'
 require 'opentelemetry-instrumentation-rack'
@@ -21,6 +22,7 @@ require 'opentelemetry-instrumentation-sinatra'
 require 'opentelemetry-instrumentation-net_http'
 require 'opentelemetry-instrumentation-grpc'
 require 'opentelemetry-instrumentation-rdkafka'
+require 'opentelemetry-instrumentation-bunny'
 
 OpenTelemetry::SDK.configure do |c|
   c.use 'OpenTelemetry::Instrumentation::Rack'
@@ -30,6 +32,7 @@ OpenTelemetry::SDK.configure do |c|
   # plain grpc gem (see README).
   c.use 'OpenTelemetry::Instrumentation::Grpc'
   c.use 'OpenTelemetry::Instrumentation::Rdkafka'
+  c.use 'OpenTelemetry::Instrumentation::Bunny'
 end
 
 require_relative 'main'

@@ -1,9 +1,10 @@
 // Relay app for the context-propagation matrix (see DESIGN.md).
 //
 // Deliberately naive application code: it never touches HTTP headers, gRPC
-// metadata, Kafka record headers, Activity, or any tracing API. Whatever
-// context propagation happens is exclusively the job of the attached
-// auto-instrumentation (OpenTelemetry / Datadog / New Relic CLR profilers).
+// metadata, Kafka record headers, AMQP header tables, Activity, or any tracing
+// API. Whatever context propagation happens is exclusively the job of the
+// attached auto-instrumentation (OpenTelemetry / Datadog / New Relic / Elastic
+// APM zero-code agents).
 
 using System.Net.Http.Json;
 using System.Reflection;
@@ -15,6 +16,8 @@ using CpMatrix;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +32,7 @@ builder.Services.AddGrpc();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<Forwarder>();
 builder.Services.AddHostedService<KafkaRelayConsumer>();
+builder.Services.AddHostedService<RabbitRelayConsumer>();
 
 var app = builder.Build();
 
@@ -86,6 +90,7 @@ app.MapGet("/info", () =>
             ["http"] = "HttpClient",
             ["grpc"] = $"Grpc.AspNetCore + Grpc.Net.Client {Ver(typeof(GrpcChannel))}",
             ["kafka"] = $"Confluent.Kafka {Ver(typeof(ConsumerConfig))}",
+            ["rabbitmq"] = $"RabbitMQ.Client {Ver(typeof(ConnectionFactory))}",
         },
     });
 });
@@ -124,6 +129,22 @@ sealed class Forwarder(IHttpClientFactory httpFactory)
         return new Sink.SinkClient(GrpcChannel.ForAddress(address));
     });
 
+    private static string SinkRabbitQueue => EnvUtil.Get("SINK_RABBIT_QUEUE", "sink-rmq");
+
+    private readonly Lazy<Task<IChannel>> _rabbit = new(async () =>
+    {
+        var factory = new ConnectionFactory
+        {
+            Uri = new Uri(EnvUtil.Get("RABBIT_URL", "amqp://guest:guest@rabbitmq:5672/")),
+        };
+        var connection = await factory.CreateConnectionAsync();
+        var channel = await connection.CreateChannelAsync();
+        // Defensive declare with the harness-wide queue properties (idempotent).
+        await channel.QueueDeclareAsync(SinkRabbitQueue,
+            durable: false, exclusive: false, autoDelete: false);
+        return channel;
+    });
+
     public async Task ForwardAsync(string testId, string via)
     {
         switch (via)
@@ -143,6 +164,18 @@ sealed class Forwarder(IHttpClientFactory httpFactory)
                     Value = JsonSerializer.Serialize(
                         new Dictionary<string, string> { ["test_id"] = testId }),
                 });
+                break;
+            case "rabbitmq":
+                var channel = await _rabbit.Value;
+                // Content type only; whether tracing entries appear in the
+                // AMQP header table is up to the instrumentation.
+                await channel.BasicPublishAsync(
+                    exchange: "",
+                    routingKey: SinkRabbitQueue,
+                    mandatory: false,
+                    basicProperties: new BasicProperties { ContentType = "application/json" },
+                    body: JsonSerializer.SerializeToUtf8Bytes(
+                        new Dictionary<string, string> { ["test_id"] = testId }));
                 break;
             default:
                 throw new ArgumentException($"unknown forward_via: {via}");
@@ -211,5 +244,76 @@ sealed class KafkaRelayConsumer(Forwarder forwarder, ILogger<KafkaRelayConsumer>
             }
         }
         consumer.Close();
+    }
+}
+
+// Consumes {"test_id","forward_via"} JSON from RELAY_RABBIT_QUEUE and forwards.
+// Deliveries arrive carrying tracing entries in the AMQP header table; they
+// are never read here — the instrumentation is responsible for extracting
+// them and re-injecting context on the outbound call.
+sealed class RabbitRelayConsumer(Forwarder forwarder, ILogger<RabbitRelayConsumer> logger)
+    : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var queue = EnvUtil.Get(
+            "RELAY_RABBIT_QUEUE", "relay-rmq-" + EnvUtil.Get("VARIANT", "unknown"));
+        var factory = new ConnectionFactory
+        {
+            Uri = new Uri(EnvUtil.Get("RABBIT_URL", "amqp://guest:guest@rabbitmq:5672/")),
+        };
+
+        try
+        {
+            // The broker may not be up yet; retry until it is (compose gates
+            // on the rabbitmq healthcheck, so this is just defensive).
+            IConnection connection;
+            while (true)
+            {
+                try
+                {
+                    connection = await factory.CreateConnectionAsync(stoppingToken);
+                    break;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning("rabbitmq not reachable ({Message}), retrying", ex.Message);
+                    await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+                }
+            }
+
+            var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
+            await channel.QueueDeclareAsync(queue,
+                durable: false, exclusive: false, autoDelete: false,
+                cancellationToken: stoppingToken);
+
+            var consumer = new AsyncEventingBasicConsumer(channel);
+            consumer.ReceivedAsync += async (_, delivery) =>
+            {
+                try
+                {
+                    var req = JsonSerializer.Deserialize<RelayReq>(delivery.Body.Span);
+                    if (req is not null)
+                    {
+                        // Forward inside the handler so the instrumentation's
+                        // notion of "current" consumer context is active.
+                        await forwarder.ForwardAsync(req.TestId, req.ForwardVia);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "rabbitmq message handling failed");
+                }
+            };
+            await channel.BasicConsumeAsync(queue, autoAck: true, consumer, stoppingToken);
+            logger.LogInformation("rabbitmq consumer started");
+
+            // Keep the connection and channel rooted until shutdown.
+            await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Host is shutting down; sockets are closed with the process.
+        }
     }
 }

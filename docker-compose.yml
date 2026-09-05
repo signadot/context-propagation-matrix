@@ -4,14 +4,26 @@ x-relay-common-env: &relay-common-env
   KAFKA_BROKERS: kafka:9092
   SINK_HTTP: http://sink:9080
   SINK_GRPC: sink:9081
+  RABBIT_URL: amqp://guest:guest@rabbitmq:5672/
+  SINK_RABBIT_QUEUE: sink-rmq
 
 x-relay-depends: &relay-depends
   kafka:
+    condition: service_healthy
+  rabbitmq:
     condition: service_healthy
   sink:
     condition: service_started
 
 services:
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
   kafka:
     image: apache/kafka:3.9.1
     environment:
@@ -39,10 +51,13 @@ services:
     environment:
       KAFKA_BROKERS: kafka:9092
       SINK_DATA_FILE: /data/observations.jsonl
+      RABBIT_URL: amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ./results/data:/data
     depends_on:
       kafka:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   driver:
@@ -54,10 +69,13 @@ services:
     environment:
       KAFKA_BROKERS: kafka:9092
       SINK_URL: http://sink:9080
+      RABBIT_URL: amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ./results/raw:/results
     depends_on:
       kafka:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       sink:
         condition: service_started
@@ -470,4 +488,94 @@ services:
       NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
       NEW_RELIC_DISTRIBUTED_TRACING_ENABLED: "true"
       NEW_RELIC_LOG: stdout
+    depends_on: *relay-depends
+
+  # ---------------- Elastic APM relays ----------------
+  # No APM Server: agents run with sending disabled (disable_send) where
+  # supported; propagation is in-process and does not require a server.
+
+  relay-elastic-java:
+    build:
+      context: .
+      dockerfile: relays/java/Dockerfile
+      target: elastic
+    profiles: [elastic-java]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: elastic-java
+      TOOL: elastic
+      RELAY_TOPIC: relay-in-elastic-java
+      ELASTIC_APM_SERVICE_NAME: relay-elastic-java
+      ELASTIC_APM_DISABLE_SEND: "true"
+      ELASTIC_APM_CENTRAL_CONFIG: "false"
+    depends_on: *relay-depends
+
+  relay-elastic-node:
+    build: { context: ., dockerfile: relays/node/Dockerfile, target: elastic }
+    profiles: [elastic-node]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: elastic-node
+      TOOL: elastic
+      RELAY_TOPIC: relay-in-elastic-node
+      ELASTIC_APM_SERVICE_NAME: relay-elastic-node
+      ELASTIC_APM_DISABLE_SEND: "true"
+      ELASTIC_APM_CENTRAL_CONFIG: "false"
+    depends_on: *relay-depends
+
+  relay-elastic-python:
+    build: { context: ., dockerfile: relays/python/Dockerfile, target: elastic }
+    profiles: [elastic-python]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: elastic-python
+      TOOL: elastic
+      RELAY_TOPIC: relay-in-elastic-python
+      ELASTIC_APM_SERVICE_NAME: relay-elastic-python
+      ELASTIC_APM_DISABLE_SEND: "true"
+      ELASTIC_APM_CENTRAL_CONFIG: "false"
+    depends_on: *relay-depends
+
+  relay-elastic-go:
+    build: { context: ., dockerfile: relays/go/Dockerfile, args: { TOOL: elastic } }
+    profiles: [elastic-go]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: elastic-go
+      TOOL: elastic
+      RELAY_TOPIC: relay-in-elastic-go
+      ELASTIC_APM_SERVICE_NAME: relay-elastic-go
+      ELASTIC_APM_DISABLE_SEND: "true"
+      ELASTIC_APM_CENTRAL_CONFIG: "false"
+    depends_on: *relay-depends
+
+  relay-elastic-dotnet:
+    build: { context: ., dockerfile: relays/dotnet/Dockerfile, target: elastic }
+    profiles: [elastic-dotnet]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: elastic-dotnet
+      TOOL: elastic
+      RELAY_TOPIC: relay-in-elastic-dotnet
+      ELASTIC_APM_SERVICE_NAME: relay-elastic-dotnet
+      ELASTIC_APM_CENTRAL_CONFIG: "false"
+    depends_on: *relay-depends
+
+  relay-elastic-ruby:
+    build: { context: ., dockerfile: relays/ruby/Dockerfile, target: elastic }
+    profiles: [elastic-ruby]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: elastic-ruby
+      TOOL: elastic
+      RELAY_TOPIC: relay-in-elastic-ruby
+      ELASTIC_APM_SERVICE_NAME: relay-elastic-ruby
+      ELASTIC_APM_DISABLE_SEND: "true"
+      ELASTIC_APM_CENTRAL_CONFIG: "false"
     depends_on: *relay-depends
