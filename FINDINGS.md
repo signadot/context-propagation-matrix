@@ -22,11 +22,27 @@ in May 2026:
 [dd-trace-java#11286](https://github.com/DataDog/dd-trace-java/issues/11286).
 Datadog's response confirms scoping: "W3C baggage propagation was specifically
 scoped to HTTP to begin with … extending it to other transports is a feature
-and not a bug", citing the absence of a W3C spec for non-HTTP carriers.
-Groundwork exists (context/tracing decoupling in
+and not a bug", citing the absence of a W3C spec for non-HTTP carriers; a
+second maintainer comment is blunter: "Kafka instrumentation is indeed
+dropping all context elements except tracing at injection." A community fix,
+[PR #11330](https://github.com/DataDog/dd-trace-java/pull/11330), documented
+the root cause precisely ("`AgentSpan.get()` delegates non-span context keys
+(like baggage) to `Context.root()` instead of the thread-local
+`Context.current()`") but was closed unmerged, never reviewed. Datadog *is*
+migrating to context-centric propagation — in its own words, fixing paths
+that "carried only the active AgentSpan across the … hand-off, dropping the
+rest of the Datadog Context (including baggage)"
+([PR #12027](https://github.com/DataDog/dd-trace-java/pull/12027),
+[PR #12033](https://github.com/DataDog/dd-trace-java/pull/12033), merged
+Jul 2026; same failure class fixed on Spring WebClient in
+[#11510](https://github.com/DataDog/dd-trace-java/issues/11510)) — but that
+work covers async/HTTP paths only; the messaging inject sites were still
+span-centric at 1.65.1, and no issue or PR exists for baggage on gRPC,
+RabbitMQ, or JMS boundaries at all — our measurements there appear
+unreported. Groundwork exists (context/tracing decoupling in
 [PR #8330](https://github.com/DataDog/dd-trace-java/pull/8330) and
 [PR #10767](https://github.com/DataDog/dd-trace-java/pull/10767), milestone
-1.61.0) but the inject sites were still span-centric at 1.65.1.
+1.61.0).
 
 **Contrast**: dd-trace-js 6.14.0, dd-trace-go v2.10.1, dd-trace-dotnet 3.52.0
 and datadog-opentelemetry (Rust) 0.5.2 all propagate W3C baggage across **all
@@ -45,15 +61,46 @@ injected or extracted on any `*→rabbitmq` / `rabbitmq→*` leg, flag or no fla
 **Root cause / reference**: Kafka injection is a documented default-off —
 `ddtrace.config.kafka["distributed_tracing_enabled"]`, "Default: False", env
 `DD_KAFKA_PROPAGATION_ENABLED`
-([ddtrace integrations docs](https://ddtrace.readthedocs.io/en/stable/integrations.html));
-the consumer integration traces `poll()` but does not activate the extracted
-context. For RabbitMQ, dd-trace-py simply has **no pika integration** — its
-AMQP coverage is the `kombu` library only (same docs), and pika is the
-canonical Python client. Uninstrumented library ⇒ silent total loss.
+([ddtrace integrations docs](https://ddtrace.readthedocs.io/en/stable/integrations.html);
+introduced default-off in
+[PR #7434](https://github.com/DataDog/dd-trace-py/pull/7434) "to prevent any
+unexpected changes to users' kafka tracing"). The consume-side gap is
+acknowledged by Datadog's own engineers —
+[PR #7345](https://github.com/DataDog/dd-trace-py/pull/7345): "`kafka.consume`
+and `kafka.produce` spans are not connected … because the context isn't used
+when the `kafka.consume` span is created" — and has a user-report trail
+([#8967](https://github.com/DataDog/dd-trace-py/issues/8967), whose
+workaround is manual
+`tracer.context_provider.activate(Propagator.extract(...))`;
+[#17980](https://github.com/DataDog/dd-trace-py/issues/17980), open, on
+batch-activation semantics). Datadog is now migrating consume to
+links-instead-of-continuation, gated behind a config
+([PR #18667](https://github.com/DataDog/dd-trace-py/pull/18667),
+[PR #19858](https://github.com/DataDog/dd-trace-py/pull/19858): "We can't do
+that directly because we would break existing semantics"). For RabbitMQ,
+dd-trace-py simply has **no pika integration** — its AMQP coverage is the
+`kombu` library only (same docs), pika is "in our team's feature backlog and
+… not planned for the short term"
+([#2047](https://github.com/DataDog/dd-trace-py/issues/2047), 2021;
+aio-pika re-requested in
+[#17225](https://github.com/DataDog/dd-trace-py/issues/17225), open).
+Uninstrumented library ⇒ silent total loss.
 
-**Also**: dd-trace-py never emits `ot-baggage-*` (nor do dd-trace-dotnet and
-dd-trace-rb); only dd-trace-java, dd-trace-js and dd-trace-go carry the
-OpenTracing legacy headers.
+**Also — the `ot-baggage-*` split, explained**: dd-trace-py *has*
+`ot-baggage-*` code but both inject and extract are gated behind
+`DD_TRACE_PROPAGATION_HTTP_BAGGAGE_ENABLED` (default **False**, added v2.4.0
+in [PR #6072](https://github.com/DataDog/dd-trace-py/pull/6072) explicitly
+for compatibility "with other language DataDog tracing libs e.g. java,
+nodejs"); the OpenTracing bridge was removed entirely in
+[v3.0.0](https://github.com/DataDog/dd-trace-py/releases/tag/v3.0.0).
+dd-trace-rb removed OpenTracing (and with it `ot-baggage-*`) in 2.0
+([PR #3443](https://github.com/DataDog/dd-trace-rb/pull/3443); maintainer
+confirmation in [#4055](https://github.com/DataDog/dd-trace-rb/issues/4055)).
+dd-trace-dotnet **never had it** — a code search for `ot-baggage` returns
+zero results. And the style is undocumented everywhere: Datadog's
+[propagation reference](https://docs.datadoghq.com/tracing/trace_collection/trace_context_propagation/)
+lists no ot-baggage format — the headers dd-trace-java/js/go emit are legacy
+behavior of their `datadog` style, not a documented, configurable format.
 
 ## 3. OpenTelemetry Python: Kafka-inbound loses everything — but RabbitMQ is perfect
 
@@ -179,7 +226,11 @@ messaging instrumentations diverge.
 fresh trace on the outbound leg. The
 [dd-trace-rb integrations list](https://docs.datadoghq.com/tracing/trace_collection/compatibility/ruby/)
 has no bunny entry — AMQP coverage is only via the Sneakers/Kicks worker
-framework. Same class as dd-py/pika: canonical client, zero coverage.
+framework — and the
+[contrib source tree](https://github.com/DataDog/dd-trace-rb/tree/master/lib/datadog/tracing/contrib)
+confirms no bunny integration exists in code. **No feature request for bunny
+exists upstream at all** — filing candidate. Same class as dd-py/pika:
+canonical client, zero coverage.
 
 ## 7. PHP: the most fragmented column in the matrix
 
@@ -214,7 +265,17 @@ Per tool (all on PHP 8.3):
   (php-amqplib) propagate everything including W3C baggage in both directions;
   Kafka *injection* works (`*→kafka` ✅ incl. baggage) but the rdkafka
   *consume* side does not continue context (kafka→*: new trace, baggage
-  gone) — the by-now-familiar consume-side class.
+  gone) — the by-now-familiar consume-side class. **Mechanism visible in
+  source**
+  ([KafkaIntegration.php](https://github.com/DataDog/dd-trace-php/blob/master/src/DDTrace/Integrations/Kafka/KafkaIntegration.php)):
+  the consume hook starts a span, attaches the extracted headers to it, and
+  calls `close_span()` *inside the `consume()` call* — before application
+  code ever sees the message, so downstream calls run outside the extracted
+  context. The flag (`DD_TRACE_KAFKA_DISTRIBUTED_TRACING`) defaults to true;
+  the gap is the scoping, not the flag. No upstream issue reports it —
+  filing candidate. gRPC is the oldest gap:
+  [dd-trace-php#916](https://github.com/DataDog/dd-trace-php/issues/916),
+  open since 2020, marked "up-for-grabs" by Datadog.
 - **OpenTelemetry (ext 1.2.1 + auto-instrumentation)**: consume-side rdkafka
   extraction *works* (kafka→http propagates everything: extract + context
   activation are correct), but **producer injection silently no-ops when the
@@ -259,34 +320,60 @@ Everywhere else, coverage collapses by language:
 
 - **Go (apm-agent-go v2.7.12)**: `apmhttp`/`apmgrpc` wrappers plus the
   documented manual traceparent/tracestate pattern carry *trace identity*
-  across all 16 boundaries, but the agent has **no baggage API at all** — the
-  only mention in the source is the OpenTracing bridge stating baggage is
-  silently dropped. Baggage absent on all 16.
+  across all 16 boundaries, but the agent has **no baggage API at all** —
+  explicitly declined upstream
+  ([apm-agent-go#537](https://github.com/elastic/apm-agent-go/issues/537),
+  closed not-planned: "no plans for baggage at the moment");
+  [apmot/span.go](https://github.com/elastic/apm-agent-go/blob/main/module/apmot/span.go#L127-L136):
+  "SetBaggageItem is a no-op; we do not support baggage." This contradicts
+  Elastic's own agent spec ("Agents MUST parse, validate, and attach the
+  `baggage` header"). Baggage absent on all 16.
 - **Node (elastic-apm-node 4.18.0)**: traceparent + tracestate over
   HTTP/gRPC/kafkajs; **no W3C baggage implementation**; **no amqplib
   support** (absent from the
   [supported technologies](https://www.elastic.co/docs/reference/apm/agents/nodejs/supported-technologies);
-  Elastic's docs direct users to manual traceparent passing for queues) — all
-  RabbitMQ legs empty.
+  Elastic's docs direct users to manual traceparent passing for queues —
+  amqplib requests
+  [#1188](https://github.com/elastic/apm-agent-nodejs/issues/1188) and
+  [#1791](https://github.com/elastic/apm-agent-nodejs/issues/1791) have been
+  open since 2019/2020) — all RabbitMQ legs empty.
 - **Python (elastic-apm 6.26.2)**: HTTP-inbound works; gRPC-inbound continues
   the trace but **drops foreign `tracestate` entries**, and we captured an
   outright bug: the outbound `tracestate` header emitted after a gRPC hop is
-  the literal string `tracestate` (the header *name* as its value). No Kafka
-  (confluent-kafka) or RabbitMQ (pika) support.
+  the literal string `tracestate` (the header *name* as its value). **Root
+  cause found in source** — a one-line bug in
+  [`server_interceptor.py`](https://github.com/elastic/apm-agent-python/blob/v6.26.2/elasticapm/contrib/grpc/server_interceptor.py#L66-L73):
+  `elif metadata.key == "tracestate": tracestate = metadata.key` (the key
+  assigned instead of the value), unfixed on main and unreported upstream
+  (filing candidate; the async gRPC server interceptor is a second bug in
+  the same report — it never reads `invocation_metadata` at all). No Kafka
+  (confluent-kafka) or RabbitMQ (pika) support — pika requested in
+  [apm-agent-python#678](https://github.com/elastic/apm-agent-python/issues/678),
+  open since 2019.
 - **.NET (1.34.7, startup-hook zero-code)**: HTTP + gRPC perfect incl.
   baggage. The agent's own Kafka/RabbitMQ instrumentation exists **only in
-  the CLR-profiler deployment** (linux-x64 only — it cannot run on arm64 at
-  all), and even the profiler caps at `RabbitMQ.Client <7.0.0` and
-  `Confluent.Kafka <3.0.0`; the startup hook covers neither. Measured
-  nuance: **RabbitMQ trace context still flows** (`*→rmq` inject and `rmq→*`
-  continuation both ✅ for traceparent/tracestate) because RabbitMQ.Client
-  7.x ships *native* `ActivitySource` instrumentation that the elastic
-  agent's OpenTelemetry bridge picks up — but baggage does not ride along.
+  the CLR-profiler deployment** (x64-only on Windows and Linux — it cannot
+  run on arm64 at all), and even the profiler caps at `RabbitMQ.Client
+  <7.0.0` and `Confluent.Kafka <3.0.0`
+  ([profiler docs](https://www.elastic.co/docs/reference/apm/agents/dotnet/setup-auto-instrumentation):
+  Kafka and RabbitMQ are the only technology rows with no startup-hook
+  marker); the startup hook covers neither. Measured nuance: **RabbitMQ
+  trace context still flows** (`*→rmq` inject and `rmq→*` continuation both
+  ✅ for traceparent/tracestate) because RabbitMQ.Client 7.x ships *native*
+  `ActivitySource` instrumentation that the elastic agent's OpenTelemetry
+  bridge picks up — but baggage does not ride along (see §4's RabbitMQ
+  root cause: the client's default extractor carries trace id/state only).
   Kafka (Confluent.Kafka has no native ActivitySource) measures fully
   absent: `*→kafka` no inject, `kafka→*` new trace.
-- **Ruby (elastic-apm 4.9.0)**: http→http only; gRPC/Kafka/RabbitMQ all
-  unsupported (gRPC requires hand-added interceptors; Kafka only via the
-  Racecar framework).
+- **Ruby (elastic-apm 4.9.0)**: http→http only. gRPC support exists but is
+  *experimental and manual* (hand-added
+  `ElasticAPM::GRPC::ClientInterceptor` at stub creation — no zero-code
+  path); Kafka is covered only via the Racecar framework, and even there the
+  [racecar spy](https://github.com/elastic/apm-agent-ruby/blob/main/lib/elastic_apm/spies/racecar.rb)
+  never reads message headers (`start_transaction` with no `trace_parent`),
+  so consume-side continuation is impossible even in the supported
+  framework. No bunny or client-level Kafka instrumentation, and no upstream
+  requests for them exist.
 - **PHP**: see §7.
 
 Practical summary: outside Java (and HTTP-only stacks on .NET/Node), Elastic
@@ -320,19 +407,42 @@ contributes nothing on any protocol.
 
 - **Python (13.5.0): 16/16** — flask, requests, grpcio, confluent-kafka and
   pika are all instrumented in both directions; the only perfect NR agent.
-  Emits W3C only (no vendor `newrelic` header).
+  Emits W3C only (no vendor `newrelic` header): v13.0.0 flipped
+  `exclude_newrelic_header` to true by default
+  ([PR #1721](https://github.com/newrelic/newrelic-python-agent/pull/1721),
+  May 2026).
 - **Ruby (10.7.1): 12/16 W3C, 16/16 vendor** — everything works, but bunny
   *publish* injects only the legacy `newrelic` header: on all four `*→rmq`
   boundaries `traceparent`/`tracestate` are absent, so a W3C-only consumer
   downstream (or another vendor's agent) sees nothing.
 - **Go (v3.44.2): 12/16** — manual wiring per vendor docs (nrgrpc, nrsarama
   with explicit `AcceptDistributedTraceHeaders` on consume, nramqp). All
-  Kafka-*outbound* legs are dead: nrsarama's producer wrapper creates spans
-  but exposes no header-injection path in the documented flow.
+  Kafka-*outbound* legs are dead, and the root cause is a **visible bug in
+  nrsarama's producer**
+  ([producer.go](https://github.com/newrelic/go-agent/blob/master/v3/integrations/nrsarama/producer.go)):
+  it builds a carrier whose `Set` would copy headers into `msg.Headers`, but
+  then calls `InsertDistributedTraceHeaders(carrier.Header)` on the plain
+  embedded `http.Header` — bypassing `Set`, so the DT headers land in a
+  throwaway map and never reach the Kafka message. The consumer side
+  ([consumer.go](https://github.com/newrelic/go-agent/blob/master/v3/integrations/nrsarama/consumer.go))
+  never calls `AcceptDistributedTraceHeaders` either (it even calls
+  *Insert* on the consumed headers), and neither does the official example —
+  our relay's manual accept went beyond the documented flow. Neither bug is
+  reported upstream — filing candidates.
 - **Node (14.3.10): 9/16** — HTTP/gRPC/RabbitMQ full in both directions;
-  Kafka dead in both directions (the kafkajs instrumentation records
-  MessageBroker telemetry but did not inject or accept DT headers here).
-  Emits W3C only, like Python.
+  Kafka dead in both directions because **kafkajs instrumentation is gated
+  behind a default-off feature flag**
+  ([`kafkajs_instrumentation: false`](https://github.com/newrelic/node-newrelic/blob/v14.3.10/lib/feature_flags.js)
+  since [v11.19.0](https://github.com/newrelic/node-newrelic/releases/tag/v11.19.0),
+  Jun 2024, never promoted): with the flag off the agent skips kafkajs
+  entirely. **Empirically confirmed**: rerunning with
+  `NEW_RELIC_FEATURE_FLAG_KAFKAJS_INSTRUMENTATION=true` flips all seven
+  Kafka boundaries to ✅ (W3C in both directions) — 16/16, one env var
+  apart (run archived at
+  `results/experiments/newrelic-node-kafkajs-flag.json`). Emits W3C only:
+  v14.0.0 flipped `exclude_newrelic_header` to true by default
+  ([PR #3980](https://github.com/newrelic/node-newrelic/pull/3980) — note
+  New Relic's config docs still list the old default).
 - **Java (9.4.0): 6/16** — HTTP/gRPC-inbound → HTTP/gRPC/RabbitMQ-outbound
   only. kafka-clients instrumentation is telemetry-only *by default*: Kafka
   DT header injection is opt-in via
@@ -340,16 +450,30 @@ contributes nothing on any protocol.
   ([docs](https://docs.newrelic.com/docs/apm/agents/java-agent/instrumentation/java-agent-instrument-kafka-message-queues/)
   — New Relic warns it adds 150–200 bytes per message). Untested here;
   backlog as a `newrelic-java-kafkaspans` variant. spring-rabbit publish
-  injects but the listener never accepts, and the Kafka consumer never
-  accepts — every messaging-inbound row is dead.
+  injects but the listener never accepts — **mechanism found in source**:
+  the agent ships no spring-rabbit module at all (only
+  [rabbit-amqp-2.7.0/5.0.0](https://github.com/newrelic/newrelic-java-agent/blob/main/instrumentation/rabbit-amqp-5.0.0/src/main/java/com/rabbitmq/client/Consumer_Instrumentation.java)
+  and spring-kafka); DT accept is woven around `Consumer.handleDelivery` on
+  the AMQP connection thread, but spring-rabbit's listener container
+  processes the message on a different thread, outside that transaction.
+  The Kafka consumer never accepts either — every messaging-inbound row is
+  dead. No upstream issue covers either gap.
 - **.NET (10.54.0): 6/16** — the mirror image of Java on the produce side:
   Confluent.Kafka *is* instrumented (all `*→kafka` legs inject) but the
   `*→rmq` legs are dead: the agent instruments the classic
-  `IModel.BasicPublish` surface, while this relay uses RabbitMQ.Client
-  7.2.2's async-only `IChannel.BasicPublishAsync` API — the v7 async
-  instrumentation PR
+  `IModel.BasicPublish` surface, which RabbitMQ.Client 7 removed entirely,
+  while this relay uses 7.2.2's async-only `IChannel.BasicPublishAsync` —
+  the v7 async instrumentation PR
   ([newrelic-dotnet-agent#2890](https://github.com/newrelic/newrelic-dotnet-agent/pull/2890))
-  was closed on a ValueTask blocker. Messaging-inbound all dead.
+  was closed on a ValueTask blocker. The compat docs' "7.1.2 verified" claim
+  refers to the **hybrid agent** path
+  ([#2885](https://github.com/newrelic/newrelic-dotnet-agent/issues/2885):
+  "RabbitMQ 7+ versions are supported with the new hybrid agent feature in
+  agent versions 10.49.0+"), which picks up the client's native
+  ActivitySource — but it is
+  [disabled by default](https://docs.newrelic.com/docs/apm/agents/manage-apm-agents/opentelemetry-api-support/)
+  and produces span links, not parent/child. Default config: dead, exactly
+  as measured. Messaging-inbound all dead.
 - **PHP (12.10.0.39): 2/16** — `http→http` (curl) and `http→rmq`
   (php-amqplib ≥ 3.7 publish instrumentation, agent ≥ 11.6) carry all three
   headers; rdkafka and ext-grpc are unsupported; the long-running CLI
@@ -473,3 +597,19 @@ a runtime upgrade. Harness runs used .NET 8.
    `Enabled: false` (the documented dev/CI switch) kills propagation
    entirely (§9). A New Relic outage or misconfigured key silently degrades
    *propagation*, not just telemetry.
+9. **Several failures are visible, unreported bugs in vendor source.** Three
+   of our root causes are readable in the shipped code and have no upstream
+   issue: Elastic Python's `tracestate = metadata.key` one-liner (§8),
+   nrsarama's producer injecting DT headers into a discarded map (§9), and
+   dd-trace-php closing the consume span before user code runs (§7). Add
+   the four coverage gaps nobody has requested (dd-rb bunny, OTel PHP
+   php-amqplib, OTel Ruby gRPC server, OTel PHP producev trap) and a clear
+   picture emerges: these paths are not merely broken — nobody is measuring
+   them. See REFERENCES.md for the full filing list.
+10. **One flag away.** Three separate cells flipped from fully dark to fully
+   green with a single configuration line, none of them documented where
+   users would look: OTel PHP's `opentelemetry.allow_stack_extension=On`
+   (§7), New Relic Node's `NEW_RELIC_FEATURE_FLAG_KAFKAJS_INSTRUMENTATION=true`
+   (§9), and dd-py's `DD_KAFKA_PROPAGATION_ENABLED=true` (§2, documented but
+   default-off). Empirical testing of *your* config is the only way to know
+   which side of the flag you're on.
