@@ -62,18 +62,30 @@ and tracestate lost. Every other boundary — including all eight RabbitMQ
 combinations via `opentelemetry-instrumentation-pika` — propagates everything.
 
 **Root cause**: `opentelemetry-instrumentation-confluent-kafka` wraps `poll()`
-and creates a consume span, but never makes the extracted context (or its
-baggage) current for the code that processes the message. Long-standing
-upstream issues:
-[#1674](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1674),
+and creates a consume span with the producer context as a *link*
+(`_create_new_consume_span` calls `start_span(..., links=links)`), but never
+calls `context.attach()` — the extracted context (and its baggage) is never
+made current for the code that processes the message. Long-standing upstream
+issues:
+[#1674](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1674)
+(open since Feb 2023, exact symptom),
+[#1962](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1962)
+(maintainer meta-issue; item 5 is "Not correct extraction of remote context
+for Consumer"),
 [#1732](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1732)
-(closed as duplicate of
-[#3026](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3026)),
-[#1962](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1962).
-The pika instrumentation demonstrates the correct design in the same
-ecosystem: its per-message callback wrapper extracts *and attaches* the
-context before invoking the handler. The failure is a per-instrumentation
-design choice, not a language limitation.
+(kafka-python sibling, closed as duplicate of
+[#3026](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3026),
+the aiokafka variant that asks for `context.attach(extracted_context)`
+verbatim). The only fix attempt,
+[PR #1678](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1678),
+was closed unmerged by the stale bot; maintainers' stated position
+([#3465](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3465))
+is that manual context attach is the intended usage. The pika instrumentation
+demonstrates the correct design in the same ecosystem: its per-message
+callback wrapper extracts *and attaches* the context before invoking the
+handler. The failure is a per-instrumentation design choice, not a language
+limitation. No upstream issue names the *baggage* loss specifically —
+candidate for filing.
 
 ## 4. OpenTelemetry .NET: links instead of parents — Kafka drops all, RabbitMQ splits the verdict
 
@@ -82,23 +94,78 @@ baggage/tracestate absent. rabbitmq→* **continues the trace** (traceparent +
 tracestate survive) **but baggage is dropped**. All `*→kafka` and
 `*→rabbitmq` injection works, baggage included.
 
-**Root cause**: Confluent.Kafka consume instrumentation records the producer
-context as a span **link**, not a parent (per current OTel messaging semantic
-conventions;
+**Root cause (Kafka)**: the auto-instrumentation deliberately stopped using
+the message-creation context as the consumer span's parent in 1.7.0 —
+[opentelemetry-dotnet-instrumentation#3434](https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/issues/3434)
+implemented by [PR #3438](https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/pull/3438)
+("Do not use message creation context as a parent for consumer spans for
+`Confluent.Kafka` client instrumentation") — following the OTel
+[messaging semantic conventions](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-spans.md),
+which "use span links as the default mechanism to correlate producers and
+consumer(s)" (rule traced to
+[OTEP-0220](https://github.com/open-telemetry/opentelemetry-specification/blob/main/oteps/trace/0220-messaging-semantic-conventions-span-structure.md);
+parent-child re-allowed as an option by
+[semantic-conventions#1414](https://github.com/open-telemetry/semantic-conventions/pull/1414)).
+Same-symptom reports:
 [opentelemetry-dotnet-contrib#3995](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/issues/3995)
-closed "working as designed"). RabbitMQ.Client 7.x ships *native*
-`ActivitySource` instrumentation (the OTel zero-code agent just enables it),
-which does parent the consume activity — hence trace continuity — but nothing
-re-attaches the transported `baggage` member to the consumer-side context, so
-application-level baggage still dies at the hop.
+(**open**; a maintainer comments "no bug here… as long as we are not
+switching to the modern [semconv] version there is nothing to change") and
+[#2351](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/issues/2351)
+(closed by-design). No upstream issue names the Kafka *baggage* loss —
+candidate for filing.
+
+**Root cause (RabbitMQ)**: RabbitMQ.Client 7.x ships *native*
+`ActivitySource` instrumentation
+([rabbitmq-dotnet-client#1261](https://github.com/rabbitmq/rabbitmq-dotnet-client/pull/1261));
+its `DefaultContextExtractor` calls `ExtractTraceIdAndState(...)` only — the
+word "baggage" does not appear in the propagation code. Baggage was
+addressed only via an opt-in companion package
+([PR #1528](https://github.com/rabbitmq/rabbitmq-dotnet-client/pull/1528):
+"Making it possible to override the default context propagation … to have
+proper OpenTelemetry Baggage propagation"), and that package,
+`RabbitMQ.Client.OpenTelemetry`, has **never shipped stable** — only
+1.0.0-rc.1/rc.2 on NuGet
+([#1728](https://github.com/rabbitmq/rabbitmq-dotnet-client/issues/1728),
+open since Nov 2024). The OTel auto-instrumentation likewise tracks RabbitMQ
+deliver-span baggage as an unbuilt feature
+([opentelemetry-dotnet-instrumentation#3662](https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/issues/3662)).
+Version caveat: parent-child trace continuity on consume is only the default
+since RabbitMQ.Client **7.2.0** (`UsePublisherAsParent`,
+[PR #1779](https://github.com/rabbitmq/rabbitmq-dotnet-client/pull/1779));
+on 7.0–7.1 the deliver activity was link-only. Our relay pins 7.2.2.
 
 ## 5. OpenTelemetry Ruby: correct on inject, broken on consume (bunny), absent on gRPC server
 
 **Observed** (SDK 1.13.0): http→* and kafka→* (rdkafka) perfect, including
 `*→rabbitmq` injection via `opentelemetry-instrumentation-bunny` 0.25.0. But
 rabbitmq→* starts a new trace (consume side does not activate the extracted
-context), and grpc→* remains a total loss (no maintained gRPC *server*
-instrumentation; the community gem covers the client side).
+context), and grpc→* remains a total loss (no gRPC *server* instrumentation
+for the plain `grpc` gem).
+
+**Upstream (bunny)**: exact-match issue
+[opentelemetry-ruby-contrib#526](https://github.com/open-telemetry/opentelemetry-ruby-contrib/issues/526)
+("Instead of propagating any contexts (including baggage), the bunny
+instrumentation drops all contexts in the consumer and starts a new trace"),
+**open since June 2023** with no fix PR. Maintainers describe it as
+links-by-design per the OTel messaging spec
+([discussion #1098](https://github.com/open-telemetry/opentelemetry-ruby/discussions/1098));
+mechanically, `with_process_span` parents the process span on the
+instrumentation's *own* re-injected local headers and demotes the producer
+context to a span link
+([patch_helpers.rb](https://github.com/open-telemetry/opentelemetry-ruby-contrib/blob/main/instrumentation/bunny/lib/opentelemetry/instrumentation/bunny/patch_helpers.rb)).
+
+**Upstream (gRPC)**: the contrib gRPC instrumentation (donated from
+[hibachrach/opentelemetry-instrumentation-grpc](https://github.com/hibachrach/opentelemetry-instrumentation-grpc)
+via [PR #1164](https://github.com/open-telemetry/opentelemetry-ruby-contrib/pull/1164),
+Sep 2024, answering a request open since
+[2020](https://github.com/open-telemetry/opentelemetry-ruby-contrib/issues/10))
+is explicitly client-only:
+["Right now, the gem only instruments outbound requests to gRPC services"](https://github.com/open-telemetry/opentelemetry-ruby-contrib/blob/main/instrumentation/grpc/README.md).
+It *is* bundled in `opentelemetry-instrumentation-all`, so the accurate
+statement is "loaded but client-only", and even client injection requires
+manually wiring the interceptor into stubs. Server spans exist only for the
+[Gruf framework](https://github.com/open-telemetry/opentelemetry-ruby-contrib/blob/main/instrumentation/gruf/README.md).
+No upstream issue requests server-side `grpc` gem support — filing candidate.
 
 The bunny consume gap is the third instance of the consume-side failure class
 (after OTel Python's confluent-kafka and OTel .NET's Kafka links): injection
@@ -154,12 +221,27 @@ Per tool (all on PHP 8.3):
   optional `$headers` argument of `producev()` is omitted** — the naive call
   `producev($partition, 0, $payload)` gets no headers, while adding an
   explicit empty array `producev($partition, 0, $payload, null, [])` makes
-  injection (incl. baggage) work. Verified empirically both ways with
-  [open-telemetry/opentelemetry-auto-ext-rdkafka](https://github.com/opentelemetry-php/contrib-auto-ext-rdkafka),
-  whose README claims producev injection with no mention of the
-  argument-presence requirement. RabbitMQ: no php-amqplib instrumentation
-  exists (only `ext-amqp`, a different client) — all rabbit legs lose
-  everything.
+  injection (incl. baggage) work. Verified empirically both ways.
+  **Root cause (upstream-verified)**: the
+  [rdkafka instrumentation](https://github.com/open-telemetry/opentelemetry-php-contrib/blob/main/src/Instrumentation/ExtRdKafka/src/ExtRdKafkaInstrumentation.php)
+  *does* unconditionally set `$params[4]` from its pre-hook — but the
+  `ext-opentelemetry` extension silently drops arguments *added* to native
+  functions, ever since argument expansion was disabled to prevent segfaults
+  ([opentelemetry-php-instrumentation#84](https://github.com/open-telemetry/opentelemetry-php-instrumentation/pull/84),
+  formalized in [#120](https://github.com/open-telemetry/opentelemetry-php-instrumentation/pull/120);
+  original segfault:
+  [opentelemetry-php#1155](https://github.com/open-telemetry/opentelemetry-php/issues/1155)).
+  The extension README documents an escape hatch,
+  `opentelemetry.allow_stack_extension=On` — and we **confirmed empirically**
+  that with that ini set, the naive no-headers `producev` call injects
+  everything including baggage (http→kafka and kafka→kafka flip to ✅; run
+  archived at `results/experiments/otel-php-allow-stack-extension.json`).
+  Neither the argument requirement nor the ini setting is mentioned in the
+  [instrumentation README](https://github.com/open-telemetry/opentelemetry-php-contrib/blob/main/src/Instrumentation/ExtRdKafka/README.md),
+  and the drop produced no error_log line in our runs. No upstream issue
+  exists for any of this — filing candidate. RabbitMQ: no php-amqplib
+  instrumentation exists (only `ext-amqp`, a different client;
+  no upstream feature request either) — all rabbit legs lose everything.
 - **Elastic (elastic_apm 1.17.0)**: http→http only; Kafka and RabbitMQ are
   not in its supported-technologies list, and consumed messages start fresh
   traces on the outbound HTTP leg.
@@ -368,7 +450,9 @@ a runtime upgrade. Harness runs used .NET 8.
    result is silent, total loss.
 4. **Optional-argument traps exist**: OTel PHP injects into Kafka only when
    `producev()` is called with the `$headers` argument present (§7) — the
-   difference between ✅ and ❌ is one `[]` in application code.
+   difference between ✅ and ❌ is one `[]` in application code, or one
+   undocumented ini line (`opentelemetry.allow_stack_extension=On`,
+   empirically confirmed to fix the naive call; see §7 and REFERENCES.md).
 5. W3C Baggage being HTTP-scoped and still a Candidate Recommendation
    ([spec](https://www.w3.org/TR/baggage/), snapshot 2024-05-30) gives
    vendors cover for these gaps — the spec's silence on non-HTTP carriers is
