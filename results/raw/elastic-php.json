@@ -22,22 +22,22 @@
     "tracer_version": "elastic_apm 1.17.0",
     "variant": "elastic-php"
   },
-  "ran_at": "2026-09-05T13:31:28.847729283Z",
+  "ran_at": "2026-09-07T10:57:19.491757952Z",
   "tests": [
     {
       "boundary": "http-\u003ehttp",
-      "test_id": "elastic-php--http-http--df56dfd3",
+      "test_id": "elastic-php--http-http--35ab092f",
       "delivered": true,
       "seeded": {
-        "trace_id": "70c94cf84a64060d5044c35f8648a5c1",
-        "span_id": "a8ef5d9aca297a38",
-        "routing_key": "rk-38ad2b3c",
+        "trace_id": "354d013948022c811bc12eb74fd11116",
+        "span_id": "c2b7fa0f35d24833",
+        "routing_key": "rk-7d9b6866",
         "headers": {
-          "baggage": "sd-routing-key=rk-38ad2b3c,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-38ad2b3c",
-          "traceparent": "00-70c94cf84a64060d5044c35f8648a5c1-a8ef5d9aca297a38-01",
+          "baggage": "sd-routing-key=rk-7d9b6866,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-7d9b6866",
+          "traceparent": "00-354d013948022c811bc12eb74fd11116-c2b7fa0f35d24833-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--http-http--df56dfd3"
+          "x-sd-canary": "elastic-php--http-http--35ab092f"
         }
       },
       "observed": {
@@ -53,7 +53,7 @@
             "application/json"
           ],
           "traceparent": [
-            "00-70c94cf84a64060d5044c35f8648a5c1-92bf7fbce7eb22d7-01"
+            "00-354d013948022c811bc12eb74fd11116-7d747c90d4f51256-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -71,18 +71,18 @@
     },
     {
       "boundary": "http-\u003egrpc",
-      "test_id": "elastic-php--http-grpc--b96e7c67",
+      "test_id": "elastic-php--http-grpc--c644e671",
       "delivered": true,
       "seeded": {
-        "trace_id": "180ca517bedce096db064231ba7eee29",
-        "span_id": "e72fdb432aae128d",
-        "routing_key": "rk-3b75ecce",
+        "trace_id": "15baa41124c2e6ad09af715ac0dd3138",
+        "span_id": "5a545c0df5c3665f",
+        "routing_key": "rk-04eaf9eb",
         "headers": {
-          "baggage": "sd-routing-key=rk-3b75ecce,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-3b75ecce",
-          "traceparent": "00-180ca517bedce096db064231ba7eee29-e72fdb432aae128d-01",
+          "baggage": "sd-routing-key=rk-04eaf9eb,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-04eaf9eb",
+          "traceparent": "00-15baa41124c2e6ad09af715ac0dd3138-5a545c0df5c3665f-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--http-grpc--b96e7c67"
+          "x-sd-canary": "elastic-php--http-grpc--c644e671"
         }
       },
       "observed": {
@@ -113,18 +113,18 @@
     },
     {
       "boundary": "http-\u003ekafka",
-      "test_id": "elastic-php--http-kafka--bf0a144d",
+      "test_id": "elastic-php--http-kafka--f81012ca",
       "delivered": true,
       "seeded": {
-        "trace_id": "af0f6aba47d83ba69291b077cb09e515",
-        "span_id": "bcd3507018b1642f",
-        "routing_key": "rk-2f682bf1",
+        "trace_id": "5929e18e80100fc6c6cefafb84adf547",
+        "span_id": "4db1bb515abf2a69",
+        "routing_key": "rk-90428c5d",
         "headers": {
-          "baggage": "sd-routing-key=rk-2f682bf1,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-2f682bf1",
-          "traceparent": "00-af0f6aba47d83ba69291b077cb09e515-bcd3507018b1642f-01",
+          "baggage": "sd-routing-key=rk-90428c5d,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-90428c5d",
+          "traceparent": "00-5929e18e80100fc6c6cefafb84adf547-4db1bb515abf2a69-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--http-kafka--bf0a144d"
+          "x-sd-canary": "elastic-php--http-kafka--f81012ca"
         }
       },
       "observed": {
@@ -142,18 +142,18 @@
     },
     {
       "boundary": "http-\u003erabbitmq",
-      "test_id": "elastic-php--http-rabbitmq--17cd6a99",
+      "test_id": "elastic-php--http-rabbitmq--11011dfd",
       "delivered": true,
       "seeded": {
-        "trace_id": "df2ce4a206cd626c1ea2e80068403413",
-        "span_id": "de7c90af784bb791",
-        "routing_key": "rk-ff32a849",
+        "trace_id": "4e437d88936e04e2ac805a8eb3ca11f1",
+        "span_id": "30e7034cb6b5d7f8",
+        "routing_key": "rk-e7b588d6",
         "headers": {
-          "baggage": "sd-routing-key=rk-ff32a849,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-ff32a849",
-          "traceparent": "00-df2ce4a206cd626c1ea2e80068403413-de7c90af784bb791-01",
+          "baggage": "sd-routing-key=rk-e7b588d6,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-e7b588d6",
+          "traceparent": "00-4e437d88936e04e2ac805a8eb3ca11f1-30e7034cb6b5d7f8-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--http-rabbitmq--17cd6a99"
+          "x-sd-canary": "elastic-php--http-rabbitmq--11011dfd"
         }
       },
       "observed": {
@@ -171,90 +171,90 @@
     },
     {
       "boundary": "grpc-\u003ehttp",
-      "test_id": "elastic-php--grpc-http--01732c65",
+      "test_id": "elastic-php--grpc-http--3c8c12f6",
       "delivered": false,
       "seeded": {
-        "trace_id": "31d8f23dadb526ab610875b86474b695",
-        "span_id": "13f44b2b9eee91d6",
-        "routing_key": "rk-35f44d68",
+        "trace_id": "819bf9414bc69c366d952e8767126f7a",
+        "span_id": "f7ff84728aa909a7",
+        "routing_key": "rk-41b29433",
         "headers": {
-          "baggage": "sd-routing-key=rk-35f44d68,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-35f44d68",
-          "traceparent": "00-31d8f23dadb526ab610875b86474b695-13f44b2b9eee91d6-01",
+          "baggage": "sd-routing-key=rk-41b29433,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-41b29433",
+          "traceparent": "00-819bf9414bc69c366d952e8767126f7a-f7ff84728aa909a7-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--grpc-http--01732c65"
+          "x-sd-canary": "elastic-php--grpc-http--3c8c12f6"
         }
       },
       "error": "send: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 192.168.117.5:8081: connect: connection refused\""
     },
     {
       "boundary": "grpc-\u003egrpc",
-      "test_id": "elastic-php--grpc-grpc--2e6da00e",
+      "test_id": "elastic-php--grpc-grpc--627732f8",
       "delivered": false,
       "seeded": {
-        "trace_id": "01f5c42f861fd19de537e0c9cf3eb286",
-        "span_id": "106ebe0015290384",
-        "routing_key": "rk-0b7ec99d",
+        "trace_id": "25d2ddef53fda6d24920a52f440d959d",
+        "span_id": "208fd2d817eee910",
+        "routing_key": "rk-aaa2c007",
         "headers": {
-          "baggage": "sd-routing-key=rk-0b7ec99d,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-0b7ec99d",
-          "traceparent": "00-01f5c42f861fd19de537e0c9cf3eb286-106ebe0015290384-01",
+          "baggage": "sd-routing-key=rk-aaa2c007,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-aaa2c007",
+          "traceparent": "00-25d2ddef53fda6d24920a52f440d959d-208fd2d817eee910-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--grpc-grpc--2e6da00e"
+          "x-sd-canary": "elastic-php--grpc-grpc--627732f8"
         }
       },
       "error": "send: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 192.168.117.5:8081: connect: connection refused\""
     },
     {
       "boundary": "grpc-\u003ekafka",
-      "test_id": "elastic-php--grpc-kafka--12fabba9",
+      "test_id": "elastic-php--grpc-kafka--4bdfe434",
       "delivered": false,
       "seeded": {
-        "trace_id": "ed0d6e445f149725296a36d9bcea4b6d",
-        "span_id": "875c7cb27ef0aa09",
-        "routing_key": "rk-9ab1d933",
+        "trace_id": "36b8bf42b659e44ccd6952b677dc61d3",
+        "span_id": "15eebab660e668ed",
+        "routing_key": "rk-aa790815",
         "headers": {
-          "baggage": "sd-routing-key=rk-9ab1d933,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-9ab1d933",
-          "traceparent": "00-ed0d6e445f149725296a36d9bcea4b6d-875c7cb27ef0aa09-01",
+          "baggage": "sd-routing-key=rk-aa790815,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-aa790815",
+          "traceparent": "00-36b8bf42b659e44ccd6952b677dc61d3-15eebab660e668ed-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--grpc-kafka--12fabba9"
+          "x-sd-canary": "elastic-php--grpc-kafka--4bdfe434"
         }
       },
       "error": "send: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 192.168.117.5:8081: connect: connection refused\""
     },
     {
       "boundary": "grpc-\u003erabbitmq",
-      "test_id": "elastic-php--grpc-rabbitmq--537d11a9",
+      "test_id": "elastic-php--grpc-rabbitmq--2d196822",
       "delivered": false,
       "seeded": {
-        "trace_id": "f2fa28d26d6cf0a82dc893ef4f3ba444",
-        "span_id": "a90f99377bd526da",
-        "routing_key": "rk-c5139591",
+        "trace_id": "c58afcc6f1a1641de292534cdd9fa65f",
+        "span_id": "2843fdc0326f3adc",
+        "routing_key": "rk-2e2dd3e1",
         "headers": {
-          "baggage": "sd-routing-key=rk-c5139591,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-c5139591",
-          "traceparent": "00-f2fa28d26d6cf0a82dc893ef4f3ba444-a90f99377bd526da-01",
+          "baggage": "sd-routing-key=rk-2e2dd3e1,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-2e2dd3e1",
+          "traceparent": "00-c58afcc6f1a1641de292534cdd9fa65f-2843fdc0326f3adc-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--grpc-rabbitmq--537d11a9"
+          "x-sd-canary": "elastic-php--grpc-rabbitmq--2d196822"
         }
       },
       "error": "send: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 192.168.117.5:8081: connect: connection refused\""
     },
     {
       "boundary": "kafka-\u003ehttp",
-      "test_id": "elastic-php--kafka-http--03f35795",
+      "test_id": "elastic-php--kafka-http--f6e5e528",
       "delivered": true,
       "seeded": {
-        "trace_id": "6fe48efdda874cc98cd27693529cc584",
-        "span_id": "b77eea711b3741df",
-        "routing_key": "rk-a4aabcef",
+        "trace_id": "e0e4d2cde363598176f924bb9d82f529",
+        "span_id": "743abbbec2536148",
+        "routing_key": "rk-43b132db",
         "headers": {
-          "baggage": "sd-routing-key=rk-a4aabcef,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-a4aabcef",
-          "traceparent": "00-6fe48efdda874cc98cd27693529cc584-b77eea711b3741df-01",
+          "baggage": "sd-routing-key=rk-43b132db,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-43b132db",
+          "traceparent": "00-e0e4d2cde363598176f924bb9d82f529-743abbbec2536148-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--kafka-http--03f35795"
+          "x-sd-canary": "elastic-php--kafka-http--f6e5e528"
         }
       },
       "observed": {
@@ -270,7 +270,7 @@
             "application/json"
           ],
           "traceparent": [
-            "00-f1e73e38ab48404b0d43432f6d85057c-6a7472995261d881-01"
+            "00-dea671d4e84db4fde9c1106a134daca7-3c0c5259c08ac8d0-01"
           ],
           "tracestate": [
             "es=s:1"
@@ -288,18 +288,18 @@
     },
     {
       "boundary": "kafka-\u003egrpc",
-      "test_id": "elastic-php--kafka-grpc--6134e055",
+      "test_id": "elastic-php--kafka-grpc--4ffa7844",
       "delivered": true,
       "seeded": {
-        "trace_id": "c749e4c3997476018303c9bc475c637f",
-        "span_id": "eb7c2d80cede67dd",
-        "routing_key": "rk-64526322",
+        "trace_id": "541ce767d19c8cbc5d3cfc4e484a6e77",
+        "span_id": "f48caee7398f98a3",
+        "routing_key": "rk-9ddd5105",
         "headers": {
-          "baggage": "sd-routing-key=rk-64526322,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-64526322",
-          "traceparent": "00-c749e4c3997476018303c9bc475c637f-eb7c2d80cede67dd-01",
+          "baggage": "sd-routing-key=rk-9ddd5105,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-9ddd5105",
+          "traceparent": "00-541ce767d19c8cbc5d3cfc4e484a6e77-f48caee7398f98a3-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--kafka-grpc--6134e055"
+          "x-sd-canary": "elastic-php--kafka-grpc--4ffa7844"
         }
       },
       "observed": {
@@ -330,18 +330,18 @@
     },
     {
       "boundary": "kafka-\u003ekafka",
-      "test_id": "elastic-php--kafka-kafka--2ea9abe9",
+      "test_id": "elastic-php--kafka-kafka--f8869012",
       "delivered": true,
       "seeded": {
-        "trace_id": "9a3924ebe979d5beefb3eeeedc8a680d",
-        "span_id": "35d1cb76e7c04ff6",
-        "routing_key": "rk-22df64ca",
+        "trace_id": "4f25879e9cc4c682690be19e6dbcde00",
+        "span_id": "c8307fc6debe5155",
+        "routing_key": "rk-8d8297d1",
         "headers": {
-          "baggage": "sd-routing-key=rk-22df64ca,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-22df64ca",
-          "traceparent": "00-9a3924ebe979d5beefb3eeeedc8a680d-35d1cb76e7c04ff6-01",
+          "baggage": "sd-routing-key=rk-8d8297d1,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-8d8297d1",
+          "traceparent": "00-4f25879e9cc4c682690be19e6dbcde00-c8307fc6debe5155-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--kafka-kafka--2ea9abe9"
+          "x-sd-canary": "elastic-php--kafka-kafka--f8869012"
         }
       },
       "observed": {
@@ -359,18 +359,18 @@
     },
     {
       "boundary": "kafka-\u003erabbitmq",
-      "test_id": "elastic-php--kafka-rabbitmq--819c3a2f",
+      "test_id": "elastic-php--kafka-rabbitmq--f67cdb56",
       "delivered": true,
       "seeded": {
-        "trace_id": "32e84b9a01e68cad0c6f61b2b840ed25",
-        "span_id": "27129d347ed8d80d",
-        "routing_key": "rk-0541e494",
+        "trace_id": "1b0fe519231e98068584969267a79852",
+        "span_id": "b03afe197604a0af",
+        "routing_key": "rk-ef0f2a24",
         "headers": {
-          "baggage": "sd-routing-key=rk-0541e494,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-0541e494",
-          "traceparent": "00-32e84b9a01e68cad0c6f61b2b840ed25-27129d347ed8d80d-01",
+          "baggage": "sd-routing-key=rk-ef0f2a24,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-ef0f2a24",
+          "traceparent": "00-1b0fe519231e98068584969267a79852-b03afe197604a0af-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--kafka-rabbitmq--819c3a2f"
+          "x-sd-canary": "elastic-php--kafka-rabbitmq--f67cdb56"
         }
       },
       "observed": {
@@ -388,18 +388,18 @@
     },
     {
       "boundary": "rabbitmq-\u003ehttp",
-      "test_id": "elastic-php--rabbitmq-http--f4cce0a7",
+      "test_id": "elastic-php--rabbitmq-http--f866b5cb",
       "delivered": true,
       "seeded": {
-        "trace_id": "ccdef67eea13d3aa167f61c21f591083",
-        "span_id": "704be17c75b38981",
-        "routing_key": "rk-03e87585",
+        "trace_id": "50d6d2f238663d92228b3538b027258d",
+        "span_id": "ad3cb0300c54b0f5",
+        "routing_key": "rk-969cd4d3",
         "headers": {
-          "baggage": "sd-routing-key=rk-03e87585,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-03e87585",
-          "traceparent": "00-ccdef67eea13d3aa167f61c21f591083-704be17c75b38981-01",
+          "baggage": "sd-routing-key=rk-969cd4d3,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-969cd4d3",
+          "traceparent": "00-50d6d2f238663d92228b3538b027258d-ad3cb0300c54b0f5-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--rabbitmq-http--f4cce0a7"
+          "x-sd-canary": "elastic-php--rabbitmq-http--f866b5cb"
         }
       },
       "observed": {
@@ -415,7 +415,7 @@
             "application/json"
           ],
           "traceparent": [
-            "00-588d42eace115e91c0966551b4c1db2d-0c68cd693d84fac2-01"
+            "00-18b5070ee46be292f0206fda1e666537-263065b459370dbc-01"
           ],
           "tracestate": [
             "es=s:1"
@@ -433,18 +433,18 @@
     },
     {
       "boundary": "rabbitmq-\u003egrpc",
-      "test_id": "elastic-php--rabbitmq-grpc--f8f83a4b",
+      "test_id": "elastic-php--rabbitmq-grpc--b64b3ed2",
       "delivered": true,
       "seeded": {
-        "trace_id": "b78e9b61d8cc4188e7f64508e016ad80",
-        "span_id": "b4628de49f6c7983",
-        "routing_key": "rk-ef149e0b",
+        "trace_id": "7b2ec8c1b5308756d0139b09f6cc1163",
+        "span_id": "840fcde9edadbdd5",
+        "routing_key": "rk-8a742da0",
         "headers": {
-          "baggage": "sd-routing-key=rk-ef149e0b,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-ef149e0b",
-          "traceparent": "00-b78e9b61d8cc4188e7f64508e016ad80-b4628de49f6c7983-01",
+          "baggage": "sd-routing-key=rk-8a742da0,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-8a742da0",
+          "traceparent": "00-7b2ec8c1b5308756d0139b09f6cc1163-840fcde9edadbdd5-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--rabbitmq-grpc--f8f83a4b"
+          "x-sd-canary": "elastic-php--rabbitmq-grpc--b64b3ed2"
         }
       },
       "observed": {
@@ -475,18 +475,18 @@
     },
     {
       "boundary": "rabbitmq-\u003ekafka",
-      "test_id": "elastic-php--rabbitmq-kafka--c5148020",
+      "test_id": "elastic-php--rabbitmq-kafka--30bb1237",
       "delivered": true,
       "seeded": {
-        "trace_id": "cb5466eb192faa90f56360cfc9ad73ba",
-        "span_id": "c00bda9fab1ce8c0",
-        "routing_key": "rk-941c505b",
+        "trace_id": "93f60da1b84dd301154564ba59945e22",
+        "span_id": "37593f28e95e81de",
+        "routing_key": "rk-7ce49aa3",
         "headers": {
-          "baggage": "sd-routing-key=rk-941c505b,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-941c505b",
-          "traceparent": "00-cb5466eb192faa90f56360cfc9ad73ba-c00bda9fab1ce8c0-01",
+          "baggage": "sd-routing-key=rk-7ce49aa3,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-7ce49aa3",
+          "traceparent": "00-93f60da1b84dd301154564ba59945e22-37593f28e95e81de-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--rabbitmq-kafka--c5148020"
+          "x-sd-canary": "elastic-php--rabbitmq-kafka--30bb1237"
         }
       },
       "observed": {
@@ -504,18 +504,18 @@
     },
     {
       "boundary": "rabbitmq-\u003erabbitmq",
-      "test_id": "elastic-php--rabbitmq-rabbitmq--d60d516a",
+      "test_id": "elastic-php--rabbitmq-rabbitmq--6b80dbbe",
       "delivered": true,
       "seeded": {
-        "trace_id": "ffaeed8201e478274d3b22f3b228a1c5",
-        "span_id": "8494666019a2f369",
-        "routing_key": "rk-44a069de",
+        "trace_id": "369d4f5d7b33b893b6738f934c3bb342",
+        "span_id": "57cbd46dee8dc07d",
+        "routing_key": "rk-564c9afd",
         "headers": {
-          "baggage": "sd-routing-key=rk-44a069de,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-44a069de",
-          "traceparent": "00-ffaeed8201e478274d3b22f3b228a1c5-8494666019a2f369-01",
+          "baggage": "sd-routing-key=rk-564c9afd,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-564c9afd",
+          "traceparent": "00-369d4f5d7b33b893b6738f934c3bb342-57cbd46dee8dc07d-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "elastic-php--rabbitmq-rabbitmq--d60d516a"
+          "x-sd-canary": "elastic-php--rabbitmq-rabbitmq--6b80dbbe"
         }
       },
       "observed": {

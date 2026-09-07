@@ -22,22 +22,22 @@
     "tracer_version": "10.7.1",
     "variant": "newrelic-ruby"
   },
-  "ran_at": "2026-09-05T18:09:14.233854893Z",
+  "ran_at": "2026-09-07T11:00:54.339492158Z",
   "tests": [
     {
       "boundary": "http-\u003ehttp",
-      "test_id": "newrelic-ruby--http-http--a093c8ac",
+      "test_id": "newrelic-ruby--http-http--627eb06d",
       "delivered": true,
       "seeded": {
-        "trace_id": "e368a18e31153a5dfcddd95fdc60474a",
-        "span_id": "a0449cb8de684432",
-        "routing_key": "rk-3aab3cdc",
+        "trace_id": "85117273e879f5147fa2d2ea954b8884",
+        "span_id": "bda6fcae04d451f7",
+        "routing_key": "rk-b3af2eba",
         "headers": {
-          "baggage": "sd-routing-key=rk-3aab3cdc,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-3aab3cdc",
-          "traceparent": "00-e368a18e31153a5dfcddd95fdc60474a-a0449cb8de684432-01",
+          "baggage": "sd-routing-key=rk-b3af2eba,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-b3af2eba",
+          "traceparent": "00-85117273e879f5147fa2d2ea954b8884-bda6fcae04d451f7-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--http-http--a093c8ac"
+          "x-sd-canary": "newrelic-ruby--http-http--627eb06d"
         }
       },
       "observed": {
@@ -56,13 +56,13 @@
             "application/json"
           ],
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIxYjcyYTdiMDdhM2U5NzNiIiwidHIiOiJlMzY4YTE4ZTMxMTUzYTVkZmNkZGQ5NWZkYzYwNDc0YSIsInNhIjpmYWxzZSwicHIiOjAuMTk0NjQ0LCJ0aSI6MTc4ODYzMTc1NDIzNSwiaWQiOiI2YWRkMjBmM2JiNmIwZDM0In19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIzNDlkMzNlMmJmOWIzOTM3IiwidHIiOiI4NTExNzI3M2U4NzlmNTE0N2ZhMmQyZWE5NTRiODg4NCIsInNhIjpmYWxzZSwicHIiOjAuNDk4NzI0LCJ0aSI6MTc4ODc3ODg1NDM0MCwiaWQiOiI1MDQ5MDgyMTIxNjA2NTc3In19"
           ],
           "traceparent": [
-            "00-e368a18e31153a5dfcddd95fdc60474a-6add20f3bb6b0d34-00"
+            "00-85117273e879f5147fa2d2ea954b8884-5049082121606577-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-6add20f3bb6b0d34-1b72a7b07a3e973b-0-0.194644-1788631754235,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-5049082121606577-349d33e2bf9b3937-0-0.498724-1788778854340,sdtest=v1"
           ],
           "user-agent": [
             "Ruby"
@@ -80,18 +80,18 @@
     },
     {
       "boundary": "http-\u003egrpc",
-      "test_id": "newrelic-ruby--http-grpc--b0838c5a",
+      "test_id": "newrelic-ruby--http-grpc--5bc6e59a",
       "delivered": true,
       "seeded": {
-        "trace_id": "bc36fca0fe13f06f3d02d2decdcfb686",
-        "span_id": "1d5a433bbeca5bf0",
-        "routing_key": "rk-267b7707",
+        "trace_id": "1ebb0cfd818548d452b0ac5ca51fa725",
+        "span_id": "e21529a5054e89a9",
+        "routing_key": "rk-f464ba5f",
         "headers": {
-          "baggage": "sd-routing-key=rk-267b7707,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-267b7707",
-          "traceparent": "00-bc36fca0fe13f06f3d02d2decdcfb686-1d5a433bbeca5bf0-01",
+          "baggage": "sd-routing-key=rk-f464ba5f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-f464ba5f",
+          "traceparent": "00-1ebb0cfd818548d452b0ac5ca51fa725-e21529a5054e89a9-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--http-grpc--b0838c5a"
+          "x-sd-canary": "newrelic-ruby--http-grpc--5bc6e59a"
         }
       },
       "observed": {
@@ -107,13 +107,13 @@
             "identity, deflate, gzip"
           ],
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJkOTJhMDViZWNiMzgyYjBkIiwidHIiOiJiYzM2ZmNhMGZlMTNmMDZmM2QwMmQyZGVjZGNmYjY4NiIsInNhIjpmYWxzZSwicHIiOjAuMjAzMTE3LCJ0aSI6MTc4ODYzMTc1NDIzOCwiaWQiOiIyM2I0NDM4YzY3NmU0Y2M1In19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI2YTk5MmM3YTQ5YjM2MzExIiwidHIiOiIxZWJiMGNmZDgxODU0OGQ0NTJiMGFjNWNhNTFmYTcyNSIsInNhIjpmYWxzZSwicHIiOjAuNjYwMTMyLCJ0aSI6MTc4ODc3ODg1NDM0NCwiaWQiOiIzZmJhYzA0OWViMjU1MWRhIn19"
           ],
           "traceparent": [
-            "00-bc36fca0fe13f06f3d02d2decdcfb686-23b4438c676e4cc5-00"
+            "00-1ebb0cfd818548d452b0ac5ca51fa725-3fbac049eb2551da-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-23b4438c676e4cc5-d92a05becb382b0d-0-0.203117-1788631754238,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-3fbac049eb2551da-6a992c7a49b36311-0-0.660132-1788778854344,sdtest=v1"
           ],
           "user-agent": [
             "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
@@ -131,31 +131,31 @@
     },
     {
       "boundary": "http-\u003ekafka",
-      "test_id": "newrelic-ruby--http-kafka--2c680e37",
+      "test_id": "newrelic-ruby--http-kafka--f26f9f84",
       "delivered": true,
       "seeded": {
-        "trace_id": "fd531eb01c46d23da3c38a2b7dcd7183",
-        "span_id": "21d5f3d88ec8c24d",
-        "routing_key": "rk-07c88ce4",
+        "trace_id": "85d7fd334d393107669a5c9dfe262cd3",
+        "span_id": "646935a8808c06eb",
+        "routing_key": "rk-e626c900",
         "headers": {
-          "baggage": "sd-routing-key=rk-07c88ce4,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-07c88ce4",
-          "traceparent": "00-fd531eb01c46d23da3c38a2b7dcd7183-21d5f3d88ec8c24d-01",
+          "baggage": "sd-routing-key=rk-e626c900,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-e626c900",
+          "traceparent": "00-85d7fd334d393107669a5c9dfe262cd3-646935a8808c06eb-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--http-kafka--2c680e37"
+          "x-sd-canary": "newrelic-ruby--http-kafka--f26f9f84"
         }
       },
       "observed": {
         "transport": "kafka",
         "headers": {
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI5NzBiNDY5NGQ3MjViOGE1IiwidHIiOiJmZDUzMWViMDFjNDZkMjNkYTNjMzhhMmI3ZGNkNzE4MyIsInNhIjpmYWxzZSwicHIiOjAuNzMxOTc4LCJ0aSI6MTc4ODYzMTc1NDI0MSwiaWQiOiI5ZTMyOGEzZDkzOTFkNDViIn19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI1YmEzYWZlMDVmMTFlNmMwIiwidHIiOiI4NWQ3ZmQzMzRkMzkzMTA3NjY5YTVjOWRmZTI2MmNkMyIsInNhIjpmYWxzZSwicHIiOjAuNjY2Mzk1LCJ0aSI6MTc4ODc3ODg1NDM0NywiaWQiOiJiMTNkNGNhOGQ2NWFkY2EwIn19"
           ],
           "traceparent": [
-            "00-fd531eb01c46d23da3c38a2b7dcd7183-9e328a3d9391d45b-00"
+            "00-85d7fd334d393107669a5c9dfe262cd3-b13d4ca8d65adca0-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-9e328a3d9391d45b-970b4694d725b8a5-0-0.731978-1788631754241,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-b13d4ca8d65adca0-5ba3afe05f11e6c0-0-0.666395-1788778854347,sdtest=v1"
           ]
         }
       },
@@ -170,25 +170,25 @@
     },
     {
       "boundary": "http-\u003erabbitmq",
-      "test_id": "newrelic-ruby--http-rabbitmq--c4963f1c",
+      "test_id": "newrelic-ruby--http-rabbitmq--30d8248a",
       "delivered": true,
       "seeded": {
-        "trace_id": "5d69a7c32a16a5b5db483d9973cfa852",
-        "span_id": "1f379763cbdf3b8d",
-        "routing_key": "rk-9ff89c3b",
+        "trace_id": "9314e7ee17fe046dff3d949cabcb23b6",
+        "span_id": "f27ef34370cef5f3",
+        "routing_key": "rk-4cb61a83",
         "headers": {
-          "baggage": "sd-routing-key=rk-9ff89c3b,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-9ff89c3b",
-          "traceparent": "00-5d69a7c32a16a5b5db483d9973cfa852-1f379763cbdf3b8d-01",
+          "baggage": "sd-routing-key=rk-4cb61a83,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-4cb61a83",
+          "traceparent": "00-9314e7ee17fe046dff3d949cabcb23b6-f27ef34370cef5f3-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--http-rabbitmq--c4963f1c"
+          "x-sd-canary": "newrelic-ruby--http-rabbitmq--30d8248a"
         }
       },
       "observed": {
         "transport": "rabbitmq",
         "headers": {
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI0ZDZlNGFiZjk0ZmQ2OGE5IiwidHIiOiI1ZDY5YTdjMzJhMTZhNWI1ZGI0ODNkOTk3M2NmYTg1MiIsInNhIjpmYWxzZSwicHIiOjAuNDQ4NzExLCJ0aSI6MTc4ODYzMTc1NDI1MywiaWQiOiI4YWU5NTAxNDQzNDJhNjQ0In19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIyZDBlYjJmMGMxNDM2Y2U2IiwidHIiOiI5MzE0ZTdlZTE3ZmUwNDZkZmYzZDk0OWNhYmNiMjNiNiIsInNhIjpmYWxzZSwicHIiOjAuNzA4MjM3LCJ0aSI6MTc4ODc3ODg1NDM1OCwiaWQiOiIzNGUxZmZjZWYzOWNlZGM4In19"
           ]
         }
       },
@@ -203,18 +203,18 @@
     },
     {
       "boundary": "grpc-\u003ehttp",
-      "test_id": "newrelic-ruby--grpc-http--a7f359b0",
+      "test_id": "newrelic-ruby--grpc-http--198fd573",
       "delivered": true,
       "seeded": {
-        "trace_id": "81c3008979e2d4593402ba21baf7bed7",
-        "span_id": "c5c908bca6872428",
-        "routing_key": "rk-09e4f1b2",
+        "trace_id": "829b1db88d325d893f79f36010e9ba03",
+        "span_id": "f5337c811dccd22f",
+        "routing_key": "rk-ef89dafd",
         "headers": {
-          "baggage": "sd-routing-key=rk-09e4f1b2,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-09e4f1b2",
-          "traceparent": "00-81c3008979e2d4593402ba21baf7bed7-c5c908bca6872428-01",
+          "baggage": "sd-routing-key=rk-ef89dafd,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-ef89dafd",
+          "traceparent": "00-829b1db88d325d893f79f36010e9ba03-f5337c811dccd22f-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--grpc-http--a7f359b0"
+          "x-sd-canary": "newrelic-ruby--grpc-http--198fd573"
         }
       },
       "observed": {
@@ -233,13 +233,13 @@
             "application/json"
           ],
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIwMDdiYWQ0NTVkMTAyZGVmIiwidHIiOiI4MWMzMDA4OTc5ZTJkNDU5MzQwMmJhMjFiYWY3YmVkNyIsInNhIjpmYWxzZSwicHIiOjAuODEwMzI4LCJ0aSI6MTc4ODYzMTc1NDc3MiwiaWQiOiJkMGNmYmE2NjBkNTA5N2RiIn19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI4NjIwMDc4NGUzYmU3ODNhIiwidHIiOiI4MjliMWRiODhkMzI1ZDg5M2Y3OWYzNjAxMGU5YmEwMyIsInNhIjpmYWxzZSwicHIiOjAuNjQ0MjUsInRpIjoxNzg4Nzc4ODU0MzYzLCJpZCI6Ijc0OTE0NTlkMmEwZTI5OTEifX0="
           ],
           "traceparent": [
-            "00-81c3008979e2d4593402ba21baf7bed7-d0cfba660d5097db-00"
+            "00-829b1db88d325d893f79f36010e9ba03-7491459d2a0e2991-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-d0cfba660d5097db-007bad455d102def-0-0.810328-1788631754771,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-7491459d2a0e2991-86200784e3be783a-0-0.644250-1788778854363,sdtest=v1"
           ],
           "user-agent": [
             "Ruby"
@@ -257,18 +257,18 @@
     },
     {
       "boundary": "grpc-\u003egrpc",
-      "test_id": "newrelic-ruby--grpc-grpc--346f96f2",
+      "test_id": "newrelic-ruby--grpc-grpc--35d67ccb",
       "delivered": true,
       "seeded": {
-        "trace_id": "9f4951c5c33d94ca65954a06970b78f5",
-        "span_id": "b9f836851a4901b5",
-        "routing_key": "rk-b6068814",
+        "trace_id": "87d055ff33ce92bbf59c86188267c52f",
+        "span_id": "e0b57e0205b81201",
+        "routing_key": "rk-a899b02c",
         "headers": {
-          "baggage": "sd-routing-key=rk-b6068814,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-b6068814",
-          "traceparent": "00-9f4951c5c33d94ca65954a06970b78f5-b9f836851a4901b5-01",
+          "baggage": "sd-routing-key=rk-a899b02c,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-a899b02c",
+          "traceparent": "00-87d055ff33ce92bbf59c86188267c52f-e0b57e0205b81201-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--grpc-grpc--346f96f2"
+          "x-sd-canary": "newrelic-ruby--grpc-grpc--35d67ccb"
         }
       },
       "observed": {
@@ -284,13 +284,13 @@
             "identity, deflate, gzip"
           ],
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJjYTU2MDI1YjdlNGMxM2I3IiwidHIiOiI5ZjQ5NTFjNWMzM2Q5NGNhNjU5NTRhMDY5NzBiNzhmNSIsInNhIjpmYWxzZSwicHIiOjAuMjcxODI3LCJ0aSI6MTc4ODYzMTc1NDc4NywiaWQiOiJmMGU3MjZiY2FjMmIxMjA2In19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI3ZTdiNmY2ZWYwNGNkM2NiIiwidHIiOiI4N2QwNTVmZjMzY2U5MmJiZjU5Yzg2MTg4MjY3YzUyZiIsInNhIjpmYWxzZSwicHIiOjAuMTg1MTY1LCJ0aSI6MTc4ODc3ODg1NDM2OSwiaWQiOiIxZGViYzdjYzA4NDVmMjgzIn19"
           ],
           "traceparent": [
-            "00-9f4951c5c33d94ca65954a06970b78f5-f0e726bcac2b1206-00"
+            "00-87d055ff33ce92bbf59c86188267c52f-1debc7cc0845f283-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-f0e726bcac2b1206-ca56025b7e4c13b7-0-0.271827-1788631754787,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-1debc7cc0845f283-7e7b6f6ef04cd3cb-0-0.185165-1788778854368,sdtest=v1"
           ],
           "user-agent": [
             "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
@@ -308,31 +308,31 @@
     },
     {
       "boundary": "grpc-\u003ekafka",
-      "test_id": "newrelic-ruby--grpc-kafka--aab76701",
+      "test_id": "newrelic-ruby--grpc-kafka--bf333b10",
       "delivered": true,
       "seeded": {
-        "trace_id": "c98f580c90584db501ea4ba216a4270a",
-        "span_id": "796a0543426312ec",
-        "routing_key": "rk-6a85ace2",
+        "trace_id": "8b42973d470c1ad5d0c52c47a52fc3d8",
+        "span_id": "336c2424a66d857f",
+        "routing_key": "rk-09845152",
         "headers": {
-          "baggage": "sd-routing-key=rk-6a85ace2,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-6a85ace2",
-          "traceparent": "00-c98f580c90584db501ea4ba216a4270a-796a0543426312ec-01",
+          "baggage": "sd-routing-key=rk-09845152,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-09845152",
+          "traceparent": "00-8b42973d470c1ad5d0c52c47a52fc3d8-336c2424a66d857f-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--grpc-kafka--aab76701"
+          "x-sd-canary": "newrelic-ruby--grpc-kafka--bf333b10"
         }
       },
       "observed": {
         "transport": "kafka",
         "headers": {
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJhYWJhMzZkODRjYWI1M2UzIiwidHIiOiJjOThmNTgwYzkwNTg0ZGI1MDFlYTRiYTIxNmE0MjcwYSIsInNhIjpmYWxzZSwicHIiOjAuOTIwMzYsInRpIjoxNzg4NjMxNzU0NzkzLCJpZCI6ImI0NGI5MjcwMmI0MGNiMDkifX0="
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI3NjM3MDhkMGViMWY4MzdlIiwidHIiOiI4YjQyOTczZDQ3MGMxYWQ1ZDBjNTJjNDdhNTJmYzNkOCIsInNhIjpmYWxzZSwicHIiOjAuMDY5ODExLCJ0aSI6MTc4ODc3ODg1NDM3MywiaWQiOiI0Y2NiM2M2YThiMjA5MWZjIn19"
           ],
           "traceparent": [
-            "00-c98f580c90584db501ea4ba216a4270a-b44b92702b40cb09-00"
+            "00-8b42973d470c1ad5d0c52c47a52fc3d8-4ccb3c6a8b2091fc-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-b44b92702b40cb09-aaba36d84cab53e3-0-0.920360-1788631754793,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-4ccb3c6a8b2091fc-763708d0eb1f837e-0-0.069811-1788778854373,sdtest=v1"
           ]
         }
       },
@@ -347,25 +347,25 @@
     },
     {
       "boundary": "grpc-\u003erabbitmq",
-      "test_id": "newrelic-ruby--grpc-rabbitmq--3284e542",
+      "test_id": "newrelic-ruby--grpc-rabbitmq--a9b5e70c",
       "delivered": true,
       "seeded": {
-        "trace_id": "813b5b4856510e89b16a5926e26db1e1",
-        "span_id": "adc68cf4c8169b0e",
-        "routing_key": "rk-d1951f43",
+        "trace_id": "d4b7d202115ee27ece9411de7cf42d03",
+        "span_id": "51b0ca3f343741a2",
+        "routing_key": "rk-cbf732b9",
         "headers": {
-          "baggage": "sd-routing-key=rk-d1951f43,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-d1951f43",
-          "traceparent": "00-813b5b4856510e89b16a5926e26db1e1-adc68cf4c8169b0e-01",
+          "baggage": "sd-routing-key=rk-cbf732b9,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-cbf732b9",
+          "traceparent": "00-d4b7d202115ee27ece9411de7cf42d03-51b0ca3f343741a2-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--grpc-rabbitmq--3284e542"
+          "x-sd-canary": "newrelic-ruby--grpc-rabbitmq--a9b5e70c"
         }
       },
       "observed": {
         "transport": "rabbitmq",
         "headers": {
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJkNjZhNjUxM2VlNDEyNjc0IiwidHIiOiI4MTNiNWI0ODU2NTEwZTg5YjE2YTU5MjZlMjZkYjFlMSIsInNhIjpmYWxzZSwicHIiOjAuNTkyMTY0LCJ0aSI6MTc4ODYzMTc1NDgwNywiaWQiOiJkNmI1YzQ4MGI3MzgyOTZmIn19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJiMmNmZTE3NjlmYjdmN2Y1IiwidHIiOiJkNGI3ZDIwMjExNWVlMjdlY2U5NDExZGU3Y2Y0MmQwMyIsInNhIjpmYWxzZSwicHIiOjAuNTc1MDYsInRpIjoxNzg4Nzc4ODU0Mzg0LCJpZCI6ImFhMjM5NmY2ZTBmNDRjMDQifX0="
           ]
         }
       },
@@ -380,18 +380,18 @@
     },
     {
       "boundary": "kafka-\u003ehttp",
-      "test_id": "newrelic-ruby--kafka-http--fd83dcd1",
+      "test_id": "newrelic-ruby--kafka-http--e82b5416",
       "delivered": true,
       "seeded": {
-        "trace_id": "294d682a03c3ed0c54b93bde46fd5736",
-        "span_id": "970751eb741c2e59",
-        "routing_key": "rk-08b98ddb",
+        "trace_id": "b0a48e9dde9406612b80f144567cd2ef",
+        "span_id": "24d5fc14885e9785",
+        "routing_key": "rk-609779de",
         "headers": {
-          "baggage": "sd-routing-key=rk-08b98ddb,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-08b98ddb",
-          "traceparent": "00-294d682a03c3ed0c54b93bde46fd5736-970751eb741c2e59-01",
+          "baggage": "sd-routing-key=rk-609779de,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-609779de",
+          "traceparent": "00-b0a48e9dde9406612b80f144567cd2ef-24d5fc14885e9785-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--kafka-http--fd83dcd1"
+          "x-sd-canary": "newrelic-ruby--kafka-http--e82b5416"
         }
       },
       "observed": {
@@ -410,13 +410,13 @@
             "application/json"
           ],
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIyMTU4MTI0NzhjZjEzYTY0IiwidHIiOiIyOTRkNjgyYTAzYzNlZDBjNTRiOTNiZGU0NmZkNTczNiIsInNhIjpmYWxzZSwicHIiOjAuNTM3NDM5LCJ0aSI6MTc4ODYzMTc1NTgzNywiaWQiOiI4ZWMwMWMwMzZiZWNmNTllIn19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI4NTk5M2Q1MzJmMWY3NjhkIiwidHIiOiJiMGE0OGU5ZGRlOTQwNjYxMmI4MGYxNDQ1NjdjZDJlZiIsInNhIjpmYWxzZSwicHIiOjAuNTk5NDU4LCJ0aSI6MTc4ODc3ODg1NTQxMiwiaWQiOiJlZWQ2ZGE2MjE2YjZjMDRkIn19"
           ],
           "traceparent": [
-            "00-294d682a03c3ed0c54b93bde46fd5736-8ec01c036becf59e-00"
+            "00-b0a48e9dde9406612b80f144567cd2ef-eed6da6216b6c04d-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-8ec01c036becf59e-215812478cf13a64-0-0.537439-1788631755837,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-eed6da6216b6c04d-85993d532f1f768d-0-0.599458-1788778855411,sdtest=v1"
           ],
           "user-agent": [
             "Ruby"
@@ -434,18 +434,18 @@
     },
     {
       "boundary": "kafka-\u003egrpc",
-      "test_id": "newrelic-ruby--kafka-grpc--8053b3a1",
+      "test_id": "newrelic-ruby--kafka-grpc--5a95ff57",
       "delivered": true,
       "seeded": {
-        "trace_id": "fabb54fa8cc133b1f17bc6059c1f6b2f",
-        "span_id": "af5393ffba420738",
-        "routing_key": "rk-5b867e19",
+        "trace_id": "ceef77067189ab9bec521fdddccf4113",
+        "span_id": "2a2200957ecd6414",
+        "routing_key": "rk-7ae53de4",
         "headers": {
-          "baggage": "sd-routing-key=rk-5b867e19,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-5b867e19",
-          "traceparent": "00-fabb54fa8cc133b1f17bc6059c1f6b2f-af5393ffba420738-01",
+          "baggage": "sd-routing-key=rk-7ae53de4,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-7ae53de4",
+          "traceparent": "00-ceef77067189ab9bec521fdddccf4113-2a2200957ecd6414-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--kafka-grpc--8053b3a1"
+          "x-sd-canary": "newrelic-ruby--kafka-grpc--5a95ff57"
         }
       },
       "observed": {
@@ -461,13 +461,13 @@
             "identity, deflate, gzip"
           ],
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIwMDhhZjc0MjU2YzRlMTcyIiwidHIiOiJmYWJiNTRmYThjYzEzM2IxZjE3YmM2MDU5YzFmNmIyZiIsInNhIjpmYWxzZSwicHIiOjAuODUwMTczLCJ0aSI6MTc4ODYzMTc1NjM0MCwiaWQiOiJlM2I4NzRlMzNhYTc3N2ZiIn19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI4NTk5NDlmYjRlODc2OWYxIiwidHIiOiJjZWVmNzcwNjcxODlhYjliZWM1MjFmZGRkY2NmNDExMyIsInNhIjpmYWxzZSwicHIiOjAuODY4MTczLCJ0aSI6MTc4ODc3ODg1NTkxMywiaWQiOiJiZDRhMGU3ZGFhYjc5NmVhIn19"
           ],
           "traceparent": [
-            "00-fabb54fa8cc133b1f17bc6059c1f6b2f-e3b874e33aa777fb-00"
+            "00-ceef77067189ab9bec521fdddccf4113-bd4a0e7daab796ea-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-e3b874e33aa777fb-008af74256c4e172-0-0.850173-1788631756340,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-bd4a0e7daab796ea-859949fb4e8769f1-0-0.868173-1788778855913,sdtest=v1"
           ],
           "user-agent": [
             "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
@@ -485,31 +485,31 @@
     },
     {
       "boundary": "kafka-\u003ekafka",
-      "test_id": "newrelic-ruby--kafka-kafka--6d19ba0e",
+      "test_id": "newrelic-ruby--kafka-kafka--e2f81a45",
       "delivered": true,
       "seeded": {
-        "trace_id": "4c8e0c0d12ec73a478be303c25357fe8",
-        "span_id": "a4978fcbbdbfebc6",
-        "routing_key": "rk-9c4fb45b",
+        "trace_id": "4c463f91613cfc41f6b4f5cd4ed2d55f",
+        "span_id": "4bd2e714ae050eec",
+        "routing_key": "rk-b7cd3b6f",
         "headers": {
-          "baggage": "sd-routing-key=rk-9c4fb45b,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-9c4fb45b",
-          "traceparent": "00-4c8e0c0d12ec73a478be303c25357fe8-a4978fcbbdbfebc6-01",
+          "baggage": "sd-routing-key=rk-b7cd3b6f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-b7cd3b6f",
+          "traceparent": "00-4c463f91613cfc41f6b4f5cd4ed2d55f-4bd2e714ae050eec-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--kafka-kafka--6d19ba0e"
+          "x-sd-canary": "newrelic-ruby--kafka-kafka--e2f81a45"
         }
       },
       "observed": {
         "transport": "kafka",
         "headers": {
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJhMDU0M2RlYmI5Y2E3ZGIwIiwidHIiOiI0YzhlMGMwZDEyZWM3M2E0NzhiZTMwM2MyNTM1N2ZlOCIsInNhIjpmYWxzZSwicHIiOjAuNTg1ODM5LCJ0aSI6MTc4ODYzMTc1Njg0MiwiaWQiOiJhNWQ1OGU1ZGYxODBjNmFlIn19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJkMmRmMTAzM2E2ODk1OGQ5IiwidHIiOiI0YzQ2M2Y5MTYxM2NmYzQxZjZiNGY1Y2Q0ZWQyZDU1ZiIsInNhIjpmYWxzZSwicHIiOjAuNDg0MDIxLCJ0aSI6MTc4ODc3ODg1NTkxNSwiaWQiOiIzMjU4Y2QxODA5NWE1YmIzIn19"
           ],
           "traceparent": [
-            "00-4c8e0c0d12ec73a478be303c25357fe8-a5d58e5df180c6ae-00"
+            "00-4c463f91613cfc41f6b4f5cd4ed2d55f-3258cd18095a5bb3-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-a5d58e5df180c6ae-a0543debb9ca7db0-0-0.585839-1788631756842,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-3258cd18095a5bb3-d2df1033a68958d9-0-0.484021-1788778855915,sdtest=v1"
           ]
         }
       },
@@ -524,25 +524,25 @@
     },
     {
       "boundary": "kafka-\u003erabbitmq",
-      "test_id": "newrelic-ruby--kafka-rabbitmq--f5d6edf8",
+      "test_id": "newrelic-ruby--kafka-rabbitmq--2b4f17bc",
       "delivered": true,
       "seeded": {
-        "trace_id": "1e08851c1f61ce733aa54301153c80eb",
-        "span_id": "9071d96aac3441a0",
-        "routing_key": "rk-dd3d0c9a",
+        "trace_id": "ad771e5d9b2a563f1222f4fe563d7ea0",
+        "span_id": "b81d9a8dd512e171",
+        "routing_key": "rk-3541d678",
         "headers": {
-          "baggage": "sd-routing-key=rk-dd3d0c9a,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-dd3d0c9a",
-          "traceparent": "00-1e08851c1f61ce733aa54301153c80eb-9071d96aac3441a0-01",
+          "baggage": "sd-routing-key=rk-3541d678,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-3541d678",
+          "traceparent": "00-ad771e5d9b2a563f1222f4fe563d7ea0-b81d9a8dd512e171-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--kafka-rabbitmq--f5d6edf8"
+          "x-sd-canary": "newrelic-ruby--kafka-rabbitmq--2b4f17bc"
         }
       },
       "observed": {
         "transport": "rabbitmq",
         "headers": {
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJlZTE3NTgzOTI4NTQ2MGYyIiwidHIiOiIxZTA4ODUxYzFmNjFjZTczM2FhNTQzMDExNTNjODBlYiIsInNhIjpmYWxzZSwicHIiOjAuNzYzOTc5LCJ0aSI6MTc4ODYzMTc1NzM1MCwiaWQiOiI2YmIwMjQ2Y2NmYTljMmE4In19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI3MDBiYWY1ODc0N2MxY2E5IiwidHIiOiJhZDc3MWU1ZDliMmE1NjNmMTIyMmY0ZmU1NjNkN2VhMCIsInNhIjpmYWxzZSwicHIiOjAuMzg4NDQxLCJ0aSI6MTc4ODc3ODg1NjQyNywiaWQiOiJhNjE2NzEzOTg2OTZlNDQ0In19"
           ]
         }
       },
@@ -557,18 +557,18 @@
     },
     {
       "boundary": "rabbitmq-\u003ehttp",
-      "test_id": "newrelic-ruby--rabbitmq-http--054b8970",
+      "test_id": "newrelic-ruby--rabbitmq-http--1278b3fb",
       "delivered": true,
       "seeded": {
-        "trace_id": "7eece4b08c51a4ab5d5885ebc666a70b",
-        "span_id": "e02b0e0427345cd2",
-        "routing_key": "rk-04802b70",
+        "trace_id": "cca016604e9a27af91304a954bec7acd",
+        "span_id": "560cda257d614a75",
+        "routing_key": "rk-2970b264",
         "headers": {
-          "baggage": "sd-routing-key=rk-04802b70,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-04802b70",
-          "traceparent": "00-7eece4b08c51a4ab5d5885ebc666a70b-e02b0e0427345cd2-01",
+          "baggage": "sd-routing-key=rk-2970b264,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-2970b264",
+          "traceparent": "00-cca016604e9a27af91304a954bec7acd-560cda257d614a75-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--rabbitmq-http--054b8970"
+          "x-sd-canary": "newrelic-ruby--rabbitmq-http--1278b3fb"
         }
       },
       "observed": {
@@ -587,13 +587,13 @@
             "application/json"
           ],
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI3NmU4Mzg5ZDZhN2M2NmQ4IiwidHIiOiI3ZWVjZTRiMDhjNTFhNGFiNWQ1ODg1ZWJjNjY2YTcwYiIsInNhIjpmYWxzZSwicHIiOjAuOTM0MTM2LCJ0aSI6MTc4ODYzMTc1Nzg1OCwiaWQiOiJkYTNmMzM0MWViY2NlZGRmIn19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiI1NTk1MWFlYmZkN2YyNWU5IiwidHIiOiJjY2EwMTY2MDRlOWEyN2FmOTEzMDRhOTU0YmVjN2FjZCIsInNhIjpmYWxzZSwicHIiOjAuMzkyMzU5LCJ0aSI6MTc4ODc3ODg1NjkzOCwiaWQiOiJiNDIzNDY3NWU3NDRkOTBhIn19"
           ],
           "traceparent": [
-            "00-7eece4b08c51a4ab5d5885ebc666a70b-da3f3341ebcceddf-00"
+            "00-cca016604e9a27af91304a954bec7acd-b4234675e744d90a-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-da3f3341ebcceddf-76e8389d6a7c66d8-0-0.934136-1788631757858,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-b4234675e744d90a-55951aebfd7f25e9-0-0.392359-1788778856938,sdtest=v1"
           ],
           "user-agent": [
             "Ruby"
@@ -611,18 +611,18 @@
     },
     {
       "boundary": "rabbitmq-\u003egrpc",
-      "test_id": "newrelic-ruby--rabbitmq-grpc--c89f5c2d",
+      "test_id": "newrelic-ruby--rabbitmq-grpc--f02135cb",
       "delivered": true,
       "seeded": {
-        "trace_id": "4d26c1e9c24f001eb774e0220c088bd3",
-        "span_id": "80155dc7ae76263c",
-        "routing_key": "rk-6eba379f",
+        "trace_id": "8299ec497fa61fe3ae943ff91b9b79d4",
+        "span_id": "aaa9fd374363c3dc",
+        "routing_key": "rk-691d9ecc",
         "headers": {
-          "baggage": "sd-routing-key=rk-6eba379f,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-6eba379f",
-          "traceparent": "00-4d26c1e9c24f001eb774e0220c088bd3-80155dc7ae76263c-01",
+          "baggage": "sd-routing-key=rk-691d9ecc,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-691d9ecc",
+          "traceparent": "00-8299ec497fa61fe3ae943ff91b9b79d4-aaa9fd374363c3dc-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--rabbitmq-grpc--c89f5c2d"
+          "x-sd-canary": "newrelic-ruby--rabbitmq-grpc--f02135cb"
         }
       },
       "observed": {
@@ -638,13 +638,13 @@
             "identity, deflate, gzip"
           ],
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIwNmU2Mjc1NzA0YTdjYTA0IiwidHIiOiI0ZDI2YzFlOWMyNGYwMDFlYjc3NGUwMjIwYzA4OGJkMyIsInNhIjpmYWxzZSwicHIiOjAuNDA4NDg1LCJ0aSI6MTc4ODYzMTc1ODM2MiwiaWQiOiJkMGUyOTg3ZDMzM2FhNDRmIn19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJhMmIzNGY2NmY1Njc1YmZmIiwidHIiOiI4Mjk5ZWM0OTdmYTYxZmUzYWU5NDNmZjkxYjliNzlkNCIsInNhIjpmYWxzZSwicHIiOjAuMjk5MDEzLCJ0aSI6MTc4ODc3ODg1NzQzOSwiaWQiOiI4NmUxNDNkNjgyMGRiN2RjIn19"
           ],
           "traceparent": [
-            "00-4d26c1e9c24f001eb774e0220c088bd3-d0e2987d333aa44f-00"
+            "00-8299ec497fa61fe3ae943ff91b9b79d4-86e143d6820db7dc-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-d0e2987d333aa44f-06e6275704a7ca04-0-0.408485-1788631758362,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-86e143d6820db7dc-a2b34f66f5675bff-0-0.299013-1788778857439,sdtest=v1"
           ],
           "user-agent": [
             "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
@@ -662,31 +662,31 @@
     },
     {
       "boundary": "rabbitmq-\u003ekafka",
-      "test_id": "newrelic-ruby--rabbitmq-kafka--89d3eaa8",
+      "test_id": "newrelic-ruby--rabbitmq-kafka--95ae368a",
       "delivered": true,
       "seeded": {
-        "trace_id": "ca7ad670109a4b1fef11986785726569",
-        "span_id": "4084d374b5673659",
-        "routing_key": "rk-d6b1932f",
+        "trace_id": "ba2cec9a25fd00be5f7a16254566db0f",
+        "span_id": "5201b8d2692ca3cf",
+        "routing_key": "rk-1983ac9f",
         "headers": {
-          "baggage": "sd-routing-key=rk-d6b1932f,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-d6b1932f",
-          "traceparent": "00-ca7ad670109a4b1fef11986785726569-4084d374b5673659-01",
+          "baggage": "sd-routing-key=rk-1983ac9f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-1983ac9f",
+          "traceparent": "00-ba2cec9a25fd00be5f7a16254566db0f-5201b8d2692ca3cf-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--rabbitmq-kafka--89d3eaa8"
+          "x-sd-canary": "newrelic-ruby--rabbitmq-kafka--95ae368a"
         }
       },
       "observed": {
         "transport": "kafka",
         "headers": {
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJjZWZjMmM4MjY4MmE4ZDA4IiwidHIiOiJjYTdhZDY3MDEwOWE0YjFmZWYxMTk4Njc4NTcyNjU2OSIsInNhIjpmYWxzZSwicHIiOjAuMTE0OTc4LCJ0aSI6MTc4ODYzMTc1ODg3MCwiaWQiOiI2MTVhZTQ3NTYyMmM2MmUzIn19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIxMzUyMThlNjkwOWEyYzExIiwidHIiOiJiYTJjZWM5YTI1ZmQwMGJlNWY3YTE2MjU0NTY2ZGIwZiIsInNhIjpmYWxzZSwicHIiOjAuOTE1NTUyLCJ0aSI6MTc4ODc3ODg1Nzk1NywiaWQiOiJmOTUxNTY2N2MwZGRlOTIxIn19"
           ],
           "traceparent": [
-            "00-ca7ad670109a4b1fef11986785726569-615ae475622c62e3-00"
+            "00-ba2cec9a25fd00be5f7a16254566db0f-f9515667c0dde921-00"
           ],
           "tracestate": [
-            "8478732@nr=0-0-8478732-572432810-615ae475622c62e3-cefc2c82682a8d08-0-0.114978-1788631758870,sdtest=v1"
+            "8478732@nr=0-0-8478732-572432810-f9515667c0dde921-135218e6909a2c11-0-0.915552-1788778857957,sdtest=v1"
           ]
         }
       },
@@ -701,25 +701,25 @@
     },
     {
       "boundary": "rabbitmq-\u003erabbitmq",
-      "test_id": "newrelic-ruby--rabbitmq-rabbitmq--06e6dc24",
+      "test_id": "newrelic-ruby--rabbitmq-rabbitmq--17ffbee6",
       "delivered": true,
       "seeded": {
-        "trace_id": "db291425692944571eea9aebc7c3bdc1",
-        "span_id": "560e1dc4d5226069",
-        "routing_key": "rk-3eaad35f",
+        "trace_id": "6b9e14017d4ad5c394ac71adcf9f894c",
+        "span_id": "ebcc3e292c10c14e",
+        "routing_key": "rk-139add7a",
         "headers": {
-          "baggage": "sd-routing-key=rk-3eaad35f,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-3eaad35f",
-          "traceparent": "00-db291425692944571eea9aebc7c3bdc1-560e1dc4d5226069-01",
+          "baggage": "sd-routing-key=rk-139add7a,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-139add7a",
+          "traceparent": "00-6b9e14017d4ad5c394ac71adcf9f894c-ebcc3e292c10c14e-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "newrelic-ruby--rabbitmq-rabbitmq--06e6dc24"
+          "x-sd-canary": "newrelic-ruby--rabbitmq-rabbitmq--17ffbee6"
         }
       },
       "observed": {
         "transport": "rabbitmq",
         "headers": {
           "newrelic": [
-            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiJlNmVmMzNiYWFmNzMyYTZmIiwidHIiOiJkYjI5MTQyNTY5Mjk0NDU3MWVlYTlhZWJjN2MzYmRjMSIsInNhIjpmYWxzZSwicHIiOjAuOTU1MTIyLCJ0aSI6MTc4ODYzMTc1OTM3OSwiaWQiOiIwMmE1YjVlZmU4MzhkZmQ1In19"
+            "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkFwcCIsImFjIjoiODQ3ODczMiIsImFwIjoiNTcyNDMyODEwIiwidHgiOiIzNmQ2YTkxYjE4M2RjZTZmIiwidHIiOiI2YjllMTQwMTdkNGFkNWMzOTRhYzcxYWRjZjlmODk0YyIsInNhIjpmYWxzZSwicHIiOjAuMTY0MDQxLCJ0aSI6MTc4ODc3ODg1ODQ2MiwiaWQiOiI2ZDA3NTBmNmYzMmFiNjQwIn19"
           ]
         }
       },

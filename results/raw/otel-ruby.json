@@ -24,22 +24,22 @@
     "tracer_version": "1.13.0",
     "variant": "otel-ruby"
   },
-  "ran_at": "2026-09-05T13:26:14.846700129Z",
+  "ran_at": "2026-09-07T11:14:13.890104344Z",
   "tests": [
     {
       "boundary": "http-\u003ehttp",
-      "test_id": "otel-ruby--http-http--4e64186e",
+      "test_id": "otel-ruby--http-http--6161ad4d",
       "delivered": true,
       "seeded": {
-        "trace_id": "08b035184504f1e0b669a672d0000593",
-        "span_id": "69f33049de791d8a",
-        "routing_key": "rk-79802a5c",
+        "trace_id": "dcda97fb6f19248902775e50cb061bf9",
+        "span_id": "3df5579e2584651d",
+        "routing_key": "rk-1af0b31c",
         "headers": {
-          "baggage": "sd-routing-key=rk-79802a5c,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-79802a5c",
-          "traceparent": "00-08b035184504f1e0b669a672d0000593-69f33049de791d8a-01",
+          "baggage": "sd-routing-key=rk-1af0b31c,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-1af0b31c",
+          "traceparent": "00-dcda97fb6f19248902775e50cb061bf9-3df5579e2584651d-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--http-http--4e64186e"
+          "x-sd-canary": "otel-ruby--http-http--6161ad4d"
         }
       },
       "observed": {
@@ -52,7 +52,7 @@
             "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
           ],
           "baggage": [
-            "sd-routing-key=rk-79802a5c,team=alpha"
+            "sd-routing-key=rk-1af0b31c,team=alpha"
           ],
           "content-length": [
             "44"
@@ -61,7 +61,7 @@
             "application/json"
           ],
           "traceparent": [
-            "00-08b035184504f1e0b669a672d0000593-fe468f4c79d66ea3-01"
+            "00-dcda97fb6f19248902775e50cb061bf9-5dce72339964f380-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -82,18 +82,18 @@
     },
     {
       "boundary": "http-\u003egrpc",
-      "test_id": "otel-ruby--http-grpc--cc0bf859",
+      "test_id": "otel-ruby--http-grpc--6986f589",
       "delivered": true,
       "seeded": {
-        "trace_id": "954c00f41f65813821ffaa934d77ae6e",
-        "span_id": "b6254aa68605634d",
-        "routing_key": "rk-a4102910",
+        "trace_id": "194361470026b2e7b75bd957addebfd5",
+        "span_id": "e64ed793ed51b65f",
+        "routing_key": "rk-69e8b667",
         "headers": {
-          "baggage": "sd-routing-key=rk-a4102910,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-a4102910",
-          "traceparent": "00-954c00f41f65813821ffaa934d77ae6e-b6254aa68605634d-01",
+          "baggage": "sd-routing-key=rk-69e8b667,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-69e8b667",
+          "traceparent": "00-194361470026b2e7b75bd957addebfd5-e64ed793ed51b65f-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--http-grpc--cc0bf859"
+          "x-sd-canary": "otel-ruby--http-grpc--6986f589"
         }
       },
       "observed": {
@@ -103,7 +103,7 @@
             "sink:9081"
           ],
           "baggage": [
-            "sd-routing-key=rk-a4102910,team=alpha"
+            "sd-routing-key=rk-69e8b667,team=alpha"
           ],
           "content-type": [
             "application/grpc"
@@ -112,7 +112,7 @@
             "identity, deflate, gzip"
           ],
           "traceparent": [
-            "00-954c00f41f65813821ffaa934d77ae6e-0d8288175deee9d1-01"
+            "00-194361470026b2e7b75bd957addebfd5-415feb67b6180c71-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -133,28 +133,28 @@
     },
     {
       "boundary": "http-\u003ekafka",
-      "test_id": "otel-ruby--http-kafka--a8222a1b",
+      "test_id": "otel-ruby--http-kafka--9b59172e",
       "delivered": true,
       "seeded": {
-        "trace_id": "0865ed7108825d2ea0776135fe823fea",
-        "span_id": "6f162c503049115e",
-        "routing_key": "rk-4755adc7",
+        "trace_id": "89eb3158792c8619fa4e42cbc4280887",
+        "span_id": "ea82f57c7ef91e2d",
+        "routing_key": "rk-26928cf2",
         "headers": {
-          "baggage": "sd-routing-key=rk-4755adc7,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-4755adc7",
-          "traceparent": "00-0865ed7108825d2ea0776135fe823fea-6f162c503049115e-01",
+          "baggage": "sd-routing-key=rk-26928cf2,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-26928cf2",
+          "traceparent": "00-89eb3158792c8619fa4e42cbc4280887-ea82f57c7ef91e2d-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--http-kafka--a8222a1b"
+          "x-sd-canary": "otel-ruby--http-kafka--9b59172e"
         }
       },
       "observed": {
         "transport": "kafka",
         "headers": {
           "baggage": [
-            "sd-routing-key=rk-4755adc7,team=alpha"
+            "sd-routing-key=rk-26928cf2,team=alpha"
           ],
           "traceparent": [
-            "00-0865ed7108825d2ea0776135fe823fea-92726ba833ec6d1d-01"
+            "00-89eb3158792c8619fa4e42cbc4280887-ecea8bbf25ab1e0a-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -172,28 +172,28 @@
     },
     {
       "boundary": "http-\u003erabbitmq",
-      "test_id": "otel-ruby--http-rabbitmq--50e8a3db",
+      "test_id": "otel-ruby--http-rabbitmq--8343af0a",
       "delivered": true,
       "seeded": {
-        "trace_id": "f8aedd8a1488cfd7f7612e50e4c722fa",
-        "span_id": "e352c1ad1cb05902",
-        "routing_key": "rk-888d9626",
+        "trace_id": "a119626c889b9bb3c95137d88209e110",
+        "span_id": "d569d91af67d5b81",
+        "routing_key": "rk-f5be5d2f",
         "headers": {
-          "baggage": "sd-routing-key=rk-888d9626,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-888d9626",
-          "traceparent": "00-f8aedd8a1488cfd7f7612e50e4c722fa-e352c1ad1cb05902-01",
+          "baggage": "sd-routing-key=rk-f5be5d2f,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-f5be5d2f",
+          "traceparent": "00-a119626c889b9bb3c95137d88209e110-d569d91af67d5b81-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--http-rabbitmq--50e8a3db"
+          "x-sd-canary": "otel-ruby--http-rabbitmq--8343af0a"
         }
       },
       "observed": {
         "transport": "rabbitmq",
         "headers": {
           "baggage": [
-            "sd-routing-key=rk-888d9626,team=alpha"
+            "sd-routing-key=rk-f5be5d2f,team=alpha"
           ],
           "traceparent": [
-            "00-f8aedd8a1488cfd7f7612e50e4c722fa-ae933533fc60b2f6-01"
+            "00-a119626c889b9bb3c95137d88209e110-0617799b5e53b561-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -211,18 +211,18 @@
     },
     {
       "boundary": "grpc-\u003ehttp",
-      "test_id": "otel-ruby--grpc-http--5ceec609",
+      "test_id": "otel-ruby--grpc-http--1fe95a26",
       "delivered": true,
       "seeded": {
-        "trace_id": "ade5b96f6654bce1440f409a27fc18b6",
-        "span_id": "4733d5cba824b440",
-        "routing_key": "rk-1924a373",
+        "trace_id": "ed9d45a9772673a34f5c2b88f5daffdb",
+        "span_id": "99b3f8207c64614e",
+        "routing_key": "rk-89859595",
         "headers": {
-          "baggage": "sd-routing-key=rk-1924a373,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-1924a373",
-          "traceparent": "00-ade5b96f6654bce1440f409a27fc18b6-4733d5cba824b440-01",
+          "baggage": "sd-routing-key=rk-89859595,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-89859595",
+          "traceparent": "00-ed9d45a9772673a34f5c2b88f5daffdb-99b3f8207c64614e-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--grpc-http--5ceec609"
+          "x-sd-canary": "otel-ruby--grpc-http--1fe95a26"
         }
       },
       "observed": {
@@ -241,7 +241,7 @@
             "application/json"
           ],
           "traceparent": [
-            "00-64e078d1c8edec1e66644fb521f6d42e-e7c31be3b56a3c20-01"
+            "00-028101718092dd3926faa3d5e2f93163-07801cbf8fce0006-01"
           ],
           "user-agent": [
             "Ruby"
@@ -259,18 +259,18 @@
     },
     {
       "boundary": "grpc-\u003egrpc",
-      "test_id": "otel-ruby--grpc-grpc--3591cfd6",
+      "test_id": "otel-ruby--grpc-grpc--e3ad24b7",
       "delivered": true,
       "seeded": {
-        "trace_id": "f32562f661a70106cd005cba107559ee",
-        "span_id": "b6c3faa871dc868d",
-        "routing_key": "rk-44d80af8",
+        "trace_id": "19f0287526f057e4c535b34fae54ad2f",
+        "span_id": "e95dcf5bc3944d55",
+        "routing_key": "rk-a16a5484",
         "headers": {
-          "baggage": "sd-routing-key=rk-44d80af8,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-44d80af8",
-          "traceparent": "00-f32562f661a70106cd005cba107559ee-b6c3faa871dc868d-01",
+          "baggage": "sd-routing-key=rk-a16a5484,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-a16a5484",
+          "traceparent": "00-19f0287526f057e4c535b34fae54ad2f-e95dcf5bc3944d55-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--grpc-grpc--3591cfd6"
+          "x-sd-canary": "otel-ruby--grpc-grpc--e3ad24b7"
         }
       },
       "observed": {
@@ -286,7 +286,7 @@
             "identity, deflate, gzip"
           ],
           "traceparent": [
-            "00-753a244a804c7bfc641548aa21248c3c-5d22d0c8c38987a5-01"
+            "00-c974fb27ebc4da9a51aca99cdf5592b8-fb822675cceb5c70-01"
           ],
           "user-agent": [
             "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
@@ -304,25 +304,25 @@
     },
     {
       "boundary": "grpc-\u003ekafka",
-      "test_id": "otel-ruby--grpc-kafka--18abbebd",
+      "test_id": "otel-ruby--grpc-kafka--bf80a3d2",
       "delivered": true,
       "seeded": {
-        "trace_id": "5fc69fa17711e2d1932f3309c6af0cef",
-        "span_id": "be912b1ee3c4a9af",
-        "routing_key": "rk-6402113c",
+        "trace_id": "4bc69745d2f2e2d374677484d29d5e84",
+        "span_id": "22df13fa6a85d60e",
+        "routing_key": "rk-1a5beef4",
         "headers": {
-          "baggage": "sd-routing-key=rk-6402113c,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-6402113c",
-          "traceparent": "00-5fc69fa17711e2d1932f3309c6af0cef-be912b1ee3c4a9af-01",
+          "baggage": "sd-routing-key=rk-1a5beef4,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-1a5beef4",
+          "traceparent": "00-4bc69745d2f2e2d374677484d29d5e84-22df13fa6a85d60e-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--grpc-kafka--18abbebd"
+          "x-sd-canary": "otel-ruby--grpc-kafka--bf80a3d2"
         }
       },
       "observed": {
         "transport": "kafka",
         "headers": {
           "traceparent": [
-            "00-e5798c1647f56a50a229fccb56693aa4-80ab8b2aec322643-01"
+            "00-af1f927df95b4a09474392b1d957dd8c-d36e3ca2e3a72fe3-01"
           ]
         }
       },
@@ -337,25 +337,25 @@
     },
     {
       "boundary": "grpc-\u003erabbitmq",
-      "test_id": "otel-ruby--grpc-rabbitmq--7fd45cc5",
+      "test_id": "otel-ruby--grpc-rabbitmq--0428ecdf",
       "delivered": true,
       "seeded": {
-        "trace_id": "6a6656b818a3e3ac8c0cd49c81e932a8",
-        "span_id": "069916f6d0d6a2dd",
-        "routing_key": "rk-2faec86a",
+        "trace_id": "bd773ea29435c63886f3267777a0387f",
+        "span_id": "91513a14b60059f7",
+        "routing_key": "rk-b5de0351",
         "headers": {
-          "baggage": "sd-routing-key=rk-2faec86a,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-2faec86a",
-          "traceparent": "00-6a6656b818a3e3ac8c0cd49c81e932a8-069916f6d0d6a2dd-01",
+          "baggage": "sd-routing-key=rk-b5de0351,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-b5de0351",
+          "traceparent": "00-bd773ea29435c63886f3267777a0387f-91513a14b60059f7-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--grpc-rabbitmq--7fd45cc5"
+          "x-sd-canary": "otel-ruby--grpc-rabbitmq--0428ecdf"
         }
       },
       "observed": {
         "transport": "rabbitmq",
         "headers": {
           "traceparent": [
-            "00-3e6b917cca6765f3a9c677b41d895ea8-c7954725d86350ff-01"
+            "00-fcc153b2e8fc29f8847e957ee2709a04-b3ff577e5babde8e-01"
           ]
         }
       },
@@ -370,18 +370,18 @@
     },
     {
       "boundary": "kafka-\u003ehttp",
-      "test_id": "otel-ruby--kafka-http--b6a12bc9",
+      "test_id": "otel-ruby--kafka-http--78c48697",
       "delivered": true,
       "seeded": {
-        "trace_id": "0497d0e82c80bc19b0c8955583963b1f",
-        "span_id": "cda6d6b461c5b4ea",
-        "routing_key": "rk-eb86e139",
+        "trace_id": "d8cb0fc36d3f15782e475aad7d47cf32",
+        "span_id": "c54008502e00736e",
+        "routing_key": "rk-2bee1fc5",
         "headers": {
-          "baggage": "sd-routing-key=rk-eb86e139,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-eb86e139",
-          "traceparent": "00-0497d0e82c80bc19b0c8955583963b1f-cda6d6b461c5b4ea-01",
+          "baggage": "sd-routing-key=rk-2bee1fc5,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-2bee1fc5",
+          "traceparent": "00-d8cb0fc36d3f15782e475aad7d47cf32-c54008502e00736e-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--kafka-http--b6a12bc9"
+          "x-sd-canary": "otel-ruby--kafka-http--78c48697"
         }
       },
       "observed": {
@@ -394,7 +394,7 @@
             "gzip;q=1.0,deflate;q=0.6,identity;q=0.3"
           ],
           "baggage": [
-            "sd-routing-key=rk-eb86e139,team=alpha"
+            "sd-routing-key=rk-2bee1fc5,team=alpha"
           ],
           "content-length": [
             "45"
@@ -403,7 +403,7 @@
             "application/json"
           ],
           "traceparent": [
-            "00-0497d0e82c80bc19b0c8955583963b1f-c5769ab4b0f4b3a4-01"
+            "00-d8cb0fc36d3f15782e475aad7d47cf32-da2f25ed54e04f5c-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -424,18 +424,18 @@
     },
     {
       "boundary": "kafka-\u003egrpc",
-      "test_id": "otel-ruby--kafka-grpc--ee9461fc",
+      "test_id": "otel-ruby--kafka-grpc--e6fb74e2",
       "delivered": true,
       "seeded": {
-        "trace_id": "423a6948944f81c2a939abc96d4a0c30",
-        "span_id": "ed87e9c2ad98f0b8",
-        "routing_key": "rk-3d0d5f46",
+        "trace_id": "adf19a5e852cc5ff3b36f0c65d6cf836",
+        "span_id": "f53e15b402932922",
+        "routing_key": "rk-8d326404",
         "headers": {
-          "baggage": "sd-routing-key=rk-3d0d5f46,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-3d0d5f46",
-          "traceparent": "00-423a6948944f81c2a939abc96d4a0c30-ed87e9c2ad98f0b8-01",
+          "baggage": "sd-routing-key=rk-8d326404,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-8d326404",
+          "traceparent": "00-adf19a5e852cc5ff3b36f0c65d6cf836-f53e15b402932922-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--kafka-grpc--ee9461fc"
+          "x-sd-canary": "otel-ruby--kafka-grpc--e6fb74e2"
         }
       },
       "observed": {
@@ -445,7 +445,7 @@
             "sink:9081"
           ],
           "baggage": [
-            "sd-routing-key=rk-3d0d5f46,team=alpha"
+            "sd-routing-key=rk-8d326404,team=alpha"
           ],
           "content-type": [
             "application/grpc"
@@ -454,7 +454,7 @@
             "identity, deflate, gzip"
           ],
           "traceparent": [
-            "00-423a6948944f81c2a939abc96d4a0c30-9791644de8a8a5e6-01"
+            "00-adf19a5e852cc5ff3b36f0c65d6cf836-8da33a5d47a10596-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -475,28 +475,28 @@
     },
     {
       "boundary": "kafka-\u003ekafka",
-      "test_id": "otel-ruby--kafka-kafka--9cde8f6b",
+      "test_id": "otel-ruby--kafka-kafka--8bfa53bb",
       "delivered": true,
       "seeded": {
-        "trace_id": "a7a90cb2877f2471372a2d2b50246222",
-        "span_id": "6414bb1537a1c34d",
-        "routing_key": "rk-57927473",
+        "trace_id": "5d7ab895139612726d6b6e65bf4afaf3",
+        "span_id": "99a00b706fa924df",
+        "routing_key": "rk-84253a17",
         "headers": {
-          "baggage": "sd-routing-key=rk-57927473,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-57927473",
-          "traceparent": "00-a7a90cb2877f2471372a2d2b50246222-6414bb1537a1c34d-01",
+          "baggage": "sd-routing-key=rk-84253a17,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-84253a17",
+          "traceparent": "00-5d7ab895139612726d6b6e65bf4afaf3-99a00b706fa924df-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--kafka-kafka--9cde8f6b"
+          "x-sd-canary": "otel-ruby--kafka-kafka--8bfa53bb"
         }
       },
       "observed": {
         "transport": "kafka",
         "headers": {
           "baggage": [
-            "sd-routing-key=rk-57927473,team=alpha"
+            "sd-routing-key=rk-84253a17,team=alpha"
           ],
           "traceparent": [
-            "00-a7a90cb2877f2471372a2d2b50246222-121b0cdcde271918-01"
+            "00-5d7ab895139612726d6b6e65bf4afaf3-638dd5379d415eb4-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -514,28 +514,28 @@
     },
     {
       "boundary": "kafka-\u003erabbitmq",
-      "test_id": "otel-ruby--kafka-rabbitmq--3c095b8c",
+      "test_id": "otel-ruby--kafka-rabbitmq--93305124",
       "delivered": true,
       "seeded": {
-        "trace_id": "9853bcf9cdb5b0aab70782a15453aa41",
-        "span_id": "cc200c145b0fce49",
-        "routing_key": "rk-66154bd5",
+        "trace_id": "fd6dbbdcbf9ceaa1e0f13d82653f46d8",
+        "span_id": "698407b955fbba13",
+        "routing_key": "rk-7c04f7c7",
         "headers": {
-          "baggage": "sd-routing-key=rk-66154bd5,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-66154bd5",
-          "traceparent": "00-9853bcf9cdb5b0aab70782a15453aa41-cc200c145b0fce49-01",
+          "baggage": "sd-routing-key=rk-7c04f7c7,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-7c04f7c7",
+          "traceparent": "00-fd6dbbdcbf9ceaa1e0f13d82653f46d8-698407b955fbba13-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--kafka-rabbitmq--3c095b8c"
+          "x-sd-canary": "otel-ruby--kafka-rabbitmq--93305124"
         }
       },
       "observed": {
         "transport": "rabbitmq",
         "headers": {
           "baggage": [
-            "sd-routing-key=rk-66154bd5,team=alpha"
+            "sd-routing-key=rk-7c04f7c7,team=alpha"
           ],
           "traceparent": [
-            "00-9853bcf9cdb5b0aab70782a15453aa41-66dd60d02519001d-01"
+            "00-fd6dbbdcbf9ceaa1e0f13d82653f46d8-f0b9f78a3a800fec-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -553,18 +553,18 @@
     },
     {
       "boundary": "rabbitmq-\u003ehttp",
-      "test_id": "otel-ruby--rabbitmq-http--85c1e7a8",
+      "test_id": "otel-ruby--rabbitmq-http--806956c8",
       "delivered": true,
       "seeded": {
-        "trace_id": "5461a968a21e8d0da42d037e265fd265",
-        "span_id": "b223b55ec4eab13e",
-        "routing_key": "rk-b2655f41",
+        "trace_id": "dea02f21a4dccf7292012c80fa28a152",
+        "span_id": "c6b32ae325c26cb4",
+        "routing_key": "rk-adc0d732",
         "headers": {
-          "baggage": "sd-routing-key=rk-b2655f41,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-b2655f41",
-          "traceparent": "00-5461a968a21e8d0da42d037e265fd265-b223b55ec4eab13e-01",
+          "baggage": "sd-routing-key=rk-adc0d732,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-adc0d732",
+          "traceparent": "00-dea02f21a4dccf7292012c80fa28a152-c6b32ae325c26cb4-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--rabbitmq-http--85c1e7a8"
+          "x-sd-canary": "otel-ruby--rabbitmq-http--806956c8"
         }
       },
       "observed": {
@@ -583,7 +583,7 @@
             "application/json"
           ],
           "traceparent": [
-            "00-2bef6807c400a69be82a5fbe16dddc65-be495b581267c146-01"
+            "00-70384fe6ccf0a681fceac6e4e43b8f40-0ac5040e6ddee5b9-01"
           ],
           "user-agent": [
             "Ruby"
@@ -601,18 +601,18 @@
     },
     {
       "boundary": "rabbitmq-\u003egrpc",
-      "test_id": "otel-ruby--rabbitmq-grpc--3ca9d255",
+      "test_id": "otel-ruby--rabbitmq-grpc--2f1be59c",
       "delivered": true,
       "seeded": {
-        "trace_id": "bbcbcbe36baec6edf1c7c7939114bebc",
-        "span_id": "0562469f169f94b8",
-        "routing_key": "rk-dc274221",
+        "trace_id": "877bbbb7ae3ee2aaec335d0107814333",
+        "span_id": "443fdbaa0e828136",
+        "routing_key": "rk-0255f736",
         "headers": {
-          "baggage": "sd-routing-key=rk-dc274221,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-dc274221",
-          "traceparent": "00-bbcbcbe36baec6edf1c7c7939114bebc-0562469f169f94b8-01",
+          "baggage": "sd-routing-key=rk-0255f736,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-0255f736",
+          "traceparent": "00-877bbbb7ae3ee2aaec335d0107814333-443fdbaa0e828136-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--rabbitmq-grpc--3ca9d255"
+          "x-sd-canary": "otel-ruby--rabbitmq-grpc--2f1be59c"
         }
       },
       "observed": {
@@ -628,7 +628,7 @@
             "identity, deflate, gzip"
           ],
           "traceparent": [
-            "00-765b58865087c152e7bee69655c90d3f-e363f745402c702f-01"
+            "00-cd19e0605a8f838650a818c4e9c8fa3d-ee0ac012652a998f-01"
           ],
           "user-agent": [
             "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
@@ -646,25 +646,25 @@
     },
     {
       "boundary": "rabbitmq-\u003ekafka",
-      "test_id": "otel-ruby--rabbitmq-kafka--6bf0bf14",
+      "test_id": "otel-ruby--rabbitmq-kafka--55c445e9",
       "delivered": true,
       "seeded": {
-        "trace_id": "ca6780fb6f7fc3db3ffae94adc42ee0e",
-        "span_id": "9501653b24bb9beb",
-        "routing_key": "rk-8830e80c",
+        "trace_id": "9dab8f26d99ab6412f446acb8dc4eccf",
+        "span_id": "4e1c3ac64b632bd6",
+        "routing_key": "rk-f335cea0",
         "headers": {
-          "baggage": "sd-routing-key=rk-8830e80c,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-8830e80c",
-          "traceparent": "00-ca6780fb6f7fc3db3ffae94adc42ee0e-9501653b24bb9beb-01",
+          "baggage": "sd-routing-key=rk-f335cea0,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-f335cea0",
+          "traceparent": "00-9dab8f26d99ab6412f446acb8dc4eccf-4e1c3ac64b632bd6-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--rabbitmq-kafka--6bf0bf14"
+          "x-sd-canary": "otel-ruby--rabbitmq-kafka--55c445e9"
         }
       },
       "observed": {
         "transport": "kafka",
         "headers": {
           "traceparent": [
-            "00-cdfa042dd8a20c45d7d395758d806858-d5125ced416d7bf2-01"
+            "00-a61bff6343d5eddfc8fa5d278b9ddba6-cf0953b7600b538e-01"
           ]
         }
       },
@@ -679,25 +679,25 @@
     },
     {
       "boundary": "rabbitmq-\u003erabbitmq",
-      "test_id": "otel-ruby--rabbitmq-rabbitmq--96ae097a",
+      "test_id": "otel-ruby--rabbitmq-rabbitmq--a7c6f26a",
       "delivered": true,
       "seeded": {
-        "trace_id": "5156ddde34ef70412f16206c6dab98e0",
-        "span_id": "72fd1d69ed6b210b",
-        "routing_key": "rk-59589742",
+        "trace_id": "b8d0b654c3de06cb8063e687d67a53bb",
+        "span_id": "34dc7e1c9ab4c983",
+        "routing_key": "rk-019da2c4",
         "headers": {
-          "baggage": "sd-routing-key=rk-59589742,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-59589742",
-          "traceparent": "00-5156ddde34ef70412f16206c6dab98e0-72fd1d69ed6b210b-01",
+          "baggage": "sd-routing-key=rk-019da2c4,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-019da2c4",
+          "traceparent": "00-b8d0b654c3de06cb8063e687d67a53bb-34dc7e1c9ab4c983-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "otel-ruby--rabbitmq-rabbitmq--96ae097a"
+          "x-sd-canary": "otel-ruby--rabbitmq-rabbitmq--a7c6f26a"
         }
       },
       "observed": {
         "transport": "rabbitmq",
         "headers": {
           "traceparent": [
-            "00-ab59db1dd84b8b091e1d1e85d64ce952-6fc0496bb38aebb9-01"
+            "00-11f515992bdbebd3a1066ad81f6769c5-bd8e46a6db4b2172-01"
           ]
         }
       },

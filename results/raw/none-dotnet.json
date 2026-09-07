@@ -16,22 +16,22 @@
     "tracer_version": "unknown",
     "variant": "none-dotnet"
   },
-  "ran_at": "2026-09-05T15:57:09.808072732Z",
+  "ran_at": "2026-09-07T11:02:46.793399371Z",
   "tests": [
     {
       "boundary": "http-\u003ehttp",
-      "test_id": "none-dotnet--http-http--edee309a",
+      "test_id": "none-dotnet--http-http--5047f5ce",
       "delivered": true,
       "seeded": {
-        "trace_id": "757d21adf003b2a0dfe8831f4225964d",
-        "span_id": "1122b724846e2adb",
-        "routing_key": "rk-068ef66d",
+        "trace_id": "5d4f886fc4aff85f595adf0582a79e51",
+        "span_id": "19e3b98ab3b4709b",
+        "routing_key": "rk-e4b85f0e",
         "headers": {
-          "baggage": "sd-routing-key=rk-068ef66d,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-068ef66d",
-          "traceparent": "00-757d21adf003b2a0dfe8831f4225964d-1122b724846e2adb-01",
+          "baggage": "sd-routing-key=rk-e4b85f0e,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-e4b85f0e",
+          "traceparent": "00-5d4f886fc4aff85f595adf0582a79e51-19e3b98ab3b4709b-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--http-http--edee309a"
+          "x-sd-canary": "none-dotnet--http-http--5047f5ce"
         }
       },
       "observed": {
@@ -41,10 +41,10 @@
             "application/json; charset=utf-8"
           ],
           "correlation-context": [
-            "sd-routing-key=rk-068ef66d, team=alpha"
+            "sd-routing-key=rk-e4b85f0e, team=alpha"
           ],
           "traceparent": [
-            "00-757d21adf003b2a0dfe8831f4225964d-6f0d6aaef1d20fc8-01"
+            "00-5d4f886fc4aff85f595adf0582a79e51-98392f14828d44c0-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -62,18 +62,18 @@
     },
     {
       "boundary": "http-\u003egrpc",
-      "test_id": "none-dotnet--http-grpc--8209c5cc",
+      "test_id": "none-dotnet--http-grpc--1670bb7b",
       "delivered": true,
       "seeded": {
-        "trace_id": "3d69a9a08edced781a1f2a28a092fc4d",
-        "span_id": "c27ae8ebf92043fe",
-        "routing_key": "rk-784e3023",
+        "trace_id": "bdb874d8eb4095aef799c8285bd1bc33",
+        "span_id": "4e9a273fd5a31528",
+        "routing_key": "rk-5e6a9aaf",
         "headers": {
-          "baggage": "sd-routing-key=rk-784e3023,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-784e3023",
-          "traceparent": "00-3d69a9a08edced781a1f2a28a092fc4d-c27ae8ebf92043fe-01",
+          "baggage": "sd-routing-key=rk-5e6a9aaf,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-5e6a9aaf",
+          "traceparent": "00-bdb874d8eb4095aef799c8285bd1bc33-4e9a273fd5a31528-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--http-grpc--8209c5cc"
+          "x-sd-canary": "none-dotnet--http-grpc--1670bb7b"
         }
       },
       "observed": {
@@ -86,13 +86,13 @@
             "application/grpc"
           ],
           "correlation-context": [
-            "sd-routing-key=rk-784e3023, team=alpha"
+            "sd-routing-key=rk-5e6a9aaf, team=alpha"
           ],
           "grpc-accept-encoding": [
             "identity,gzip,deflate"
           ],
           "traceparent": [
-            "00-3d69a9a08edced781a1f2a28a092fc4d-da63f665f534921d-01"
+            "00-bdb874d8eb4095aef799c8285bd1bc33-ba6bd3644f385a87-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -113,18 +113,18 @@
     },
     {
       "boundary": "http-\u003ekafka",
-      "test_id": "none-dotnet--http-kafka--07c5ccc0",
+      "test_id": "none-dotnet--http-kafka--ef634bec",
       "delivered": true,
       "seeded": {
-        "trace_id": "d15b96ce83a686387259390afaeadb82",
-        "span_id": "b4b407d3ca4d85ba",
-        "routing_key": "rk-920f967e",
+        "trace_id": "fb6ff745bd512fd274df70a00f9645d6",
+        "span_id": "c15da517feeaad39",
+        "routing_key": "rk-6f0e8706",
         "headers": {
-          "baggage": "sd-routing-key=rk-920f967e,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-920f967e",
-          "traceparent": "00-d15b96ce83a686387259390afaeadb82-b4b407d3ca4d85ba-01",
+          "baggage": "sd-routing-key=rk-6f0e8706,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-6f0e8706",
+          "traceparent": "00-fb6ff745bd512fd274df70a00f9645d6-c15da517feeaad39-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--http-kafka--07c5ccc0"
+          "x-sd-canary": "none-dotnet--http-kafka--ef634bec"
         }
       },
       "observed": {
@@ -142,18 +142,18 @@
     },
     {
       "boundary": "http-\u003erabbitmq",
-      "test_id": "none-dotnet--http-rabbitmq--5d707d7a",
+      "test_id": "none-dotnet--http-rabbitmq--dfaefdf7",
       "delivered": true,
       "seeded": {
-        "trace_id": "c94a27d30d72c3474e5ded199559bc31",
-        "span_id": "dca1df9d9b0ebd4a",
-        "routing_key": "rk-b7d2466c",
+        "trace_id": "ce3dd5bad7f06e4ffe8262d70987fb51",
+        "span_id": "e478ba16b609404d",
+        "routing_key": "rk-74a92443",
         "headers": {
-          "baggage": "sd-routing-key=rk-b7d2466c,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-b7d2466c",
-          "traceparent": "00-c94a27d30d72c3474e5ded199559bc31-dca1df9d9b0ebd4a-01",
+          "baggage": "sd-routing-key=rk-74a92443,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-74a92443",
+          "traceparent": "00-ce3dd5bad7f06e4ffe8262d70987fb51-e478ba16b609404d-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--http-rabbitmq--5d707d7a"
+          "x-sd-canary": "none-dotnet--http-rabbitmq--dfaefdf7"
         }
       },
       "observed": {
@@ -171,18 +171,18 @@
     },
     {
       "boundary": "grpc-\u003ehttp",
-      "test_id": "none-dotnet--grpc-http--1f7b76e1",
+      "test_id": "none-dotnet--grpc-http--3c7431da",
       "delivered": true,
       "seeded": {
-        "trace_id": "8630fd94d7a119b80abe470c7d54ac60",
-        "span_id": "ade5fa5292bc1356",
-        "routing_key": "rk-2b4b25a8",
+        "trace_id": "37b1cce36dc63e0a434d9080c16c22b1",
+        "span_id": "a1b924602cf519b5",
+        "routing_key": "rk-5e76d600",
         "headers": {
-          "baggage": "sd-routing-key=rk-2b4b25a8,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-2b4b25a8",
-          "traceparent": "00-8630fd94d7a119b80abe470c7d54ac60-ade5fa5292bc1356-01",
+          "baggage": "sd-routing-key=rk-5e76d600,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-5e76d600",
+          "traceparent": "00-37b1cce36dc63e0a434d9080c16c22b1-a1b924602cf519b5-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--grpc-http--1f7b76e1"
+          "x-sd-canary": "none-dotnet--grpc-http--3c7431da"
         }
       },
       "observed": {
@@ -192,10 +192,10 @@
             "application/json; charset=utf-8"
           ],
           "correlation-context": [
-            "sd-routing-key=rk-2b4b25a8, team=alpha"
+            "sd-routing-key=rk-5e76d600, team=alpha"
           ],
           "traceparent": [
-            "00-8630fd94d7a119b80abe470c7d54ac60-fd8b3b39e8647201-01"
+            "00-37b1cce36dc63e0a434d9080c16c22b1-75d0d79b3fbf26b9-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -213,18 +213,18 @@
     },
     {
       "boundary": "grpc-\u003egrpc",
-      "test_id": "none-dotnet--grpc-grpc--36765b2e",
+      "test_id": "none-dotnet--grpc-grpc--bf63e2b2",
       "delivered": true,
       "seeded": {
-        "trace_id": "4daf0cafb3e9e9ef282e54b70b56db18",
-        "span_id": "ce736162ebb6104b",
-        "routing_key": "rk-3cb25b15",
+        "trace_id": "c77c76c0c2e7e41cfc456654acf84a03",
+        "span_id": "87dc6ae8f172f057",
+        "routing_key": "rk-0e3597b1",
         "headers": {
-          "baggage": "sd-routing-key=rk-3cb25b15,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-3cb25b15",
-          "traceparent": "00-4daf0cafb3e9e9ef282e54b70b56db18-ce736162ebb6104b-01",
+          "baggage": "sd-routing-key=rk-0e3597b1,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-0e3597b1",
+          "traceparent": "00-c77c76c0c2e7e41cfc456654acf84a03-87dc6ae8f172f057-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--grpc-grpc--36765b2e"
+          "x-sd-canary": "none-dotnet--grpc-grpc--bf63e2b2"
         }
       },
       "observed": {
@@ -237,13 +237,13 @@
             "application/grpc"
           ],
           "correlation-context": [
-            "sd-routing-key=rk-3cb25b15, team=alpha"
+            "sd-routing-key=rk-0e3597b1, team=alpha"
           ],
           "grpc-accept-encoding": [
             "identity,gzip,deflate"
           ],
           "traceparent": [
-            "00-4daf0cafb3e9e9ef282e54b70b56db18-f0fd8fd4ece69a78-01"
+            "00-c77c76c0c2e7e41cfc456654acf84a03-33330508ca59e1b1-01"
           ],
           "tracestate": [
             "sdtest=v1"
@@ -264,18 +264,18 @@
     },
     {
       "boundary": "grpc-\u003ekafka",
-      "test_id": "none-dotnet--grpc-kafka--fb83a61f",
+      "test_id": "none-dotnet--grpc-kafka--85d46b56",
       "delivered": true,
       "seeded": {
-        "trace_id": "9cdb70c0e8e3e37dbce7b69ed052adcd",
-        "span_id": "751b989cb479c3ee",
-        "routing_key": "rk-3748a631",
+        "trace_id": "a0fd10ef3738c8d263888d381727e57b",
+        "span_id": "2b9d25e69c0898d9",
+        "routing_key": "rk-a2edaf9c",
         "headers": {
-          "baggage": "sd-routing-key=rk-3748a631,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-3748a631",
-          "traceparent": "00-9cdb70c0e8e3e37dbce7b69ed052adcd-751b989cb479c3ee-01",
+          "baggage": "sd-routing-key=rk-a2edaf9c,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-a2edaf9c",
+          "traceparent": "00-a0fd10ef3738c8d263888d381727e57b-2b9d25e69c0898d9-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--grpc-kafka--fb83a61f"
+          "x-sd-canary": "none-dotnet--grpc-kafka--85d46b56"
         }
       },
       "observed": {
@@ -293,18 +293,18 @@
     },
     {
       "boundary": "grpc-\u003erabbitmq",
-      "test_id": "none-dotnet--grpc-rabbitmq--dab284c3",
+      "test_id": "none-dotnet--grpc-rabbitmq--dc802266",
       "delivered": true,
       "seeded": {
-        "trace_id": "5f8b367839d056f1d5cc1b32f4862c6a",
-        "span_id": "1b84f27da698206b",
-        "routing_key": "rk-ae5767fd",
+        "trace_id": "982460cc855de6ff5cc23dc9979a94b7",
+        "span_id": "eeffd9c54ba4f4fc",
+        "routing_key": "rk-5e22bd61",
         "headers": {
-          "baggage": "sd-routing-key=rk-ae5767fd,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-ae5767fd",
-          "traceparent": "00-5f8b367839d056f1d5cc1b32f4862c6a-1b84f27da698206b-01",
+          "baggage": "sd-routing-key=rk-5e22bd61,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-5e22bd61",
+          "traceparent": "00-982460cc855de6ff5cc23dc9979a94b7-eeffd9c54ba4f4fc-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--grpc-rabbitmq--dab284c3"
+          "x-sd-canary": "none-dotnet--grpc-rabbitmq--dc802266"
         }
       },
       "observed": {
@@ -322,18 +322,18 @@
     },
     {
       "boundary": "kafka-\u003ehttp",
-      "test_id": "none-dotnet--kafka-http--871f83d5",
+      "test_id": "none-dotnet--kafka-http--2a296d18",
       "delivered": true,
       "seeded": {
-        "trace_id": "7332d5fcf52f320e60f0c24c15361680",
-        "span_id": "a55bc8d202e69ea3",
-        "routing_key": "rk-1d807abc",
+        "trace_id": "747d17b3e8072f03eeda06aa7ffe681c",
+        "span_id": "768408060052a3fa",
+        "routing_key": "rk-ec3e1a07",
         "headers": {
-          "baggage": "sd-routing-key=rk-1d807abc,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-1d807abc",
-          "traceparent": "00-7332d5fcf52f320e60f0c24c15361680-a55bc8d202e69ea3-01",
+          "baggage": "sd-routing-key=rk-ec3e1a07,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-ec3e1a07",
+          "traceparent": "00-747d17b3e8072f03eeda06aa7ffe681c-768408060052a3fa-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--kafka-http--871f83d5"
+          "x-sd-canary": "none-dotnet--kafka-http--2a296d18"
         }
       },
       "observed": {
@@ -355,18 +355,18 @@
     },
     {
       "boundary": "kafka-\u003egrpc",
-      "test_id": "none-dotnet--kafka-grpc--53308d7e",
+      "test_id": "none-dotnet--kafka-grpc--ecca3a10",
       "delivered": true,
       "seeded": {
-        "trace_id": "c7c22735e0029e9b496d0357cca93114",
-        "span_id": "457183a611338923",
-        "routing_key": "rk-d1d241a8",
+        "trace_id": "373855f4086884b837d832cd2f2894b7",
+        "span_id": "4be271427ccfb03a",
+        "routing_key": "rk-57eee66d",
         "headers": {
-          "baggage": "sd-routing-key=rk-d1d241a8,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-d1d241a8",
-          "traceparent": "00-c7c22735e0029e9b496d0357cca93114-457183a611338923-01",
+          "baggage": "sd-routing-key=rk-57eee66d,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-57eee66d",
+          "traceparent": "00-373855f4086884b837d832cd2f2894b7-4be271427ccfb03a-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--kafka-grpc--53308d7e"
+          "x-sd-canary": "none-dotnet--kafka-grpc--ecca3a10"
         }
       },
       "observed": {
@@ -397,18 +397,18 @@
     },
     {
       "boundary": "kafka-\u003ekafka",
-      "test_id": "none-dotnet--kafka-kafka--71e4aec0",
+      "test_id": "none-dotnet--kafka-kafka--84b65262",
       "delivered": true,
       "seeded": {
-        "trace_id": "b7713e0969fa97b6e609eaa0c8f88843",
-        "span_id": "baf018d7b4b39441",
-        "routing_key": "rk-e071a89d",
+        "trace_id": "373b86157be300d43e23603e19d62864",
+        "span_id": "fb2bd151ecd3d27e",
+        "routing_key": "rk-e5888360",
         "headers": {
-          "baggage": "sd-routing-key=rk-e071a89d,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-e071a89d",
-          "traceparent": "00-b7713e0969fa97b6e609eaa0c8f88843-baf018d7b4b39441-01",
+          "baggage": "sd-routing-key=rk-e5888360,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-e5888360",
+          "traceparent": "00-373b86157be300d43e23603e19d62864-fb2bd151ecd3d27e-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--kafka-kafka--71e4aec0"
+          "x-sd-canary": "none-dotnet--kafka-kafka--84b65262"
         }
       },
       "observed": {
@@ -426,18 +426,18 @@
     },
     {
       "boundary": "kafka-\u003erabbitmq",
-      "test_id": "none-dotnet--kafka-rabbitmq--120f1e10",
+      "test_id": "none-dotnet--kafka-rabbitmq--f82f5229",
       "delivered": true,
       "seeded": {
-        "trace_id": "441c55db497c1b76710f1d36e77dcccc",
-        "span_id": "f3f04a7adbd5d5d8",
-        "routing_key": "rk-6a20c537",
+        "trace_id": "289a60bc5c5940c68264d386de5daf6b",
+        "span_id": "f578afc9564b3c1d",
+        "routing_key": "rk-1e8c4460",
         "headers": {
-          "baggage": "sd-routing-key=rk-6a20c537,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-6a20c537",
-          "traceparent": "00-441c55db497c1b76710f1d36e77dcccc-f3f04a7adbd5d5d8-01",
+          "baggage": "sd-routing-key=rk-1e8c4460,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-1e8c4460",
+          "traceparent": "00-289a60bc5c5940c68264d386de5daf6b-f578afc9564b3c1d-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--kafka-rabbitmq--120f1e10"
+          "x-sd-canary": "none-dotnet--kafka-rabbitmq--f82f5229"
         }
       },
       "observed": {
@@ -455,18 +455,18 @@
     },
     {
       "boundary": "rabbitmq-\u003ehttp",
-      "test_id": "none-dotnet--rabbitmq-http--00d09265",
+      "test_id": "none-dotnet--rabbitmq-http--b28ac1e8",
       "delivered": true,
       "seeded": {
-        "trace_id": "493b0f30df5c7afad94dd7d30e758d67",
-        "span_id": "ab2c795938462cac",
-        "routing_key": "rk-380ade00",
+        "trace_id": "4b430f6a6f4354d76c9682c43f914272",
+        "span_id": "d2a5b8a82edf44b7",
+        "routing_key": "rk-77c5ec9b",
         "headers": {
-          "baggage": "sd-routing-key=rk-380ade00,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-380ade00",
-          "traceparent": "00-493b0f30df5c7afad94dd7d30e758d67-ab2c795938462cac-01",
+          "baggage": "sd-routing-key=rk-77c5ec9b,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-77c5ec9b",
+          "traceparent": "00-4b430f6a6f4354d76c9682c43f914272-d2a5b8a82edf44b7-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--rabbitmq-http--00d09265"
+          "x-sd-canary": "none-dotnet--rabbitmq-http--b28ac1e8"
         }
       },
       "observed": {
@@ -488,18 +488,18 @@
     },
     {
       "boundary": "rabbitmq-\u003egrpc",
-      "test_id": "none-dotnet--rabbitmq-grpc--72939e58",
+      "test_id": "none-dotnet--rabbitmq-grpc--076cb941",
       "delivered": true,
       "seeded": {
-        "trace_id": "c7f7db259ab4fd8c7140d02b9ce08a63",
-        "span_id": "637f7fea1040902f",
-        "routing_key": "rk-246862ac",
+        "trace_id": "7134bbd21c24edc1db6850235158b14b",
+        "span_id": "9d365c8cd75cbf83",
+        "routing_key": "rk-868ec426",
         "headers": {
-          "baggage": "sd-routing-key=rk-246862ac,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-246862ac",
-          "traceparent": "00-c7f7db259ab4fd8c7140d02b9ce08a63-637f7fea1040902f-01",
+          "baggage": "sd-routing-key=rk-868ec426,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-868ec426",
+          "traceparent": "00-7134bbd21c24edc1db6850235158b14b-9d365c8cd75cbf83-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--rabbitmq-grpc--72939e58"
+          "x-sd-canary": "none-dotnet--rabbitmq-grpc--076cb941"
         }
       },
       "observed": {
@@ -530,18 +530,18 @@
     },
     {
       "boundary": "rabbitmq-\u003ekafka",
-      "test_id": "none-dotnet--rabbitmq-kafka--387fb5db",
+      "test_id": "none-dotnet--rabbitmq-kafka--17a0a35a",
       "delivered": true,
       "seeded": {
-        "trace_id": "2aa0a9afaf6e0148ffef0cb5debe431d",
-        "span_id": "fe479080bd40069d",
-        "routing_key": "rk-e0eb7ddc",
+        "trace_id": "8bd450a2a2c3bb0ea0dfebc1e0a4d07a",
+        "span_id": "0887fb0b07a8f22a",
+        "routing_key": "rk-71a8323a",
         "headers": {
-          "baggage": "sd-routing-key=rk-e0eb7ddc,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-e0eb7ddc",
-          "traceparent": "00-2aa0a9afaf6e0148ffef0cb5debe431d-fe479080bd40069d-01",
+          "baggage": "sd-routing-key=rk-71a8323a,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-71a8323a",
+          "traceparent": "00-8bd450a2a2c3bb0ea0dfebc1e0a4d07a-0887fb0b07a8f22a-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--rabbitmq-kafka--387fb5db"
+          "x-sd-canary": "none-dotnet--rabbitmq-kafka--17a0a35a"
         }
       },
       "observed": {
@@ -559,18 +559,18 @@
     },
     {
       "boundary": "rabbitmq-\u003erabbitmq",
-      "test_id": "none-dotnet--rabbitmq-rabbitmq--68d2f7f7",
+      "test_id": "none-dotnet--rabbitmq-rabbitmq--0749d8dd",
       "delivered": true,
       "seeded": {
-        "trace_id": "12cd487e276b0abb84067cd032b5a676",
-        "span_id": "667f888b92699650",
-        "routing_key": "rk-20cd3753",
+        "trace_id": "28a38e91aef14f85ccb9469d1890546d",
+        "span_id": "ba89971a8263cac6",
+        "routing_key": "rk-efe672bf",
         "headers": {
-          "baggage": "sd-routing-key=rk-20cd3753,team=alpha",
-          "ot-baggage-sd-routing-key": "rk-20cd3753",
-          "traceparent": "00-12cd487e276b0abb84067cd032b5a676-667f888b92699650-01",
+          "baggage": "sd-routing-key=rk-efe672bf,team=alpha",
+          "ot-baggage-sd-routing-key": "rk-efe672bf",
+          "traceparent": "00-28a38e91aef14f85ccb9469d1890546d-ba89971a8263cac6-01",
           "tracestate": "sdtest=v1",
-          "x-sd-canary": "none-dotnet--rabbitmq-rabbitmq--68d2f7f7"
+          "x-sd-canary": "none-dotnet--rabbitmq-rabbitmq--0749d8dd"
         }
       },
       "observed": {
