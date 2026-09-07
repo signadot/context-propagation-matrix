@@ -4,3 +4,4 @@ results/
 relays/rust/target/
 relays/node/node_modules/
 **/.DS_Store
+relays/go-otelc/.otelc-build/

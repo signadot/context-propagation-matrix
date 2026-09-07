@@ -8,9 +8,10 @@ set -uo pipefail
 cd "$(dirname "$0")"
 
 ALL_VARIANTS=(
-  otel-java otel-node otel-python otel-go otel-dotnet otel-ruby otel-php otel-rust
-  datadog-java datadog-node datadog-python datadog-go datadog-dotnet datadog-ruby
-  datadog-php datadog-rust
+  otel-java otel-node otel-python otel-go otel-go-compiletime otel-dotnet otel-ruby
+  otel-php otel-rust
+  datadog-java datadog-node datadog-python datadog-go datadog-go-orchestrion
+  datadog-dotnet datadog-ruby datadog-php datadog-rust
   datadog-java-defaults datadog-node-defaults datadog-python-defaults
   datadog-go-defaults datadog-dotnet-defaults datadog-ruby-defaults
   datadog-python-kafkaprop

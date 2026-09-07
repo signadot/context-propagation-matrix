@@ -69,6 +69,10 @@ var langOrder = map[string]int{
 //   - "in-code": instrumentation is woven into application code — wrappers
 //     at every client/server construction site and contexts threaded through
 //     (Go contribs, Rust propagator API + hand-written carriers).
+//   - "build-time": source is untouched but the build command is wrapped by a
+//     compile-time weaver (`orchestrion go build`, `go tool otelc go build`)
+//     that injects the instrumentation during compilation. Per-variant, see
+//     setupModeOverrides.
 //
 // The baseline ("none") has no mode by definition.
 var setupModes = map[string]map[string]string{
@@ -94,8 +98,20 @@ var setupModes = map[string]map[string]string{
 	},
 }
 
-func setupMode(tool, lang string) string {
-	if m, ok := setupModes[tool][lang]; ok {
+// setupModeOverrides classifies variants whose setup differs from the
+// tool×language default: the Go build-time weaving variants compile unmodified
+// naive source (relays/go-orchestrion, relays/go-otelc) with a wrapped build
+// command.
+var setupModeOverrides = map[string]string{
+	"otel-go-compiletime":    "build-time",
+	"datadog-go-orchestrion": "build-time",
+}
+
+func setupMode(v *VariantResult) string {
+	if m, ok := setupModeOverrides[v.Variant]; ok {
+		return m
+	}
+	if m, ok := setupModes[v.Tool][v.Language]; ok {
 		return m
 	}
 	return "—"
@@ -232,8 +248,10 @@ func main() {
 	w("The `setup` column says what attaching the tool required: `zero-code`")
 	w("(runtime attach only — agent flag, preload require, CLR profiler, php.ini;")
 	w("no source involved) · `init-only` (a boot-file initializer, request-path")
-	w("code untouched) · `in-code` (wrappers and carriers woven into application")
-	w("code, contexts threaded by hand). See DESIGN.md and the relay READMEs.")
+	w("code untouched) · `build-time` (source untouched, build command wrapped by")
+	w("a compile-time weaver — `orchestrion go build`, `go tool otelc go build`) ·")
+	w("`in-code` (wrappers and carriers woven into application code, contexts")
+	w("threaded by hand). See DESIGN.md and the relay READMEs.")
 	w("")
 
 	for _, tool := range tools {
@@ -274,7 +292,7 @@ func main() {
 						cells[i] = glyph(hv.key, statusOf(t.Status, hv.key), t.Delivered)
 					}
 				}
-				w("| %s | %s | %s |", rowLabel(v), setupMode(v.Tool, v.Language), strings.Join(cells, " | "))
+				w("| %s | %s | %s |", rowLabel(v), setupMode(v), strings.Join(cells, " | "))
 			}
 			w("")
 		}

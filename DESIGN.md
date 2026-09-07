@@ -27,9 +27,13 @@ combination, never by quoting vendor documentation.
 
 A **variant** is one tool × language pair, named `{tool}-{lang}` (e.g.
 `datadog-java`). Config variations get suffixed names (e.g.
-`datadog-java-defaults`, `datadog-python-kafkaprop`). Not every tool covers
-every language (e.g. Elastic has no Rust agent); `run.sh` holds the
-authoritative variant list.
+`datadog-java-defaults`, `datadog-python-kafkaprop`), and so do alternative
+*setup mechanisms*: `otel-go-compiletime` and `datadog-go-orchestrion`
+compile unmodified naive Go source with each vendor's build-time weaver
+(`relays/go-otelc/`, `relays/go-orchestrion/`), measured alongside the
+hand-wired `otel-go`/`datadog-go` rows. Not every tool covers every language
+(e.g. Elastic has no Rust agent); `run.sh` holds the authoritative variant
+list.
 
 ## Components
 
@@ -46,10 +50,14 @@ protocols and, on receiving a message, forwards a new message to the sink over
 the protocol named in the payload. **Relay code must never touch headers,
 metadata, record headers, or tracing APIs directly** — header propagation is
 exclusively the job of the tool's instrumentation, because that is what we are
-measuring. The exceptions are Go and Rust, where no auto-instrumentation
-exists for any of the tools; those relays use each vendor's documented
-contrib libraries / carrier APIs and idiomatic context plumbing, and the
-matrix labels their results with the exact libraries used. PHP is a partial
+measuring. The exceptions are Go and Rust, where no *runtime* attach exists
+for any of the tools; those relays use each vendor's documented contrib
+libraries / carrier APIs and idiomatic context plumbing, and the matrix
+labels their results with the exact libraries used. Go additionally has two
+**build-time weaving** variants (`otel-go-compiletime`,
+`datadog-go-orchestrion`) whose application source is fully naive — the
+weaver injects instrumentation during compilation, so the no-touching rule
+holds absolutely for them. PHP is a partial
 exception of a different kind: it serves HTTP and consumes Kafka/RabbitMQ,
 but no tracer-supported PHP topology can serve gRPC (see
 `relays/php/README.md`), so its gRPC-inbound cells are undeliverable by
@@ -224,6 +232,7 @@ the matrix footnotes.
 | node | express / axios (node http) | @grpc/grpc-js + proto-loader | kafkajs | amqplib |
 | python | flask / requests | grpcio | confluent-kafka | pika |
 | go | net/http | google.golang.org/grpc | per-tool contrib (kotel / dd contrib / nrsarama) | amqp091-go (per-tool wiring) |
+| go (build-time) | net/http | google.golang.org/grpc | IBM/sarama (orchestrion) · segmentio/kafka-go (otelc) — each weaver's supported client | amqp091-go (neither weaver has an integration) |
 | dotnet | ASP.NET Core minimal API / HttpClient | Grpc.AspNetCore + Grpc.Net.Client | Confluent.Kafka | RabbitMQ.Client |
 | ruby | sinatra (puma) / net-http | grpc gem | per-tool (rdkafka / ruby-kafka), see relay README | bunny |
 | php | Apache mod_php + Slim 4 / Guzzle | ext-grpc (client only; no server — see relay README) | ext-rdkafka | php-amqplib |
@@ -238,7 +247,10 @@ matrix stays attributable to exact tracer versions (each table row carries
 the version that produced it).
 
 Updates arrive as Dependabot PRs (`.github/dependabot.yml` at the repo
-root): gomod, npm (app + one single-dependency manifest per Node tool under
+root): gomod (root module, `relays/go`, and the two build-time weaving
+modules `relays/go-orchestrion` — which pins orchestrion + dd-trace-go in
+go.mod — and `relays/go-otelc` — which pins otelc via the go.mod `tool`
+directive), npm (app + one single-dependency manifest per Node tool under
 `relays/node/tools/`), pip (`requirements.txt` + `requirements-<tool>.txt`),
 bundler (one Gemfile per tool under `relays/ruby/gemfiles/`), composer,
 maven, nuget, cargo, and docker base images.
@@ -285,7 +297,8 @@ PHP and Rust relays and the RabbitMQ column were built that way).
 4. `run.sh` — add the new variants to `ALL_VARIANTS`.
 5. `matrixgen/main.go` — add the language to `langOrder` and its
    attachment tier per tool to `setupModes` (`zero-code` / `init-only` /
-   `in-code`).
+   `in-code`); variants with a different mechanism (e.g. build-time weaving)
+   get an entry in `setupModeOverrides` instead.
 6. `./run.sh <the new variants>` then regenerate `results/MATRIX.md` with
    `go run ./matrixgen`; record root causes for any non-green cell in
    `FINDINGS.md`/`REFERENCES.md`.

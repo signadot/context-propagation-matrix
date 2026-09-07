@@ -266,6 +266,30 @@ consume-side.
 **Not found upstream**: no feature request for php-amqplib instrumentation —
 filing candidate (php-amqplib is the dominant PHP AMQP client).
 
+### Go compile-time weaving (otelc): produce-side perfect, consume-side dark, no RabbitMQ
+
+Variant `otel-go-compiletime` (naive app, `go tool otelc go build`): all
+http/grpc-inbound legs propagate everything including baggage into Kafka;
+all kafka-inbound legs lose everything; rabbitmq legs uninstrumented.
+
+- [opentelemetry-go-compile-instrumentation](https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation)
+  (repo; v1.0 stable, v1.1.0 measured) — the supported-libraries table in
+  [getting-started.md](https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/blob/main/docs/getting-started.md)
+  lists `segmentio/kafka-go` as the only messaging client: no sarama, no
+  franz-go, no AMQP client — the rabbitmq column measures that absence.
+- [opentelemetry-go-compile-instrumentation#695](https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/issues/695)
+  (issue, open) — maintainer-acknowledged messaging-semconv workstream that
+  names our exact consume-side gap ("a process-span story for the zero-code
+  gap", kafka-go span-links fix) and plans IBM/sarama as the next client.
+  Structural cause of the dark kafka-inbound legs: kafka-go's `Reader` is a
+  pull API with no callback boundary, so the woven consumer has no place to
+  hand the extracted context to application code, whose loop context is
+  `context.Background()`.
+- [opentelemetry-go-compile-instrumentation#1076](https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/pull/1076)
+  (PR, merged) — `(*kafka.Reader).FetchMessage` instrumentation, confirming
+  the consume span is created per message; the missing half is activation,
+  not extraction.
+
 ---
 
 ## Datadog
@@ -437,6 +461,38 @@ candidate.
 **Not found upstream**: no issue reports that consumed Kafka context doesn't
 reach post-consume user code in dd-trace-php — the source citation is the
 only available evidence. Filing candidate.
+
+### Go Orchestrion: every Kafka-touching leg starts a new trace; no amqp091 integration
+
+Variant `datadog-go-orchestrion` (naive app, `orchestrion go build`, same
+IBM/sarama v1.60.2 + dd-trace-go v2.10.1 as the hand-wired row):
+http/grpc→http/grpc legs propagate everything (W3C baggage *and*
+`ot-baggage-*`); every leg into or out of Kafka shows `x-datadog-*` +
+`traceparent` present but carrying a fresh trace-id, baggage gone.
+
+- [Orchestrion](https://github.com/DataDog/orchestrion) (repo, v1.13.0
+  measured); [compile-time instrumentation docs](https://docs.datadoghq.com/tracing/trace_collection/automatic_instrumentation/dd_libraries/go/?tab=compiletimeinstrumentation).
+- [orchestrion#871](https://github.com/DataDog/orchestrion/issues/871)
+  (issue, open) — the context-discovery limitation underneath the produce
+  gap: advice templates resolve a `context.Context` only from the innermost
+  function's parameter list. sarama's `SyncProducer.SendMessage(msg)` has no
+  context parameter at all, so the woven produce span cannot attach to the
+  inbound request context and starts a new root — exactly what the matrix
+  records.
+- [dd-trace-go contrib IBM/sarama](https://pkg.go.dev/github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2)
+  (docs) — the manual pattern the hand-wired relay uses closes both gaps:
+  inject from the request context into the message before `SendMessage`,
+  extract-and-activate in the consumer handler. Same library versions, all
+  16 legs green — the delta is purely the two steps the weaver cannot see.
+- dd-trace-go has no amqp091/RabbitMQ contrib (see §Datadog/Ruby economics
+  in FINDINGS), so Orchestrion has nothing to weave on rabbitmq legs.
+
+**Not found upstream**: (a) no issue reports that Orchestrion's sarama
+consume path fails to continue the trace seeded in record headers — filing
+candidate; (b) the published `dd-trace-go/orchestrion/all/v2` module (at
+v2.10.1) carries dangling local `replace` directives that make
+`orchestrion pin` print a spurious "removing unnecessary import" warning
+(build unaffected; verified by symbol inspection) — filing candidate.
 
 ---
 

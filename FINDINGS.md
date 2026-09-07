@@ -2,9 +2,10 @@
 
 Empirical results are in [`results/MATRIX.md`](results/MATRIX.md) (raw header
 dumps per test in `results/raw/*.json`). This file documents *why* the notable
-cells look the way they do, with upstream citations. Runs dated 2026-09-05;
-37 tracer variants plus 8 no-instrumentation baselines × 16 boundaries
-({http, grpc, kafka, rabbitmq}²); tracer versions as recorded per variant.
+cells look the way they do, with upstream citations. Runs dated 2026-09-05
+(Go build-time weaving variants: 2026-09-07); 39 tracer variants plus 8
+no-instrumentation baselines × 16 boundaries ({http, grpc, kafka,
+rabbitmq}²); tracer versions as recorded per variant.
 
 ## 1. Datadog Java: W3C `baggage` survives only HTTP→HTTP — 1 of 16 boundaries
 
@@ -504,7 +505,84 @@ The catch: none of it happens unless the developer wires the carriers at
 every hop — "supported" here means "the API exists", not "your service is
 covered by attaching an agent".
 
-## 11. Baseline (no instrumentation): seven clean zeros — and .NET
+## 11. Go build-time weaving: zero source changes, two very different halves
+
+Go has no runtime attach, but both vendors now ship compile-time weavers, and
+the matrix measures them as first-class variants. Both compile the *same kind
+of deliberately naive app* (single `main.go`, zero tracing imports — see
+`relays/go-orchestrion/` and `relays/go-otelc/`); the only difference from an
+uninstrumented build is the build command.
+
+**otel-go-compiletime** — [OpenTelemetry Go Compile-Time
+Instrumentation](https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation)
+("otelc", v1.1.0, stable since v1.0; weaves OTel SDK v1.45.0). Installed as a
+Go 1.24+ tool dependency; the build is `go tool otelc go build`. With no
+committed config it analyzes the dependency graph and enables every
+instrumentation it has for libraries the app imports (here: net/http client +
+server, grpc client + server, segmentio/kafka-go producer + consumer, plus
+the SDK bootstrap that honors `OTEL_PROPAGATORS`).
+
+- **HTTP/gRPC-inbound legs (8/16): everything propagates** — traceparent,
+  foreign tracestate, and W3C baggage — *including into Kafka*. kafka-go's
+  `Writer.WriteMessages(ctx, …)` takes a context, and the woven producer
+  injects from it. A naive app gets baggage across an async produce hop with
+  zero source changes: no runtime-attach agent in any language does better
+  on those legs.
+- **Kafka-inbound legs (4/16): total loss.** kafka-go's `Reader` is a
+  pull-style API (`ReadMessage(ctx)` in an app-owned loop) with no callback
+  boundary, so the woven consumer instrumentation has nowhere to hand the
+  extracted context back to application code — the app's loop context is
+  `context.Background()` and outbound calls carry nothing (not even a new
+  trace: with no valid span context, the W3C propagator injects nothing).
+  The dominant failure class of the whole matrix (§14.1), reproduced by a
+  compile-time weaver.
+- **RabbitMQ legs: no instrumentation exists.** otelc's supported list has
+  no AMQP client, so all rabbitmq cells are dark — same coverage-allowlist
+  economics as every runtime agent (§14.3).
+
+**datadog-go-orchestrion** —
+[Orchestrion](https://github.com/DataDog/orchestrion) v1.13.0 weaving
+dd-trace-go v2.10.1. Setup is the documented `orchestrion pin` (which writes
+`orchestrion.tool.go` importing the catch-all
+`dd-trace-go/orchestrion/all/v2`), build is `orchestrion go build`. Same
+Kafka client and tracer version as the hand-wired datadog-go relay
+(IBM/sarama v1.60.2), so the two rows isolate exactly what weaving does and
+does not replace.
+
+- **http/grpc → http/grpc (4/16): everything propagates** — traceparent,
+  tracestate, W3C baggage, *and* `ot-baggage-*`. Orchestrion's woven
+  dd-trace-go bridges the inbound request context to outbound clients (via
+  its goroutine-local context machinery), so these legs match the hand-wired
+  relay exactly.
+- **Every Kafka-touching leg: headers present, context lost (`new_trace`).**
+  On produce, sarama's `SyncProducer.SendMessage(msg)` takes no context at
+  all; the woven producer starts a *root* produce span and injects that, so
+  `x-datadog-*`/`traceparent` arrive carrying a brand-new trace-id and the
+  seeded baggage/tracestate entries are gone. On consume, the woven
+  consumer-group instrumentation does not continue the trace seeded in the
+  record headers either — outbound calls again carry a fresh trace. This is
+  the span-centric failure shape (§14.2) in a new costume: dashboards show
+  spans everywhere, but continuity and baggage died at the broker. The
+  hand-wired relay passes these same legs with the same library versions,
+  because the dd contrib README's manual pattern (inject from the request
+  context before `SendMessage`, extract-and-activate in the handler) does
+  the two steps the weaver skips.
+- **RabbitMQ legs: dark** — dd-trace-go has no amqp091 integration for
+  Orchestrion to enable (same gap as the hand-wired row, §6 economics).
+
+Two operational notes, both learned the hard way. First, **woven
+dependencies are invisible to Go's build metadata**: Orchestrion links
+dd-trace-go into the binary behind the go tool's back, so `go version -m`
+shows *no trace of the tracer* — verifying weaving requires symbol
+inspection (`go tool nm | grep dd-trace-go`), and both Dockerfiles assert
+this so an un-woven binary fails the image build rather than silently
+publishing a dark row. Second, `orchestrion pin` prints a spurious
+`removing unnecessary import … replacement directory … does not exist`
+warning against the published `all/v2` module; it is cosmetic (the build
+weaves regardless — verified by symbols), but it cost this project an
+afternoon, and a real team could easily conclude the tool is broken.
+
+## 12. Baseline (no instrumentation): seven clean zeros — and .NET
 
 Control runs: every language's relay with no agent, wrapper, or tracing gem
 attached (`none-*` variants, 128 hops). Seven of eight languages behave as
@@ -533,7 +611,7 @@ a strict W3C propagator](https://learn.microsoft.com/en-us/dotnet/core/compatibi
 back) — an *uninstrumented* .NET service changes its propagation behavior on
 a runtime upgrade. Harness runs used .NET 8.
 
-## 12. Positive results worth stating
+## 13. Positive results worth stating
 
 - **All 16 boundaries, all headers**: OTel Java agent 2.31.1, OTel Node
   auto-instrumentations 0.80.0, OTel Go (otelhttp/otelgrpc/kotel + documented
@@ -548,14 +626,19 @@ a runtime upgrade. Harness runs used .NET 8.
 - **New Relic Python (13.5.0)** is a quiet star: 16/16 boundaries with
   zero code — the only New Relic agent, and one of very few agents of any
   vendor, to activate consumed context on both Kafka and RabbitMQ (§9).
+- **OTel Go compile-time weaving carries baggage into Kafka with zero source
+  changes** (otelc, §11): traceparent + tracestate + baggage all survive
+  http/grpc → kafka on a naive app whose build command is the only thing
+  that changed. That is a propagation result no runtime-attach agent can
+  reach in Go, because none exists.
 - **tracestate foreign-entry preservation** was honored by every tracer that
   continued a trace — including all seven New Relic agents, which append
   their `@nr` entry alongside foreign entries — with one exception:
   elastic-apm Python's gRPC path (§8).
-- **Canary**: `x-sd-canary` never leaked in any of the 720 recorded tests
-  (592 instrumented + 128 baseline) — relays re-emit, not proxy.
+- **Canary**: `x-sd-canary` never leaked in any of the 752 recorded tests
+  (624 instrumented + 128 baseline) — relays re-emit, not proxy.
 
-## 13. Cross-cutting conclusions
+## 14. Cross-cutting conclusions
 
 1. **The dominant failure class is consume-side context activation.** Across
    all four vendors, instrumentations inject correctly but fail to make the
@@ -613,3 +696,12 @@ a runtime upgrade. Harness runs used .NET 8.
    (§9), and dd-py's `DD_KAFKA_PROPAGATION_ENABLED=true` (§2, documented but
    default-off). Empirical testing of *your* config is the only way to know
    which side of the flag you're on.
+11. **Build-time weaving moves the boundary, not the failure class.** Go's
+   compile-time weavers (§11) deliver genuine zero-source-change propagation
+   on synchronous legs — otelc even carries baggage into Kafka — but both
+   tools break exactly where the runtime agents break: at the consume side
+   of async hops, and wherever the client library isn't on the
+   instrumentation allowlist. The API shape decides the ceiling (kafka-go's
+   context-accepting producer propagates; sarama's context-free
+   `SendMessage` cannot), and a weaver can only work with the shape it is
+   given.

@@ -1,12 +1,18 @@
-# Go relays
+# Go relays (hand-wired)
 
-Go has no auto-instrumentation for any of the four tools, so there are four
-separate relay programs, one per tool, each built exclusively from that
-vendor's documented contrib/instrumentation libraries with idiomatic
-`context.Context` plumbing (the one language where explicit context plumbing
-is allowed — see DESIGN.md). No relay constructs or copies propagation
-headers by hand; header injection/extraction is always done by the vendor's
-propagator or instrumentation API.
+Go has no *runtime* auto-instrumentation for any of the four tools, so this
+directory holds four separate relay programs, one per tool, each built
+exclusively from that vendor's documented contrib/instrumentation libraries
+with idiomatic `context.Context` plumbing (the one language where explicit
+context plumbing is allowed — see DESIGN.md). No relay constructs or copies
+propagation headers by hand; header injection/extraction is always done by
+the vendor's propagator or instrumentation API.
+
+Go's *build-time* weavers are measured separately, as naive apps whose build
+command is wrapped by the weaver: `relays/go-orchestrion/` (Datadog
+Orchestrion → `datadog-go-orchestrion`) and `relays/go-otelc/` (OpenTelemetry
+compile-time instrumentation → `otel-go-compiletime`). Comparing those rows
+against the hand-wired ones isolates exactly what weaving replaces.
 
 One Go module (`relays/go/go.mod`) with four main packages (`./otel`,
 `./datadog`, `./newrelic`, `./elastic`) and a shared `./internal/common`

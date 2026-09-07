@@ -319,6 +319,24 @@ services:
       OTEL_PROPAGATORS: tracecontext,baggage
     depends_on: *relay-depends
 
+  # Same tool, opposite setup: the hand-wired otel-go relay above wires
+  # contribs in code; this variant compiles the naive app in relays/go-otelc
+  # with the OTel compile-time weaver (`go tool otelc go build`) — zero source
+  # changes.
+  relay-otel-go-compiletime:
+    build: { context: ., dockerfile: relays/go-otelc/Dockerfile }
+    profiles: [otel-go-compiletime]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: otel-go-compiletime
+      TOOL: otel
+      RELAY_TOPIC: relay-in-otel-go-compiletime
+      OTEL_SERVICE_NAME: relay-otel-go-compiletime
+      OTEL_TRACES_EXPORTER: none
+      OTEL_PROPAGATORS: tracecontext,baggage
+    depends_on: *relay-depends
+
   relay-datadog-go:
     build: { context: ., dockerfile: relays/go/Dockerfile, args: { TOOL: datadog } }
     profiles: [datadog-go]
@@ -345,6 +363,26 @@ services:
       TOOL: datadog
       RELAY_TOPIC: relay-in-datadog-go-defaults
       DD_SERVICE: relay-datadog-go-defaults
+      DD_TRACE_STARTUP_LOGS: "false"
+      DD_INSTRUMENTATION_TELEMETRY_ENABLED: "false"
+      DD_REMOTE_CONFIG_ENABLED: "false"
+    depends_on: *relay-depends
+
+  # Same tool, opposite setup: the hand-wired datadog-go relay above wires
+  # dd-trace-go contribs in code; this variant compiles the naive app in
+  # relays/go-orchestrion with Datadog Orchestrion (`orchestrion go build`) —
+  # zero source changes. Same propagation config as datadog-go.
+  relay-datadog-go-orchestrion:
+    build: { context: ., dockerfile: relays/go-orchestrion/Dockerfile }
+    profiles: [datadog-go-orchestrion]
+    restart: on-failure
+    environment:
+      <<: *relay-common-env
+      VARIANT: datadog-go-orchestrion
+      TOOL: datadog
+      RELAY_TOPIC: relay-in-datadog-go-orchestrion
+      DD_SERVICE: relay-datadog-go-orchestrion
+      DD_TRACE_PROPAGATION_STYLE: datadog,tracecontext,baggage
       DD_TRACE_STARTUP_LOGS: "false"
       DD_INSTRUMENTATION_TELEMETRY_ENABLED: "false"
       DD_REMOTE_CONFIG_ENABLED: "false"

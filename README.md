@@ -6,8 +6,11 @@ support — which trace/baggage headers actually survive a hop — across:
 - **Tools**: OpenTelemetry, Datadog (`dd-trace-*`), Elastic APM, New Relic
   (needs `NEW_RELIC_LICENSE_KEY` in `.env` — free tier) — plus a
   no-instrumentation `none` baseline per language (control runs; see
-  FINDINGS.md §11 for the one language that propagates anyway)
-- **Languages**: Java, Node.js, Python, Go, .NET, Ruby, PHP, Rust
+  FINDINGS.md §12 for the one language that propagates anyway)
+- **Languages**: Java, Node.js, Python, Go, .NET, Ruby, PHP, Rust — Go twice
+  over: hand-wired contribs *and* both compile-time weavers (Datadog
+  Orchestrion, OTel otelc) as separate `build-time` variants (FINDINGS.md
+  §11)
 - **Protocol boundaries**: every combination of
   `{HTTP, gRPC, Kafka, RabbitMQ} → {HTTP, gRPC, Kafka, RabbitMQ}`
 - **Headers**: `traceparent`, `tracestate`, `baggage` (W3C), `ot-baggage-*`
@@ -49,6 +52,8 @@ sink/              uninstrumented Go recorder (HTTP + gRPC + Kafka + RabbitMQ)
 driver/            uninstrumented Go test driver (seeds headers, evaluates results)
 matrixgen/         results/raw/*.json -> results/MATRIX.md
 relays/{lang}/     one naive relay app per language, one instrumentation variant per tool
+relays/go-orchestrion/  naive Go app compiled with Datadog Orchestrion (build-time weaving)
+relays/go-otelc/   naive Go app compiled with OTel compile-time instrumentation (otelc)
 results/raw/       machine-readable results per variant
 results/MATRIX.md  the generated support matrix
 ```
