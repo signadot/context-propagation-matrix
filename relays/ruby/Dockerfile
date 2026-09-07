@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 # Build context is the repo root (so proto/ is reachable).
-# Targets: otel | datadog | newrelic | elastic (same app, different Gemfile +
-# boot file).
+# Targets: none | otel | datadog | newrelic | elastic (same app, different
+# Gemfile + boot file). Gem versions are pinned exactly in
+# relays/ruby/gemfiles/<tool>/Gemfile (one directory per tool so Dependabot
+# can watch each).
 
 # grpc-tools ships no linux/arm64 protoc binaries, so stub generation runs in
 # an explicit amd64 stage (emulated on Apple Silicon) and the generated .rb
@@ -35,35 +37,35 @@ EXPOSE 8080 8081
 # so no /agent/version.txt is written.
 
 FROM base AS none
-COPY relays/ruby/Gemfile.none Gemfile
+COPY relays/ruby/gemfiles/none/Gemfile Gemfile
 RUN bundle install
 COPY relays/ruby/app app
 ENV TOOL=none
 CMD ["ruby", "app/boot_none.rb"]
 
 FROM base AS otel
-COPY relays/ruby/Gemfile.otel Gemfile
+COPY relays/ruby/gemfiles/otel/Gemfile Gemfile
 RUN bundle install
 COPY relays/ruby/app app
 ENV TOOL=otel
 CMD ["ruby", "app/boot_otel.rb"]
 
 FROM base AS datadog
-COPY relays/ruby/Gemfile.datadog Gemfile
+COPY relays/ruby/gemfiles/datadog/Gemfile Gemfile
 RUN bundle install
 COPY relays/ruby/app app
 ENV TOOL=datadog
 CMD ["ruby", "app/boot_datadog.rb"]
 
 FROM base AS newrelic
-COPY relays/ruby/Gemfile.newrelic Gemfile
+COPY relays/ruby/gemfiles/newrelic/Gemfile Gemfile
 RUN bundle install
 COPY relays/ruby/app app
 ENV TOOL=newrelic
 CMD ["ruby", "app/boot_newrelic.rb"]
 
 FROM base AS elastic
-COPY relays/ruby/Gemfile.elastic Gemfile
+COPY relays/ruby/gemfiles/elastic/Gemfile Gemfile
 RUN bundle install
 COPY relays/ruby/app app
 ENV TOOL=elastic

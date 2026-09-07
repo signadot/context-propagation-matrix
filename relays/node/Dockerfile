@@ -10,18 +10,26 @@ COPY proto/relay.proto ./relay.proto
 EXPOSE 8080 8081
 ENTRYPOINT ["node", "app.js"]
 
+# Each tool target installs its agent at the exact version pinned in
+# relays/node/tools/<tool>/package.json (a standalone manifest so Dependabot
+# can bump it). --no-save keeps the app's own package.json untouched.
+
 FROM app AS otel
-RUN npm install @opentelemetry/auto-instrumentations-node
+COPY relays/node/tools/otel/package.json ./tool.package.json
+RUN npm install --no-save $(node -p "Object.entries(require('./tool.package.json').dependencies).map(e=>e.join('@')).join(' ')")
 ENV NODE_OPTIONS="--require @opentelemetry/auto-instrumentations-node/register"
 
 FROM app AS datadog
-RUN npm install dd-trace
+COPY relays/node/tools/datadog/package.json ./tool.package.json
+RUN npm install --no-save $(node -p "Object.entries(require('./tool.package.json').dependencies).map(e=>e.join('@')).join(' ')")
 ENV NODE_OPTIONS="--require dd-trace/init"
 
 FROM app AS newrelic
-RUN npm install newrelic
+COPY relays/node/tools/newrelic/package.json ./tool.package.json
+RUN npm install --no-save $(node -p "Object.entries(require('./tool.package.json').dependencies).map(e=>e.join('@')).join(' ')")
 ENV NODE_OPTIONS="--require newrelic"
 
 FROM app AS elastic
-RUN npm install elastic-apm-node
+COPY relays/node/tools/elastic/package.json ./tool.package.json
+RUN npm install --no-save $(node -p "Object.entries(require('./tool.package.json').dependencies).map(e=>e.join('@')).join(' ')")
 ENV NODE_OPTIONS="--require elastic-apm-node/start"

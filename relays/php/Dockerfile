@@ -52,26 +52,30 @@ ENTRYPOINT ["/entrypoint.sh"]
 # consume/produce). No packages exist for php-amqplib or ext-grpc clients —
 # recorded as findings in README.md.
 FROM app AS otel
-RUN install-php-extensions opentelemetry
+# Extension + instrumentation packages pinned exactly (composer requires in
+# a Dockerfile are not Dependabot-visible; bump manually per DESIGN.md).
+RUN install-php-extensions opentelemetry-1.2.1
 RUN composer require --no-interaction \
-      open-telemetry/sdk \
-      open-telemetry/opentelemetry-auto-slim \
-      open-telemetry/opentelemetry-auto-curl \
-      open-telemetry/opentelemetry-auto-ext-rdkafka
+      open-telemetry/sdk:1.15.0 \
+      open-telemetry/opentelemetry-auto-slim:1.5.0 \
+      open-telemetry/opentelemetry-auto-curl:0.3.0 \
+      open-telemetry/opentelemetry-auto-ext-rdkafka:0.0.5
 ENV OTEL_PHP_AUTOLOAD_ENABLED=true \
     OTEL_TRACES_EXPORTER=none \
     OTEL_METRICS_EXPORTER=none \
     OTEL_LOGS_EXPORTER=none
 
-# --- Datadog: documented datadog-setup.php installer (latest release).
-# Tracer version is read at runtime via phpversion('ddtrace') for /info.
+# --- Datadog: documented datadog-setup.php installer, pinned to a release
+# (each release's setup script installs that release's tracer). Tracer
+# version is read at runtime via phpversion('ddtrace') for /info.
 FROM app AS datadog
+ARG DD_PHP_TRACER_VERSION=1.25.0
 RUN curl -fLo /tmp/datadog-setup.php \
-      https://github.com/DataDog/dd-trace-php/releases/latest/download/datadog-setup.php \
+      "https://github.com/DataDog/dd-trace-php/releases/download/${DD_PHP_TRACER_VERSION}/datadog-setup.php" \
  && php /tmp/datadog-setup.php --php-bin=all \
  && rm /tmp/datadog-setup.php
 
-# --- New Relic: official PHP agent, latest release tarball (multi-arch:
+# --- New Relic: official PHP agent, version-pinned tarball (multi-arch:
 # agent/{x64,aarch64} + newrelic-install handle arch detection). The license
 # key cannot be baked at build time, so a wrapper entrypoint writes it from
 # NEW_RELIC_* env into an ini before handing off to the shared entrypoint;
@@ -80,11 +84,10 @@ RUN curl -fLo /tmp/datadog-setup.php \
 # are auto-instrumented for distributed tracing; php-amqplib has agent
 # instrumentation (agent >= 11.6); ext-rdkafka and ext-grpc are unsupported.
 FROM app AS newrelic
+ARG NEWRELIC_PHP_AGENT_VERSION=12.10.0.39
 RUN set -eux; \
-    ver="$(curl -fsS https://download.newrelic.com/php_agent/release/ \
-      | grep -oE 'newrelic-php5-[0-9.]+-linux\.tar\.gz' | head -1 \
-      | sed -E 's/newrelic-php5-([0-9.]+)-linux\.tar\.gz/\1/')"; \
-    curl -fsSL "https://download.newrelic.com/php_agent/release/newrelic-php5-${ver}-linux.tar.gz" \
+    ver="${NEWRELIC_PHP_AGENT_VERSION}"; \
+    curl -fsSL "https://download.newrelic.com/php_agent/archive/${ver}/newrelic-php5-${ver}-linux.tar.gz" \
       | tar -xz -C /tmp; \
     NR_INSTALL_SILENT=1 NR_INSTALL_USE_CP_NOT_LN=1 \
       "/tmp/newrelic-php5-${ver}-linux/newrelic-install" install; \

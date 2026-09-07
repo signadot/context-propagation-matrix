@@ -1,0 +1,8 @@
+{
+  "name": "cpmatrix-relay-node-tool-elastic",
+  "private": true,
+  "description": "Pinned agent dependency for the elastic target; installed into the app image by the Dockerfile. Kept as its own manifest so Dependabot can bump it.",
+  "dependencies": {
+    "elastic-apm-node": "4.18.0"
+  }
+}

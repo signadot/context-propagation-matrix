@@ -229,6 +229,33 @@ the matrix footnotes.
 | php | Apache mod_php + Slim 4 / Guzzle | ext-grpc (client only; no server — see relay README) | ext-rdkafka | php-amqplib |
 | rust | axum / reqwest | tonic | rdkafka | lapin |
 
+## Version pinning & updates
+
+Nothing in the harness installs "latest": every dependency manifest pins
+exact versions and every curl-fetched agent is a version ARG in its
+Dockerfile, so a rebuild months from now produces the same images and the
+matrix stays attributable to exact tracer versions (each table row carries
+the version that produced it).
+
+Updates arrive as Dependabot PRs (`.github/dependabot.yml` at the repo
+root): gomod, npm (app + one single-dependency manifest per Node tool under
+`relays/node/tools/`), pip (`requirements.txt` + `requirements-<tool>.txt`),
+bundler (one Gemfile per tool under `relays/ruby/gemfiles/`), composer,
+maven, nuget, cargo, and docker base images.
+
+Dependabot cannot see versions that live only in Dockerfiles; these are
+manual ARG bumps:
+
+- `relays/java/Dockerfile` — the four agent jars.
+- `relays/dotnet/Dockerfile` — the four agent installers/tarballs.
+- `relays/php/Dockerfile` — the OTel extension + composer requires, the
+  Datadog setup script release, the New Relic tarball, and the Elastic .deb.
+
+After merging any bump that touches a tracer or instrumentation library,
+re-run the affected variants (`./run.sh <variants>`), regenerate
+`results/MATRIX.md` (`go run ./matrixgen`), and update FINDINGS/REFERENCES
+if a cell changed.
+
 ## Extending the matrix
 
 The harness is contract-shaped: rows (languages) and columns (protocols) are
@@ -256,7 +283,9 @@ PHP and Rust relays and the RabbitMQ column were built that way).
    `restart: on-failure`, `depends_on: *relay-depends`, plus the tool's env
    (copy an existing language's entries).
 4. `run.sh` — add the new variants to `ALL_VARIANTS`.
-5. `matrixgen/main.go` — add the language to `langOrder`.
+5. `matrixgen/main.go` — add the language to `langOrder` and its
+   attachment tier per tool to `setupModes` (`zero-code` / `init-only` /
+   `in-code`).
 6. `./run.sh <the new variants>` then regenerate `results/MATRIX.md` with
    `go run ./matrixgen`; record root causes for any non-green cell in
    `FINDINGS.md`/`REFERENCES.md`.

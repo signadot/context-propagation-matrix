@@ -1,5 +1,13 @@
 # syntax=docker/dockerfile:1
 # Build context is the repo root (so proto/ is reachable).
+#
+# Agent versions are pinned for repeatability. Dependabot does not cover
+# these curl-fetched installers/tarballs, so bumps are manual (see DESIGN.md
+# "Version pinning"): update the ARG, rebuild, re-run the variant.
+ARG OTEL_DOTNET_AUTO_VERSION=1.16.0
+ARG DD_DOTNET_TRACER_VERSION=3.52.0
+ARG NEWRELIC_DOTNET_AGENT_VERSION=10.54.0
+ARG ELASTIC_APM_DOTNET_VERSION=1.34.7
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src/relays/dotnet
@@ -24,14 +32,11 @@ ENTRYPOINT ["dotnet", "/app/Relay.dll"]
 # Core and Grpc.Net.Client are default source instrumentations.
 
 FROM base AS otel
+ARG OTEL_DOTNET_AUTO_VERSION
 ENV OTEL_DOTNET_AUTO_HOME=/otel-dotnet-auto
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl unzip \
  && mkdir -p /agent \
- # Resolve the latest release tag, then install that exact version so
- # /agent/version.txt is guaranteed to match the installed bits.
- && OTEL_VERSION="$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
-      https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/releases/latest \
-      | sed 's#.*/tag/v##')" \
+ && OTEL_VERSION="${OTEL_DOTNET_AUTO_VERSION}" \
  && curl -fsSL -o /tmp/otel-dotnet-auto-install.sh \
       "https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/releases/download/v${OTEL_VERSION}/otel-dotnet-auto-install.sh" \
  && sh /tmp/otel-dotnet-auto-install.sh \
@@ -50,11 +55,10 @@ ENTRYPOINT ["/bin/sh", "-c", ". \"$OTEL_DOTNET_AUTO_HOME/instrument.sh\" && exec
 
 FROM base AS datadog
 ARG TARGETARCH
+ARG DD_DOTNET_TRACER_VERSION
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl \
  && mkdir -p /agent /opt/datadog \
- && DD_VERSION="$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
-      https://github.com/DataDog/dd-trace-dotnet/releases/latest \
-      | sed 's#.*/tag/v##')" \
+ && DD_VERSION="${DD_DOTNET_TRACER_VERSION}" \
  && case "${TARGETARCH:-amd64}" in \
       arm64) DD_ASSET="datadog-dotnet-apm-${DD_VERSION}.arm64.tar.gz" ;; \
       *)     DD_ASSET="datadog-dotnet-apm-${DD_VERSION}.tar.gz" ;; \
@@ -79,23 +83,16 @@ ENV CORECLR_ENABLE_PROFILING=1 \
 
 FROM base AS newrelic
 ARG TARGETARCH
+ARG NEWRELIC_DOTNET_AGENT_VERSION
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl \
  && mkdir -p /agent \
  && case "${TARGETARCH:-amd64}" in \
       arm64) NR_ARCH=arm64 ;; \
       *)     NR_ARCH=amd64 ;; \
     esac \
- # The tarball carries no version metadata, so scrape the version from the
- # latest_release index; fall back to the unversioned "latest" tarball.
- && NR_VERSION="$(curl -fsSL https://download.newrelic.com/dot_net_agent/latest_release/ \
-      | grep -oE 'newrelic-dotnet-agent_[0-9]+\.[0-9]+\.[0-9]+' | head -1 | cut -d_ -f2 || true)" \
- && if [ -n "${NR_VERSION}" ]; then \
-      NR_TARBALL="newrelic-dotnet-agent_${NR_VERSION}_${NR_ARCH}.tar.gz"; \
-    else \
-      NR_TARBALL="newrelic-dotnet-agent_${NR_ARCH}.tar.gz"; NR_VERSION=unknown; \
-    fi \
+ && NR_VERSION="${NEWRELIC_DOTNET_AGENT_VERSION}" \
  && curl -fsSL -o /tmp/newrelic.tar.gz \
-      "https://download.newrelic.com/dot_net_agent/latest_release/${NR_TARBALL}" \
+      "https://download.newrelic.com/dot_net_agent/previous_releases/${NR_VERSION}/newrelic-dotnet-agent_${NR_VERSION}_${NR_ARCH}.tar.gz" \
  && tar -xzf /tmp/newrelic.tar.gz -C /usr/local \
  && echo "${NR_VERSION}" > /agent/version.txt \
  && cat /agent/version.txt \
@@ -121,13 +118,10 @@ ENV CORECLR_ENABLE_PROFILING=1 \
 # ELASTIC_APM_SERVER_URL the agent logs send failures but the app runs fine.
 
 FROM base AS elastic
+ARG ELASTIC_APM_DOTNET_VERSION
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl unzip \
  && mkdir -p /agent /opt/elastic \
- # Resolve the latest release tag, then install that exact version so
- # /agent/version.txt is guaranteed to match the installed bits.
- && ELASTIC_VERSION="$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
-      https://github.com/elastic/apm-agent-dotnet/releases/latest \
-      | sed 's#.*/tag/v##')" \
+ && ELASTIC_VERSION="${ELASTIC_APM_DOTNET_VERSION}" \
  && curl -fsSL -o /tmp/elastic-apm-agent.zip \
       "https://github.com/elastic/apm-agent-dotnet/releases/download/v${ELASTIC_VERSION}/ElasticApmAgent_${ELASTIC_VERSION}.zip" \
  # The startup-hook DLL sits at the zip root next to per-TFM agent dirs.

@@ -8,11 +8,11 @@
         "ext-curl": "*",
         "ext-grpc": "*",
         "ext-rdkafka": "*",
-        "slim/slim": "^4.14",
-        "slim/psr7": "^1.7",
-        "php-amqplib/php-amqplib": "^3.7",
-        "grpc/grpc": "^1.57",
-        "google/protobuf": "^4.27"
+        "slim/slim": "4.15.3",
+        "slim/psr7": "1.8.0",
+        "php-amqplib/php-amqplib": "3.7.4",
+        "grpc/grpc": "1.82.0",
+        "google/protobuf": "4.33.6"
     },
     "autoload": {
         "psr-4": {

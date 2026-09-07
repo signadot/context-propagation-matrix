@@ -1,6 +1,14 @@
 # syntax=docker/dockerfile:1
 # Build context is the repo root (so proto/ is reachable).
 
+# Agent versions are pinned for repeatability. Dependabot does not cover
+# curl-fetched jars, so bumps are manual (or via the refresh checklist in
+# DESIGN.md "Version pinning"): update the ARG, rebuild, re-run the variant.
+ARG OTEL_JAVA_AGENT_VERSION=2.31.1
+ARG DD_JAVA_AGENT_VERSION=1.65.1
+ARG NEWRELIC_JAVA_AGENT_VERSION=9.4.0
+ARG ELASTIC_APM_JAVA_AGENT_VERSION=1.56.0
+
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY relays/java/pom.xml .
@@ -9,42 +17,42 @@ COPY proto/relay.proto ./src/main/proto/relay.proto
 RUN --mount=type=cache,target=/root/.m2 mvn -q -DskipTests package \
  && cp target/relay-*.jar /relay.jar
 
-# ---- agent fetch stages (JDK image so `jar` is available for manifest reads) ----
+# ---- agent fetch stages (version-pinned URLs; version.txt from the ARG) ----
 
 FROM maven:3.9-eclipse-temurin-17 AS fetch-otel
-RUN mkdir -p /agent /tmp/mf \
+ARG OTEL_JAVA_AGENT_VERSION
+RUN mkdir -p /agent \
  && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
  && curl -fsSL -o /agent/agent.jar \
-    "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar" \
- && cd /tmp/mf && jar xf /agent/agent.jar META-INF/MANIFEST.MF \
- && (grep -i '^Implementation-Version' META-INF/MANIFEST.MF | head -1 | cut -d: -f2- | tr -d ' \r' > /agent/version.txt) \
+    "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTEL_JAVA_AGENT_VERSION}/opentelemetry-javaagent.jar" \
+ && echo "${OTEL_JAVA_AGENT_VERSION}" > /agent/version.txt \
  && cat /agent/version.txt
 
 FROM maven:3.9-eclipse-temurin-17 AS fetch-datadog
-RUN mkdir -p /agent /tmp/mf \
+ARG DD_JAVA_AGENT_VERSION
+RUN mkdir -p /agent \
  && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
- && curl -fsSL -o /agent/agent.jar "https://dtdg.co/latest-java-tracer" \
- && cd /tmp/mf && jar xf /agent/agent.jar META-INF/MANIFEST.MF \
- && (grep -i '^Implementation-Version' META-INF/MANIFEST.MF | head -1 | cut -d: -f2- | tr -d ' \r' > /agent/version.txt) \
+ && curl -fsSL -o /agent/agent.jar \
+    "https://repo1.maven.org/maven2/com/datadoghq/dd-java-agent/${DD_JAVA_AGENT_VERSION}/dd-java-agent-${DD_JAVA_AGENT_VERSION}.jar" \
+ && echo "${DD_JAVA_AGENT_VERSION}" > /agent/version.txt \
  && cat /agent/version.txt
 
 FROM maven:3.9-eclipse-temurin-17 AS fetch-newrelic
-RUN mkdir -p /agent /tmp/mf \
+ARG NEWRELIC_JAVA_AGENT_VERSION
+RUN mkdir -p /agent \
  && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
  && curl -fsSL -o /agent/agent.jar \
-    "https://download.newrelic.com/newrelic/java-agent/newrelic-agent/current/newrelic-agent.jar" \
- && cd /tmp/mf && jar xf /agent/agent.jar META-INF/MANIFEST.MF \
- && (grep -i '^Implementation-Version' META-INF/MANIFEST.MF | head -1 | cut -d: -f2- | tr -d ' \r' > /agent/version.txt) \
+    "https://repo1.maven.org/maven2/com/newrelic/agent/java/newrelic-agent/${NEWRELIC_JAVA_AGENT_VERSION}/newrelic-agent-${NEWRELIC_JAVA_AGENT_VERSION}.jar" \
+ && echo "${NEWRELIC_JAVA_AGENT_VERSION}" > /agent/version.txt \
  && cat /agent/version.txt
 
 FROM maven:3.9-eclipse-temurin-17 AS fetch-elastic
+ARG ELASTIC_APM_JAVA_AGENT_VERSION
 RUN mkdir -p /agent \
  && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
- && VER=$(curl -fsSL "https://repo1.maven.org/maven2/co/elastic/apm/elastic-apm-agent/maven-metadata.xml" \
-      | sed -n 's:.*<release>\(.*\)</release>.*:\1:p') \
  && curl -fsSL -o /agent/agent.jar \
-    "https://repo1.maven.org/maven2/co/elastic/apm/elastic-apm-agent/${VER}/elastic-apm-agent-${VER}.jar" \
- && echo "${VER}" > /agent/version.txt \
+    "https://repo1.maven.org/maven2/co/elastic/apm/elastic-apm-agent/${ELASTIC_APM_JAVA_AGENT_VERSION}/elastic-apm-agent-${ELASTIC_APM_JAVA_AGENT_VERSION}.jar" \
+ && echo "${ELASTIC_APM_JAVA_AGENT_VERSION}" > /agent/version.txt \
  && cat /agent/version.txt
 
 # ---- runtime targets ----
