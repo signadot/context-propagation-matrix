@@ -229,6 +229,59 @@ the matrix footnotes.
 | php | Apache mod_php + Slim 4 / Guzzle | ext-grpc (client only; no server — see relay README) | ext-rdkafka | php-amqplib |
 | rust | axum / reqwest | tonic | rdkafka | lapin |
 
+## Extending the matrix
+
+The harness is contract-shaped: rows (languages) and columns (protocols) are
+added against the contracts above without touching the measurement machinery.
+Both checklists below are written to be handed to a coding agent as-is (the
+PHP and Rust relays and the RabbitMQ column were built that way).
+
+### Adding a language (a new row)
+
+1. `relays/{lang}/` — one naive app implementing the relay contract: HTTP
+   `POST /relay` + `GET /info` on `:8080`, gRPC `cpmatrix.Relay/Handle` on
+   `:8081` (from `proto/relay.proto`), a Kafka consumer on
+   `relay-in-{variant}`, and a RabbitMQ consumer on `relay-rmq-{variant}`.
+   Copy the shape of an existing relay (`relays/node/app.js` is the
+   smallest). The golden rule: **no header or tracing-API access in app
+   code**. If the language has no auto-instrumentation for a tool, wire the
+   vendor's documented contrib/carrier APIs (Go/Rust style) and say so in a
+   relay README.
+2. `relays/{lang}/Dockerfile` — multi-stage, one build target per variant
+   (`otel`, `datadog`, `elastic`, `newrelic`, `none`). Targets differ only in
+   which agent they install and how the entrypoint attaches it; app source is
+   identical.
+3. `docker-compose.yml` — one `relay-{tool}-{lang}` service per target:
+   `x-relay-common-env` anchor, `profiles: [{variant}]`,
+   `restart: on-failure`, `depends_on: *relay-depends`, plus the tool's env
+   (copy an existing language's entries).
+4. `run.sh` — add the new variants to `ALL_VARIANTS`.
+5. `matrixgen/main.go` — add the language to `langOrder`.
+6. `./run.sh <the new variants>` then regenerate `results/MATRIX.md` with
+   `go run ./matrixgen`; record root causes for any non-green cell in
+   `FINDINGS.md`/`REFERENCES.md`.
+
+`driver/`, `sink/`, and the evaluation logic do not change.
+
+### Adding a protocol (a new column)
+
+A protocol touches every component, and the boundary count grows
+quadratically (n protocols → n² boundaries; 4 → 16 today, a fifth makes 25).
+
+1. Extend the contracts in this document first: how the five seeded headers
+   are encoded in the new carrier, the relay-inbound address
+   (`relay-{proto}-{variant}` naming), the sink-inbound address, and any
+   declare/warm-up rules — see the RabbitMQ sections above for the shape.
+2. `driver/` — seed headers into the new carrier; extend the boundary list
+   (16 → 25 tests per variant).
+3. `sink/` — consume/serve the new protocol and record arriving
+   headers/metadata verbatim, with the same base64 rules for non-UTF-8.
+4. Every relay in `relays/*` — one inbound listener plus one `forward_via`
+   branch, using the language's idiomatic client.
+5. `matrixgen/main.go` — extend `boundaries`.
+6. `docker-compose.yml` — a broker/infra service (with healthcheck) if the
+   protocol needs one, plus any new endpoints in `x-relay-common-env`.
+
 ## Roadmap / contributions welcome
 
 Tool columns worth adding next (see the provider-landscape notes in
