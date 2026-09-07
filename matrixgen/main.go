@@ -60,6 +60,47 @@ var langOrder = map[string]int{
 	"php": 6, "rust": 7,
 }
 
+// setupModes classifies how each tool attaches to each language's relay:
+//   - "zero-code": runtime attach only (agent flag, preload require, CLR
+//     profiler env, php.ini extension); no application source involved.
+//   - "init-only": a boot-file initializer loads/configures the tool before
+//     app code runs (Ruby's require+configure pattern, Elastic Python's
+//     middleware); request-path code untouched.
+//   - "in-code": instrumentation is woven into application code — wrappers
+//     at every client/server construction site and contexts threaded through
+//     (Go contribs, Rust propagator API + hand-written carriers).
+//
+// The baseline ("none") has no mode by definition.
+var setupModes = map[string]map[string]string{
+	"otel": {
+		"java": "zero-code", "node": "zero-code", "python": "zero-code",
+		"go": "in-code", "dotnet": "zero-code", "ruby": "init-only",
+		"php": "zero-code", "rust": "in-code",
+	},
+	"datadog": {
+		"java": "zero-code", "node": "zero-code", "python": "zero-code",
+		"go": "in-code", "dotnet": "zero-code", "ruby": "init-only",
+		"php": "zero-code", "rust": "in-code",
+	},
+	"elastic": {
+		"java": "zero-code", "node": "zero-code", "python": "init-only",
+		"go": "in-code", "dotnet": "zero-code", "ruby": "init-only",
+		"php": "zero-code",
+	},
+	"newrelic": {
+		"java": "zero-code", "node": "zero-code", "python": "zero-code",
+		"go": "in-code", "dotnet": "zero-code", "ruby": "init-only",
+		"php": "zero-code",
+	},
+}
+
+func setupMode(tool, lang string) string {
+	if m, ok := setupModes[tool][lang]; ok {
+		return m
+	}
+	return "—"
+}
+
 type headerView struct {
 	key   string // status field
 	title string
@@ -112,7 +153,7 @@ func boundaryHeader() string {
 		c = strings.ReplaceAll(c, "rabbitmq", "rmq")
 		cols[i] = c
 	}
-	return "| variant | " + strings.Join(cols, " | ") + " |"
+	return "| variant | setup | " + strings.Join(cols, " | ") + " |"
 }
 
 func infoStr(v *VariantResult, key string) string {
@@ -188,6 +229,12 @@ func main() {
 	w("🟡 header present but seeded value lost · 🔀 new trace started ·")
 	w("❌ header absent · 🚫 message was never forwarded (instrumentation or app broke).")
 	w("")
+	w("The `setup` column says what attaching the tool required: `zero-code`")
+	w("(runtime attach only — agent flag, preload require, CLR profiler, php.ini;")
+	w("no source involved) · `init-only` (a boot-file initializer, request-path")
+	w("code untouched) · `in-code` (wrappers and carriers woven into application")
+	w("code, contexts threaded by hand). See DESIGN.md and the relay READMEs.")
+	w("")
 
 	for _, tool := range tools {
 		var tv []*VariantResult
@@ -210,7 +257,7 @@ func main() {
 			w("%s", hv.desc+".")
 			w("")
 			w("%s", boundaryHeader())
-			w("|%s", strings.Repeat("---|", len(boundaries)+1))
+			w("|%s", strings.Repeat("---|", len(boundaries)+2))
 			for _, v := range tv {
 				cells := make([]string, len(boundaries))
 				byBoundary := map[string]TestResult{}
@@ -227,7 +274,7 @@ func main() {
 						cells[i] = glyph(hv.key, statusOf(t.Status, hv.key), t.Delivered)
 					}
 				}
-				w("| %s | %s |", rowLabel(v), strings.Join(cells, " | "))
+				w("| %s | %s | %s |", rowLabel(v), setupMode(v.Tool, v.Language), strings.Join(cells, " | "))
 			}
 			w("")
 		}
