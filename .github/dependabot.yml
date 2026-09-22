@@ -4,11 +4,20 @@
 # the affected variants and regenerate results/MATRIX.md (see DESIGN.md
 # "Version pinning").
 #
-# NOT covered by Dependabot (bump manually via the Dockerfile ARGs):
+# NOT covered by Dependabot — bumped by .github/workflows/bump-agents.yml from
+# versions/agents.yaml, which also re-runs the affected variants:
 #   - Java agent jars           (relays/java/Dockerfile ARGs)
 #   - .NET profiler tarballs    (relays/dotnet/Dockerfile ARGs)
 #   - PHP agents + OTel ext     (relays/php/Dockerfile ARGs / pinned requires)
+#
+# Grouping: per manifest, everything that is NOT a tracer/agent package lands
+# in one "app-deps" PR (clients, frameworks, build tooling). Tracer packages
+# stay one-PR-per-package so a merge maps to exactly one variant to re-run.
 version: 2
+
+# Anchors are not supported by Dependabot, so the tracer exclusion list is
+# repeated verbatim per ecosystem below. Keep them identical.
+
 updates:
   # Go: the root module (driver, sink, matrixgen) plus one module per Go
   # relay flavour — hand-wired contribs (relays/go), Orchestrion build-time
@@ -22,6 +31,27 @@ updates:
       - /relays/go-orchestrion
       - /relays/go-otelc
     schedule: { interval: weekly }
+    groups:
+      app-deps:
+        patterns: ["*"]
+        exclude-patterns:
+          - "dd-trace*"
+          - "ddtrace"
+          - "datadog*"
+          - "github.com/DataDog/*"
+          - "@opentelemetry/*"
+          - "opentelemetry*"
+          - "go.opentelemetry.io/*"
+          - "newrelic*"
+          - "github.com/newrelic/*"
+          - "elastic-apm*"
+          - "elastic_apm*"
+          - "@elastic/*"
+          - "go.elastic.co/*"
+          - "Elastic.Apm*"
+          - "OpenTelemetry*"
+          - "NewRelic*"
+          - "Datadog*"
 
   # Node: app deps + one single-dependency manifest per tool target.
   - package-ecosystem: npm
@@ -32,12 +62,54 @@ updates:
       - /relays/node/tools/newrelic
       - /relays/node/tools/elastic
     schedule: { interval: weekly }
+    groups:
+      app-deps:
+        patterns: ["*"]
+        exclude-patterns:
+          - "dd-trace*"
+          - "ddtrace"
+          - "datadog*"
+          - "github.com/DataDog/*"
+          - "@opentelemetry/*"
+          - "opentelemetry*"
+          - "go.opentelemetry.io/*"
+          - "newrelic*"
+          - "github.com/newrelic/*"
+          - "elastic-apm*"
+          - "elastic_apm*"
+          - "@elastic/*"
+          - "go.elastic.co/*"
+          - "Elastic.Apm*"
+          - "OpenTelemetry*"
+          - "NewRelic*"
+          - "Datadog*"
 
   # Python: requirements.txt (app) + requirements-<tool>.txt (agents),
   # all picked up from the same directory.
   - package-ecosystem: pip
     directory: /relays/python
     schedule: { interval: weekly }
+    groups:
+      app-deps:
+        patterns: ["*"]
+        exclude-patterns:
+          - "dd-trace*"
+          - "ddtrace"
+          - "datadog*"
+          - "github.com/DataDog/*"
+          - "@opentelemetry/*"
+          - "opentelemetry*"
+          - "go.opentelemetry.io/*"
+          - "newrelic*"
+          - "github.com/newrelic/*"
+          - "elastic-apm*"
+          - "elastic_apm*"
+          - "@elastic/*"
+          - "go.elastic.co/*"
+          - "Elastic.Apm*"
+          - "OpenTelemetry*"
+          - "NewRelic*"
+          - "Datadog*"
 
   # Ruby: one Gemfile per tool target.
   - package-ecosystem: bundler
@@ -48,26 +120,131 @@ updates:
       - /relays/ruby/gemfiles/newrelic
       - /relays/ruby/gemfiles/elastic
     schedule: { interval: weekly }
+    groups:
+      app-deps:
+        patterns: ["*"]
+        exclude-patterns:
+          - "dd-trace*"
+          - "ddtrace"
+          - "datadog*"
+          - "github.com/DataDog/*"
+          - "@opentelemetry/*"
+          - "opentelemetry*"
+          - "go.opentelemetry.io/*"
+          - "newrelic*"
+          - "github.com/newrelic/*"
+          - "elastic-apm*"
+          - "elastic_apm*"
+          - "@elastic/*"
+          - "go.elastic.co/*"
+          - "Elastic.Apm*"
+          - "OpenTelemetry*"
+          - "NewRelic*"
+          - "Datadog*"
 
   # PHP: app composer.json (agents are installed in the Dockerfile — manual).
   - package-ecosystem: composer
     directory: /relays/php
     schedule: { interval: weekly }
+    groups:
+      app-deps:
+        patterns: ["*"]
+        exclude-patterns:
+          - "dd-trace*"
+          - "ddtrace"
+          - "datadog*"
+          - "github.com/DataDog/*"
+          - "@opentelemetry/*"
+          - "opentelemetry*"
+          - "go.opentelemetry.io/*"
+          - "newrelic*"
+          - "github.com/newrelic/*"
+          - "elastic-apm*"
+          - "elastic_apm*"
+          - "@elastic/*"
+          - "go.elastic.co/*"
+          - "Elastic.Apm*"
+          - "OpenTelemetry*"
+          - "NewRelic*"
+          - "Datadog*"
 
   # Java: pom.xml app deps (agent jars are Dockerfile ARGs — manual).
   - package-ecosystem: maven
     directory: /relays/java
     schedule: { interval: weekly }
+    groups:
+      app-deps:
+        patterns: ["*"]
+        exclude-patterns:
+          - "dd-trace*"
+          - "ddtrace"
+          - "datadog*"
+          - "github.com/DataDog/*"
+          - "@opentelemetry/*"
+          - "opentelemetry*"
+          - "go.opentelemetry.io/*"
+          - "newrelic*"
+          - "github.com/newrelic/*"
+          - "elastic-apm*"
+          - "elastic_apm*"
+          - "@elastic/*"
+          - "go.elastic.co/*"
+          - "Elastic.Apm*"
+          - "OpenTelemetry*"
+          - "NewRelic*"
+          - "Datadog*"
 
   # .NET: csproj app deps (agents are Dockerfile ARGs — manual).
   - package-ecosystem: nuget
     directory: /relays/dotnet
     schedule: { interval: weekly }
+    groups:
+      app-deps:
+        patterns: ["*"]
+        exclude-patterns:
+          - "dd-trace*"
+          - "ddtrace"
+          - "datadog*"
+          - "github.com/DataDog/*"
+          - "@opentelemetry/*"
+          - "opentelemetry*"
+          - "go.opentelemetry.io/*"
+          - "newrelic*"
+          - "github.com/newrelic/*"
+          - "elastic-apm*"
+          - "elastic_apm*"
+          - "@elastic/*"
+          - "go.elastic.co/*"
+          - "Elastic.Apm*"
+          - "OpenTelemetry*"
+          - "NewRelic*"
+          - "Datadog*"
 
   # Rust: Cargo.toml + committed Cargo.lock (includes both tracer crates).
   - package-ecosystem: cargo
     directory: /relays/rust
     schedule: { interval: weekly }
+    groups:
+      app-deps:
+        patterns: ["*"]
+        exclude-patterns:
+          - "dd-trace*"
+          - "ddtrace"
+          - "datadog*"
+          - "github.com/DataDog/*"
+          - "@opentelemetry/*"
+          - "opentelemetry*"
+          - "go.opentelemetry.io/*"
+          - "newrelic*"
+          - "github.com/newrelic/*"
+          - "elastic-apm*"
+          - "elastic_apm*"
+          - "@elastic/*"
+          - "go.elastic.co/*"
+          - "Elastic.Apm*"
+          - "OpenTelemetry*"
+          - "NewRelic*"
+          - "Datadog*"
 
   # Base images in every Dockerfile.
   - package-ecosystem: docker
