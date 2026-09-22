@@ -1,0 +1,259 @@
+# matrix.yml — run the whole matrix and publish a versioned result.
+#
+#   plan      → which variants (all; New Relic ones only when the secret exists)
+#   run       → one job per variant, ≤10 in parallel, each with its own brokers
+#   aggregate → results.json (schema v2) + MATRIX.md + changes.json vs the
+#               previous release; commit results/latest to main; publish a
+#               GitHub Release run-YYYY-MM-DD[.N]; fire the Netlify build hook
+#               so contextpropagation.io rebuilds; post to Slack if cells changed.
+#
+# Triggers: weekly, manual, and any merge to main that can change a result.
+name: matrix
+
+on:
+  schedule:
+    - cron: '17 6 * * 1' # Mondays 06:17 UTC
+  workflow_dispatch:
+    inputs:
+      variants:
+        description: 'Space-separated variant ids, or "all" / "public" / "tool:datadog" / "language:python"'
+        default: all
+        required: false
+      publish:
+        description: 'Publish a release, commit results and fire hooks'
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - 'relays/**'
+      - 'driver/**'
+      - 'sink/**'
+      - 'proto/**'
+      - 'docker/**'
+      - 'docker-compose.yml'
+      - 'variants.yaml'
+      - '.github/workflows/matrix.yml'
+
+concurrency:
+  group: matrix
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  CACHE_IMAGE: ghcr.io/${{ github.repository }}/cache
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      variants: ${{ steps.plan.outputs.variants }}
+      publish: ${{ steps.plan.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - id: plan
+        env:
+          HAS_NR: ${{ secrets.NEW_RELIC_LICENSE_KEY != '' }}
+          SELECTOR: ${{ github.event.inputs.variants || 'all' }}
+          PUBLISH: ${{ github.event.inputs.publish || 'true' }}
+        run: |
+          set -euo pipefail
+          list() {
+            case "$1" in
+              all)        go run ./cmd/cpm list ;;
+              public)     go run ./cmd/cpm list -no-secret ;;
+              tool:*)     go run ./cmd/cpm list -tool "${1#tool:}" ;;
+              language:*) go run ./cmd/cpm list -language "${1#language:}" ;;
+              *)          echo "$1" ;;
+            esac
+          }
+          selected=$(for s in $SELECTOR; do list "$s"; done | sort -u)
+          if [[ "$HAS_NR" != "true" ]]; then
+            secret=$(go run ./cmd/cpm list -secret)
+            selected=$(comm -23 <(echo "$selected") <(echo "$secret" | sort))
+            echo "::notice::NEW_RELIC_LICENSE_KEY not set; skipping: $(echo $secret)"
+          fi
+          echo "variants=$(echo "$selected" | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          echo "Running: $(echo $selected)"
+
+  run:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        variant: ${{ fromJson(needs.plan.outputs.variants) }}
+    env:
+      NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build sink, driver and relay-${{ matrix.variant }} (GHCR layer cache)
+        run: |
+          set -euo pipefail
+          args=(--load)
+          for t in sink driver "relay-${{ matrix.variant }}"; do
+            args+=(--set "$t.tags=cpmatrix-$t"
+                   --set "$t.cache-from=type=registry,ref=$CACHE_IMAGE:$t"
+                   --set "$t.cache-to=type=registry,ref=$CACHE_IMAGE:$t,mode=max")
+          done
+          docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-${{ matrix.variant }}"
+      - name: Start brokers and sink
+        run: docker compose up -d --no-build kafka rabbitmq sink
+      - name: Create topics
+        run: |
+          docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic "relay-in-${{ matrix.variant }}" --partitions 1 --replication-factor 1
+          docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic sink-in --partitions 1 --replication-factor 1
+      - name: Start relay
+        run: docker compose up -d --no-build "relay-${{ matrix.variant }}"
+      - name: Prime (agents that need a backend handshake before propagating)
+        if: startsWith(matrix.variant, 'newrelic-')
+        run: |
+          sleep 5
+          docker compose run --rm --no-build driver -variant "${{ matrix.variant }}" >/dev/null 2>&1 || true
+          sleep 10
+      - name: Measure (retry once on driver failure)
+        run: |
+          docker compose run --rm --no-build driver -variant "${{ matrix.variant }}" || {
+            echo "::warning::driver failed once for ${{ matrix.variant }}; retrying"
+            docker compose restart "relay-${{ matrix.variant }}"; sleep 5
+            docker compose run --rm --no-build driver -variant "${{ matrix.variant }}"
+          }
+      - name: Relay + sink logs
+        if: always()
+        run: docker compose logs --no-color "relay-${{ matrix.variant }}" sink > "relay-${{ matrix.variant }}.log" 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: raw-${{ matrix.variant }}
+          path: |
+            results/raw/${{ matrix.variant }}.json
+            relay-${{ matrix.variant }}.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    needs: [plan, run]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      run_id: ${{ steps.ids.outputs.run_id }}
+      changed: ${{ steps.agg.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Collect raw results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: raw-*
+          path: artifacts
+      - name: Merge new raw results over the committed ones
+        # A partial run (e.g. tool:datadog) refreshes only its own variants; the
+        # rest keep their last committed result so results.json stays complete.
+        run: |
+          set -euo pipefail
+          mkdir -p results/raw logs
+          find artifacts -name '*.json' -exec cp {} results/raw/ \;
+          find artifacts -name '*.log' -exec mv {} logs/ \; || true
+          ls results/raw | wc -l
+      - name: Previous release for diffing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prev=$(gh release list --limit 50 --json tagName --jq '[.[] | select(.tagName|startswith("run-"))][0].tagName' || true)
+          if [[ -n "$prev" ]]; then
+            gh release download "$prev" -p results.json -O prev.json && echo "prev=$prev" >> "$GITHUB_ENV"
+          else
+            echo "::notice::no previous run-* release; changes.json will be skipped"
+          fi
+      - id: ids
+        name: Choose a unique run id
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base="run-$(date -u +%F)"
+          id="$base"; n=1
+          while gh release view "$id" >/dev/null 2>&1; do id="$base.$n"; n=$((n+1)); done
+          echo "run_id=$id" >> "$GITHUB_OUTPUT"
+      - id: agg
+        name: Aggregate → results.json, MATRIX.md, changes.json
+        run: |
+          set -euo pipefail
+          args=(-kind matrix -run-id "${{ steps.ids.outputs.run_id }}" -commit "$GITHUB_SHA" -matrix-md results/MATRIX.md)
+          [[ -f prev.json ]] && args+=(-prev prev.json)
+          go run ./cmd/cpm aggregate "${args[@]}"
+          if [[ -f results/latest/changes.json ]] && [[ "$(jq '(.changed_cells|length)+(.added_variants|length)+(.removed_variants|length)+(.version_bumps|length)' results/latest/changes.json)" != "0" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+          go run ./cmd/cpm summary results/latest/results.json ${prev:+-changes results/latest/changes.json} | tee summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Package raw evidence
+        run: tar czf raw.tar.gz -C results raw && tar czf logs.tar.gz logs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aggregated
+          path: |
+            results/latest/
+            raw.tar.gz
+            logs.tar.gz
+            summary.md
+      - name: Commit results/latest and results/raw to main
+        if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          git config user.name "matrix-bot"
+          git config user.email "matrix-bot@users.noreply.github.com"
+          git add results/latest results/raw results/MATRIX.md
+          if git diff --cached --quiet; then echo "no result changes to commit"; exit 0; fi
+          git commit -m "results: ${{ steps.ids.outputs.run_id }} [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Publish release ${{ steps.ids.outputs.run_id }}
+        if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.ids.outputs.run_id }}" \
+            --title "${{ steps.ids.outputs.run_id }}" \
+            --notes-file summary.md \
+            results/latest/results.json results/latest/MATRIX.md raw.tar.gz logs.tar.gz \
+            $( [[ -f results/latest/changes.json ]] && echo results/latest/changes.json )
+      - name: Rebuild contextpropagation.io
+        if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main'
+        env:
+          HOOK: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
+        run: |
+          if [[ -z "$HOOK" ]]; then echo "::notice::NETLIFY_BUILD_HOOK_URL not set; site not rebuilt"; exit 0; fi
+          curl -fsS -X POST -d '{}' "$HOOK?trigger_title=${{ steps.ids.outputs.run_id }}"
+      - name: Slack summary (only when cells, variants or versions changed)
+        if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main' && steps.agg.outputs.changed == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [[ -z "$SLACK_WEBHOOK_URL" ]]; then echo "::notice::SLACK_WEBHOOK_URL not set"; exit 0; fi
+          text=$(head -c 2800 summary.md)
+          jq -n --arg t "$text" --arg url "https://github.com/${{ github.repository }}/releases/tag/${{ steps.ids.outputs.run_id }}" \
+            '{text: ($t + "\n" + $url)}' | curl -fsS -X POST -H 'content-type: application/json' -d @- "$SLACK_WEBHOOK_URL"
