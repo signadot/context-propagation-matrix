@@ -15,8 +15,11 @@ RUN --mount=type=cache,target=/go/pkg/mod cd relays/go && go mod download
 COPY gen ./gen
 COPY relays/go ./relays/go
 ARG TOOL=otel
+ARG TRACER_VERSION
+COPY relays/go/pin-tracer.sh /usr/local/bin/pin-tracer
 RUN --mount=type=cache,target=/go/pkg/mod \
-    cd relays/go && CGO_ENABLED=0 go build -o /relay "./${TOOL}"
+    cd relays/go && pin-tracer "$TOOL" "$TRACER_VERSION" \
+ && CGO_ENABLED=0 go build -o /relay "./${TOOL}"
 
 FROM debian:bookworm-slim AS runtime
 # ca-certificates: the New Relic agent connects to collector.newrelic.com

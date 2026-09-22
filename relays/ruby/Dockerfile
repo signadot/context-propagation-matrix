@@ -15,6 +15,11 @@ RUN gem install grpc-tools --no-document \
  && mkdir -p gen \
  && grpc_tools_ruby_protoc -I proto --ruby_out=gen --grpc_out=gen proto/relay.proto
 
+# TRACER_VERSION (build-arg) overrides the pinned tracer/agent version for the
+# target being built; empty means "use the pin". Used by backtest.yml to
+# measure older releases without editing this file.
+ARG TRACER_VERSION=
+
 FROM ruby:3.3 AS base
 WORKDIR /app
 
@@ -45,28 +50,36 @@ CMD ["ruby", "app/boot_none.rb"]
 
 FROM base AS otel
 COPY relays/ruby/gemfiles/otel/Gemfile Gemfile
-RUN bundle install
+ARG TRACER_VERSION
+RUN if [ -n "$TRACER_VERSION" ]; then sed -i -E "s/^gem 'opentelemetry-sdk', '[^']*'/gem 'opentelemetry-sdk', '$TRACER_VERSION'/" Gemfile; fi \
+ && bundle install
 COPY relays/ruby/app app
 ENV TOOL=otel
 CMD ["ruby", "app/boot_otel.rb"]
 
 FROM base AS datadog
 COPY relays/ruby/gemfiles/datadog/Gemfile Gemfile
-RUN bundle install
+ARG TRACER_VERSION
+RUN if [ -n "$TRACER_VERSION" ]; then sed -i -E "s/^gem 'datadog', '[^']*'/gem 'datadog', '$TRACER_VERSION'/" Gemfile; fi \
+ && bundle install
 COPY relays/ruby/app app
 ENV TOOL=datadog
 CMD ["ruby", "app/boot_datadog.rb"]
 
 FROM base AS newrelic
 COPY relays/ruby/gemfiles/newrelic/Gemfile Gemfile
-RUN bundle install
+ARG TRACER_VERSION
+RUN if [ -n "$TRACER_VERSION" ]; then sed -i -E "s/^gem 'newrelic_rpm', '[^']*'/gem 'newrelic_rpm', '$TRACER_VERSION'/" Gemfile; fi \
+ && bundle install
 COPY relays/ruby/app app
 ENV TOOL=newrelic
 CMD ["ruby", "app/boot_newrelic.rb"]
 
 FROM base AS elastic
 COPY relays/ruby/gemfiles/elastic/Gemfile Gemfile
-RUN bundle install
+ARG TRACER_VERSION
+RUN if [ -n "$TRACER_VERSION" ]; then sed -i -E "s/^gem 'elastic-apm', '[^']*'/gem 'elastic-apm', '$TRACER_VERSION'/" Gemfile; fi \
+ && bundle install
 COPY relays/ruby/app app
 ENV TOOL=elastic
 CMD ["ruby", "app/boot_elastic.rb"]

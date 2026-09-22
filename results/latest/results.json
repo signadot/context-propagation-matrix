@@ -6144,6 +6144,7 @@
     "registry": "github-releases",
     "package": "open-telemetry/opentelemetry-dotnet-instrumentation",
     "github": "open-telemetry/opentelemetry-dotnet-instrumentation",
+    "tag_prefix": "v",
     "version": "1.16.0"
    },
    "runtime": ".NET 8.0.30 (CLR 8.0.30)",
@@ -24222,6 +24223,7 @@
     "registry": "github-releases",
     "package": "DataDog/dd-trace-dotnet",
     "github": "DataDog/dd-trace-dotnet",
+    "tag_prefix": "v",
     "version": "3.52.0"
    },
    "runtime": ".NET 8.0.30 (CLR 8.0.30)",
@@ -25604,6 +25606,7 @@
     "registry": "github-releases",
     "package": "DataDog/dd-trace-dotnet",
     "github": "DataDog/dd-trace-dotnet",
+    "tag_prefix": "v",
     "version": "3.52.0"
    },
    "runtime": ".NET 8.0.30 (CLR 8.0.30)",
@@ -36716,6 +36719,7 @@
     "registry": "github-releases",
     "package": "elastic/apm-agent-dotnet",
     "github": "elastic/apm-agent-dotnet",
+    "tag_prefix": "v",
     "version": "1.34.7"
    },
    "runtime": ".NET 8.0.30 (CLR 8.0.30)",
@@ -38878,6 +38882,7 @@
     "registry": "github-releases",
     "package": "elastic/apm-agent-php",
     "github": "elastic/apm-agent-php",
+    "tag_prefix": "v",
     "version": "elastic_apm 1.17.0"
    },
    "runtime": "php 8.3.33",
@@ -44392,6 +44397,7 @@
     "registry": "github-releases",
     "package": "newrelic/newrelic-dotnet-agent",
     "github": "newrelic/newrelic-dotnet-agent",
+    "tag_prefix": "v",
     "version": "10.54.0"
    },
    "runtime": ".NET 8.0.30 (CLR 8.0.30)",
@@ -55760,7 +55766,3091 @@
    }
   }
  ],
- "annotations": [],
+ "annotations": [
+  {
+   "id": "baseline-no-instrumentation",
+   "title": "Baseline: with no agent attached, nothing propagates",
+   "cause": "These relays run with no agent, wrapper or tracing library; no runtime in the matrix carries context on its own except .NET over HTTP/gRPC.",
+   "explanation": "Control runs: every language's relay with no agent, wrapper or tracing gem\nattached (`none-*` variants, 128 hops). Java, Node, Python, Go, Ruby, Rust\nand PHP behave as expected — nothing propagates on any of the 16 boundaries\nfor any header — confirming that the instrumented results are attributable\nto the tool under test, not to the apps or the harness.\n\n.NET is the partial exception: with no agent, ASP.NET Core hosting creates an\n`Activity` per request and `HttpClient`'s DiagnosticsHandler injects it on the\nway out (gRPC inherits this because `Grpc.Net.Client` rides on HttpClient),\nso `traceparent` (same trace-id, fresh span-id) and `tracestate` (preserved\nverbatim) pass on all four `http/grpc -\u003e http/grpc` boundaries. There is no\nbuilt-in messaging propagation, so every Kafka and RabbitMQ leg is dark on\n.NET too, and `ot-baggage-*` is never handled. The built-in `baggage`\nbehaviour on the HTTP/gRPC legs is described separately\n(`baseline-dotnet-baggage-reemitted-as-correlation-context`).",
+   "status": "by-design",
+   "cells": [
+    "none-dotnet/baggage/grpc-kafka",
+    "none-dotnet/baggage/grpc-rabbitmq",
+    "none-dotnet/baggage/http-kafka",
+    "none-dotnet/baggage/http-rabbitmq",
+    "none-dotnet/baggage/kafka-grpc",
+    "none-dotnet/baggage/kafka-http",
+    "none-dotnet/baggage/kafka-kafka",
+    "none-dotnet/baggage/kafka-rabbitmq",
+    "none-dotnet/baggage/rabbitmq-grpc",
+    "none-dotnet/baggage/rabbitmq-http",
+    "none-dotnet/baggage/rabbitmq-kafka",
+    "none-dotnet/baggage/rabbitmq-rabbitmq",
+    "none-dotnet/ot-baggage/grpc-grpc",
+    "none-dotnet/ot-baggage/grpc-http",
+    "none-dotnet/ot-baggage/grpc-kafka",
+    "none-dotnet/ot-baggage/grpc-rabbitmq",
+    "none-dotnet/ot-baggage/http-grpc",
+    "none-dotnet/ot-baggage/http-http",
+    "none-dotnet/ot-baggage/http-kafka",
+    "none-dotnet/ot-baggage/http-rabbitmq",
+    "none-dotnet/ot-baggage/kafka-grpc",
+    "none-dotnet/ot-baggage/kafka-http",
+    "none-dotnet/ot-baggage/kafka-kafka",
+    "none-dotnet/ot-baggage/kafka-rabbitmq",
+    "none-dotnet/ot-baggage/rabbitmq-grpc",
+    "none-dotnet/ot-baggage/rabbitmq-http",
+    "none-dotnet/ot-baggage/rabbitmq-kafka",
+    "none-dotnet/ot-baggage/rabbitmq-rabbitmq",
+    "none-dotnet/traceparent/grpc-kafka",
+    "none-dotnet/traceparent/grpc-rabbitmq",
+    "none-dotnet/traceparent/http-kafka",
+    "none-dotnet/traceparent/http-rabbitmq",
+    "none-dotnet/traceparent/kafka-grpc",
+    "none-dotnet/traceparent/kafka-http",
+    "none-dotnet/traceparent/kafka-kafka",
+    "none-dotnet/traceparent/kafka-rabbitmq",
+    "none-dotnet/traceparent/rabbitmq-grpc",
+    "none-dotnet/traceparent/rabbitmq-http",
+    "none-dotnet/traceparent/rabbitmq-kafka",
+    "none-dotnet/traceparent/rabbitmq-rabbitmq",
+    "none-dotnet/tracestate/grpc-kafka",
+    "none-dotnet/tracestate/grpc-rabbitmq",
+    "none-dotnet/tracestate/http-kafka",
+    "none-dotnet/tracestate/http-rabbitmq",
+    "none-dotnet/tracestate/kafka-grpc",
+    "none-dotnet/tracestate/kafka-http",
+    "none-dotnet/tracestate/kafka-kafka",
+    "none-dotnet/tracestate/kafka-rabbitmq",
+    "none-dotnet/tracestate/rabbitmq-grpc",
+    "none-dotnet/tracestate/rabbitmq-http",
+    "none-dotnet/tracestate/rabbitmq-kafka",
+    "none-dotnet/tracestate/rabbitmq-rabbitmq",
+    "none-go/baggage/grpc-grpc",
+    "none-go/baggage/grpc-http",
+    "none-go/baggage/grpc-kafka",
+    "none-go/baggage/grpc-rabbitmq",
+    "none-go/baggage/http-grpc",
+    "none-go/baggage/http-http",
+    "none-go/baggage/http-kafka",
+    "none-go/baggage/http-rabbitmq",
+    "none-go/baggage/kafka-grpc",
+    "none-go/baggage/kafka-http",
+    "none-go/baggage/kafka-kafka",
+    "none-go/baggage/kafka-rabbitmq",
+    "none-go/baggage/rabbitmq-grpc",
+    "none-go/baggage/rabbitmq-http",
+    "none-go/baggage/rabbitmq-kafka",
+    "none-go/baggage/rabbitmq-rabbitmq",
+    "none-go/ot-baggage/grpc-grpc",
+    "none-go/ot-baggage/grpc-http",
+    "none-go/ot-baggage/grpc-kafka",
+    "none-go/ot-baggage/grpc-rabbitmq",
+    "none-go/ot-baggage/http-grpc",
+    "none-go/ot-baggage/http-http",
+    "none-go/ot-baggage/http-kafka",
+    "none-go/ot-baggage/http-rabbitmq",
+    "none-go/ot-baggage/kafka-grpc",
+    "none-go/ot-baggage/kafka-http",
+    "none-go/ot-baggage/kafka-kafka",
+    "none-go/ot-baggage/kafka-rabbitmq",
+    "none-go/ot-baggage/rabbitmq-grpc",
+    "none-go/ot-baggage/rabbitmq-http",
+    "none-go/ot-baggage/rabbitmq-kafka",
+    "none-go/ot-baggage/rabbitmq-rabbitmq",
+    "none-go/traceparent/grpc-grpc",
+    "none-go/traceparent/grpc-http",
+    "none-go/traceparent/grpc-kafka",
+    "none-go/traceparent/grpc-rabbitmq",
+    "none-go/traceparent/http-grpc",
+    "none-go/traceparent/http-http",
+    "none-go/traceparent/http-kafka",
+    "none-go/traceparent/http-rabbitmq",
+    "none-go/traceparent/kafka-grpc",
+    "none-go/traceparent/kafka-http",
+    "none-go/traceparent/kafka-kafka",
+    "none-go/traceparent/kafka-rabbitmq",
+    "none-go/traceparent/rabbitmq-grpc",
+    "none-go/traceparent/rabbitmq-http",
+    "none-go/traceparent/rabbitmq-kafka",
+    "none-go/traceparent/rabbitmq-rabbitmq",
+    "none-go/tracestate/grpc-grpc",
+    "none-go/tracestate/grpc-http",
+    "none-go/tracestate/grpc-kafka",
+    "none-go/tracestate/grpc-rabbitmq",
+    "none-go/tracestate/http-grpc",
+    "none-go/tracestate/http-http",
+    "none-go/tracestate/http-kafka",
+    "none-go/tracestate/http-rabbitmq",
+    "none-go/tracestate/kafka-grpc",
+    "none-go/tracestate/kafka-http",
+    "none-go/tracestate/kafka-kafka",
+    "none-go/tracestate/kafka-rabbitmq",
+    "none-go/tracestate/rabbitmq-grpc",
+    "none-go/tracestate/rabbitmq-http",
+    "none-go/tracestate/rabbitmq-kafka",
+    "none-go/tracestate/rabbitmq-rabbitmq",
+    "none-java/baggage/grpc-grpc",
+    "none-java/baggage/grpc-http",
+    "none-java/baggage/grpc-kafka",
+    "none-java/baggage/grpc-rabbitmq",
+    "none-java/baggage/http-grpc",
+    "none-java/baggage/http-http",
+    "none-java/baggage/http-kafka",
+    "none-java/baggage/http-rabbitmq",
+    "none-java/baggage/kafka-grpc",
+    "none-java/baggage/kafka-http",
+    "none-java/baggage/kafka-kafka",
+    "none-java/baggage/kafka-rabbitmq",
+    "none-java/baggage/rabbitmq-grpc",
+    "none-java/baggage/rabbitmq-http",
+    "none-java/baggage/rabbitmq-kafka",
+    "none-java/baggage/rabbitmq-rabbitmq",
+    "none-java/ot-baggage/grpc-grpc",
+    "none-java/ot-baggage/grpc-http",
+    "none-java/ot-baggage/grpc-kafka",
+    "none-java/ot-baggage/grpc-rabbitmq",
+    "none-java/ot-baggage/http-grpc",
+    "none-java/ot-baggage/http-http",
+    "none-java/ot-baggage/http-kafka",
+    "none-java/ot-baggage/http-rabbitmq",
+    "none-java/ot-baggage/kafka-grpc",
+    "none-java/ot-baggage/kafka-http",
+    "none-java/ot-baggage/kafka-kafka",
+    "none-java/ot-baggage/kafka-rabbitmq",
+    "none-java/ot-baggage/rabbitmq-grpc",
+    "none-java/ot-baggage/rabbitmq-http",
+    "none-java/ot-baggage/rabbitmq-kafka",
+    "none-java/ot-baggage/rabbitmq-rabbitmq",
+    "none-java/traceparent/grpc-grpc",
+    "none-java/traceparent/grpc-http",
+    "none-java/traceparent/grpc-kafka",
+    "none-java/traceparent/grpc-rabbitmq",
+    "none-java/traceparent/http-grpc",
+    "none-java/traceparent/http-http",
+    "none-java/traceparent/http-kafka",
+    "none-java/traceparent/http-rabbitmq",
+    "none-java/traceparent/kafka-grpc",
+    "none-java/traceparent/kafka-http",
+    "none-java/traceparent/kafka-kafka",
+    "none-java/traceparent/kafka-rabbitmq",
+    "none-java/traceparent/rabbitmq-grpc",
+    "none-java/traceparent/rabbitmq-http",
+    "none-java/traceparent/rabbitmq-kafka",
+    "none-java/traceparent/rabbitmq-rabbitmq",
+    "none-java/tracestate/grpc-grpc",
+    "none-java/tracestate/grpc-http",
+    "none-java/tracestate/grpc-kafka",
+    "none-java/tracestate/grpc-rabbitmq",
+    "none-java/tracestate/http-grpc",
+    "none-java/tracestate/http-http",
+    "none-java/tracestate/http-kafka",
+    "none-java/tracestate/http-rabbitmq",
+    "none-java/tracestate/kafka-grpc",
+    "none-java/tracestate/kafka-http",
+    "none-java/tracestate/kafka-kafka",
+    "none-java/tracestate/kafka-rabbitmq",
+    "none-java/tracestate/rabbitmq-grpc",
+    "none-java/tracestate/rabbitmq-http",
+    "none-java/tracestate/rabbitmq-kafka",
+    "none-java/tracestate/rabbitmq-rabbitmq",
+    "none-node/baggage/grpc-grpc",
+    "none-node/baggage/grpc-http",
+    "none-node/baggage/grpc-kafka",
+    "none-node/baggage/grpc-rabbitmq",
+    "none-node/baggage/http-grpc",
+    "none-node/baggage/http-http",
+    "none-node/baggage/http-kafka",
+    "none-node/baggage/http-rabbitmq",
+    "none-node/baggage/kafka-grpc",
+    "none-node/baggage/kafka-http",
+    "none-node/baggage/kafka-kafka",
+    "none-node/baggage/kafka-rabbitmq",
+    "none-node/baggage/rabbitmq-grpc",
+    "none-node/baggage/rabbitmq-http",
+    "none-node/baggage/rabbitmq-kafka",
+    "none-node/baggage/rabbitmq-rabbitmq",
+    "none-node/ot-baggage/grpc-grpc",
+    "none-node/ot-baggage/grpc-http",
+    "none-node/ot-baggage/grpc-kafka",
+    "none-node/ot-baggage/grpc-rabbitmq",
+    "none-node/ot-baggage/http-grpc",
+    "none-node/ot-baggage/http-http",
+    "none-node/ot-baggage/http-kafka",
+    "none-node/ot-baggage/http-rabbitmq",
+    "none-node/ot-baggage/kafka-grpc",
+    "none-node/ot-baggage/kafka-http",
+    "none-node/ot-baggage/kafka-kafka",
+    "none-node/ot-baggage/kafka-rabbitmq",
+    "none-node/ot-baggage/rabbitmq-grpc",
+    "none-node/ot-baggage/rabbitmq-http",
+    "none-node/ot-baggage/rabbitmq-kafka",
+    "none-node/ot-baggage/rabbitmq-rabbitmq",
+    "none-node/traceparent/grpc-grpc",
+    "none-node/traceparent/grpc-http",
+    "none-node/traceparent/grpc-kafka",
+    "none-node/traceparent/grpc-rabbitmq",
+    "none-node/traceparent/http-grpc",
+    "none-node/traceparent/http-http",
+    "none-node/traceparent/http-kafka",
+    "none-node/traceparent/http-rabbitmq",
+    "none-node/traceparent/kafka-grpc",
+    "none-node/traceparent/kafka-http",
+    "none-node/traceparent/kafka-kafka",
+    "none-node/traceparent/kafka-rabbitmq",
+    "none-node/traceparent/rabbitmq-grpc",
+    "none-node/traceparent/rabbitmq-http",
+    "none-node/traceparent/rabbitmq-kafka",
+    "none-node/traceparent/rabbitmq-rabbitmq",
+    "none-node/tracestate/grpc-grpc",
+    "none-node/tracestate/grpc-http",
+    "none-node/tracestate/grpc-kafka",
+    "none-node/tracestate/grpc-rabbitmq",
+    "none-node/tracestate/http-grpc",
+    "none-node/tracestate/http-http",
+    "none-node/tracestate/http-kafka",
+    "none-node/tracestate/http-rabbitmq",
+    "none-node/tracestate/kafka-grpc",
+    "none-node/tracestate/kafka-http",
+    "none-node/tracestate/kafka-kafka",
+    "none-node/tracestate/kafka-rabbitmq",
+    "none-node/tracestate/rabbitmq-grpc",
+    "none-node/tracestate/rabbitmq-http",
+    "none-node/tracestate/rabbitmq-kafka",
+    "none-node/tracestate/rabbitmq-rabbitmq",
+    "none-php/baggage/http-grpc",
+    "none-php/baggage/http-http",
+    "none-php/baggage/http-kafka",
+    "none-php/baggage/http-rabbitmq",
+    "none-php/baggage/kafka-grpc",
+    "none-php/baggage/kafka-http",
+    "none-php/baggage/kafka-kafka",
+    "none-php/baggage/kafka-rabbitmq",
+    "none-php/baggage/rabbitmq-grpc",
+    "none-php/baggage/rabbitmq-http",
+    "none-php/baggage/rabbitmq-kafka",
+    "none-php/baggage/rabbitmq-rabbitmq",
+    "none-php/ot-baggage/http-grpc",
+    "none-php/ot-baggage/http-http",
+    "none-php/ot-baggage/http-kafka",
+    "none-php/ot-baggage/http-rabbitmq",
+    "none-php/ot-baggage/kafka-grpc",
+    "none-php/ot-baggage/kafka-http",
+    "none-php/ot-baggage/kafka-kafka",
+    "none-php/ot-baggage/kafka-rabbitmq",
+    "none-php/ot-baggage/rabbitmq-grpc",
+    "none-php/ot-baggage/rabbitmq-http",
+    "none-php/ot-baggage/rabbitmq-kafka",
+    "none-php/ot-baggage/rabbitmq-rabbitmq",
+    "none-php/traceparent/http-grpc",
+    "none-php/traceparent/http-http",
+    "none-php/traceparent/http-kafka",
+    "none-php/traceparent/http-rabbitmq",
+    "none-php/traceparent/kafka-grpc",
+    "none-php/traceparent/kafka-http",
+    "none-php/traceparent/kafka-kafka",
+    "none-php/traceparent/kafka-rabbitmq",
+    "none-php/traceparent/rabbitmq-grpc",
+    "none-php/traceparent/rabbitmq-http",
+    "none-php/traceparent/rabbitmq-kafka",
+    "none-php/traceparent/rabbitmq-rabbitmq",
+    "none-php/tracestate/http-grpc",
+    "none-php/tracestate/http-http",
+    "none-php/tracestate/http-kafka",
+    "none-php/tracestate/http-rabbitmq",
+    "none-php/tracestate/kafka-grpc",
+    "none-php/tracestate/kafka-http",
+    "none-php/tracestate/kafka-kafka",
+    "none-php/tracestate/kafka-rabbitmq",
+    "none-php/tracestate/rabbitmq-grpc",
+    "none-php/tracestate/rabbitmq-http",
+    "none-php/tracestate/rabbitmq-kafka",
+    "none-php/tracestate/rabbitmq-rabbitmq",
+    "none-python/baggage/grpc-grpc",
+    "none-python/baggage/grpc-http",
+    "none-python/baggage/grpc-kafka",
+    "none-python/baggage/grpc-rabbitmq",
+    "none-python/baggage/http-grpc",
+    "none-python/baggage/http-http",
+    "none-python/baggage/http-kafka",
+    "none-python/baggage/http-rabbitmq",
+    "none-python/baggage/kafka-grpc",
+    "none-python/baggage/kafka-http",
+    "none-python/baggage/kafka-kafka",
+    "none-python/baggage/kafka-rabbitmq",
+    "none-python/baggage/rabbitmq-grpc",
+    "none-python/baggage/rabbitmq-http",
+    "none-python/baggage/rabbitmq-kafka",
+    "none-python/baggage/rabbitmq-rabbitmq",
+    "none-python/ot-baggage/grpc-grpc",
+    "none-python/ot-baggage/grpc-http",
+    "none-python/ot-baggage/grpc-kafka",
+    "none-python/ot-baggage/grpc-rabbitmq",
+    "none-python/ot-baggage/http-grpc",
+    "none-python/ot-baggage/http-http",
+    "none-python/ot-baggage/http-kafka",
+    "none-python/ot-baggage/http-rabbitmq",
+    "none-python/ot-baggage/kafka-grpc",
+    "none-python/ot-baggage/kafka-http",
+    "none-python/ot-baggage/kafka-kafka",
+    "none-python/ot-baggage/kafka-rabbitmq",
+    "none-python/ot-baggage/rabbitmq-grpc",
+    "none-python/ot-baggage/rabbitmq-http",
+    "none-python/ot-baggage/rabbitmq-kafka",
+    "none-python/ot-baggage/rabbitmq-rabbitmq",
+    "none-python/traceparent/grpc-grpc",
+    "none-python/traceparent/grpc-http",
+    "none-python/traceparent/grpc-kafka",
+    "none-python/traceparent/grpc-rabbitmq",
+    "none-python/traceparent/http-grpc",
+    "none-python/traceparent/http-http",
+    "none-python/traceparent/http-kafka",
+    "none-python/traceparent/http-rabbitmq",
+    "none-python/traceparent/kafka-grpc",
+    "none-python/traceparent/kafka-http",
+    "none-python/traceparent/kafka-kafka",
+    "none-python/traceparent/kafka-rabbitmq",
+    "none-python/traceparent/rabbitmq-grpc",
+    "none-python/traceparent/rabbitmq-http",
+    "none-python/traceparent/rabbitmq-kafka",
+    "none-python/traceparent/rabbitmq-rabbitmq",
+    "none-python/tracestate/grpc-grpc",
+    "none-python/tracestate/grpc-http",
+    "none-python/tracestate/grpc-kafka",
+    "none-python/tracestate/grpc-rabbitmq",
+    "none-python/tracestate/http-grpc",
+    "none-python/tracestate/http-http",
+    "none-python/tracestate/http-kafka",
+    "none-python/tracestate/http-rabbitmq",
+    "none-python/tracestate/kafka-grpc",
+    "none-python/tracestate/kafka-http",
+    "none-python/tracestate/kafka-kafka",
+    "none-python/tracestate/kafka-rabbitmq",
+    "none-python/tracestate/rabbitmq-grpc",
+    "none-python/tracestate/rabbitmq-http",
+    "none-python/tracestate/rabbitmq-kafka",
+    "none-python/tracestate/rabbitmq-rabbitmq",
+    "none-ruby/baggage/grpc-grpc",
+    "none-ruby/baggage/grpc-http",
+    "none-ruby/baggage/grpc-kafka",
+    "none-ruby/baggage/grpc-rabbitmq",
+    "none-ruby/baggage/http-grpc",
+    "none-ruby/baggage/http-http",
+    "none-ruby/baggage/http-kafka",
+    "none-ruby/baggage/http-rabbitmq",
+    "none-ruby/baggage/kafka-grpc",
+    "none-ruby/baggage/kafka-http",
+    "none-ruby/baggage/kafka-kafka",
+    "none-ruby/baggage/kafka-rabbitmq",
+    "none-ruby/baggage/rabbitmq-grpc",
+    "none-ruby/baggage/rabbitmq-http",
+    "none-ruby/baggage/rabbitmq-kafka",
+    "none-ruby/baggage/rabbitmq-rabbitmq",
+    "none-ruby/ot-baggage/grpc-grpc",
+    "none-ruby/ot-baggage/grpc-http",
+    "none-ruby/ot-baggage/grpc-kafka",
+    "none-ruby/ot-baggage/grpc-rabbitmq",
+    "none-ruby/ot-baggage/http-grpc",
+    "none-ruby/ot-baggage/http-http",
+    "none-ruby/ot-baggage/http-kafka",
+    "none-ruby/ot-baggage/http-rabbitmq",
+    "none-ruby/ot-baggage/kafka-grpc",
+    "none-ruby/ot-baggage/kafka-http",
+    "none-ruby/ot-baggage/kafka-kafka",
+    "none-ruby/ot-baggage/kafka-rabbitmq",
+    "none-ruby/ot-baggage/rabbitmq-grpc",
+    "none-ruby/ot-baggage/rabbitmq-http",
+    "none-ruby/ot-baggage/rabbitmq-kafka",
+    "none-ruby/ot-baggage/rabbitmq-rabbitmq",
+    "none-ruby/traceparent/grpc-grpc",
+    "none-ruby/traceparent/grpc-http",
+    "none-ruby/traceparent/grpc-kafka",
+    "none-ruby/traceparent/grpc-rabbitmq",
+    "none-ruby/traceparent/http-grpc",
+    "none-ruby/traceparent/http-http",
+    "none-ruby/traceparent/http-kafka",
+    "none-ruby/traceparent/http-rabbitmq",
+    "none-ruby/traceparent/kafka-grpc",
+    "none-ruby/traceparent/kafka-http",
+    "none-ruby/traceparent/kafka-kafka",
+    "none-ruby/traceparent/kafka-rabbitmq",
+    "none-ruby/traceparent/rabbitmq-grpc",
+    "none-ruby/traceparent/rabbitmq-http",
+    "none-ruby/traceparent/rabbitmq-kafka",
+    "none-ruby/traceparent/rabbitmq-rabbitmq",
+    "none-ruby/tracestate/grpc-grpc",
+    "none-ruby/tracestate/grpc-http",
+    "none-ruby/tracestate/grpc-kafka",
+    "none-ruby/tracestate/grpc-rabbitmq",
+    "none-ruby/tracestate/http-grpc",
+    "none-ruby/tracestate/http-http",
+    "none-ruby/tracestate/http-kafka",
+    "none-ruby/tracestate/http-rabbitmq",
+    "none-ruby/tracestate/kafka-grpc",
+    "none-ruby/tracestate/kafka-http",
+    "none-ruby/tracestate/kafka-kafka",
+    "none-ruby/tracestate/kafka-rabbitmq",
+    "none-ruby/tracestate/rabbitmq-grpc",
+    "none-ruby/tracestate/rabbitmq-http",
+    "none-ruby/tracestate/rabbitmq-kafka",
+    "none-ruby/tracestate/rabbitmq-rabbitmq",
+    "none-rust/baggage/grpc-grpc",
+    "none-rust/baggage/grpc-http",
+    "none-rust/baggage/grpc-kafka",
+    "none-rust/baggage/grpc-rabbitmq",
+    "none-rust/baggage/http-grpc",
+    "none-rust/baggage/http-http",
+    "none-rust/baggage/http-kafka",
+    "none-rust/baggage/http-rabbitmq",
+    "none-rust/baggage/kafka-grpc",
+    "none-rust/baggage/kafka-http",
+    "none-rust/baggage/kafka-kafka",
+    "none-rust/baggage/kafka-rabbitmq",
+    "none-rust/baggage/rabbitmq-grpc",
+    "none-rust/baggage/rabbitmq-http",
+    "none-rust/baggage/rabbitmq-kafka",
+    "none-rust/baggage/rabbitmq-rabbitmq",
+    "none-rust/ot-baggage/grpc-grpc",
+    "none-rust/ot-baggage/grpc-http",
+    "none-rust/ot-baggage/grpc-kafka",
+    "none-rust/ot-baggage/grpc-rabbitmq",
+    "none-rust/ot-baggage/http-grpc",
+    "none-rust/ot-baggage/http-http",
+    "none-rust/ot-baggage/http-kafka",
+    "none-rust/ot-baggage/http-rabbitmq",
+    "none-rust/ot-baggage/kafka-grpc",
+    "none-rust/ot-baggage/kafka-http",
+    "none-rust/ot-baggage/kafka-kafka",
+    "none-rust/ot-baggage/kafka-rabbitmq",
+    "none-rust/ot-baggage/rabbitmq-grpc",
+    "none-rust/ot-baggage/rabbitmq-http",
+    "none-rust/ot-baggage/rabbitmq-kafka",
+    "none-rust/ot-baggage/rabbitmq-rabbitmq",
+    "none-rust/traceparent/grpc-grpc",
+    "none-rust/traceparent/grpc-http",
+    "none-rust/traceparent/grpc-kafka",
+    "none-rust/traceparent/grpc-rabbitmq",
+    "none-rust/traceparent/http-grpc",
+    "none-rust/traceparent/http-http",
+    "none-rust/traceparent/http-kafka",
+    "none-rust/traceparent/http-rabbitmq",
+    "none-rust/traceparent/kafka-grpc",
+    "none-rust/traceparent/kafka-http",
+    "none-rust/traceparent/kafka-kafka",
+    "none-rust/traceparent/kafka-rabbitmq",
+    "none-rust/traceparent/rabbitmq-grpc",
+    "none-rust/traceparent/rabbitmq-http",
+    "none-rust/traceparent/rabbitmq-kafka",
+    "none-rust/traceparent/rabbitmq-rabbitmq",
+    "none-rust/tracestate/grpc-grpc",
+    "none-rust/tracestate/grpc-http",
+    "none-rust/tracestate/grpc-kafka",
+    "none-rust/tracestate/grpc-rabbitmq",
+    "none-rust/tracestate/http-grpc",
+    "none-rust/tracestate/http-http",
+    "none-rust/tracestate/http-kafka",
+    "none-rust/tracestate/http-rabbitmq",
+    "none-rust/tracestate/kafka-grpc",
+    "none-rust/tracestate/kafka-http",
+    "none-rust/tracestate/kafka-kafka",
+    "none-rust/tracestate/kafka-rabbitmq",
+    "none-rust/tracestate/rabbitmq-grpc",
+    "none-rust/tracestate/rabbitmq-http",
+    "none-rust/tracestate/rabbitmq-kafka",
+    "none-rust/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "none-dotnet",
+    "none-go",
+    "none-java",
+    "none-node",
+    "none-php",
+    "none-python",
+    "none-ruby",
+    "none-rust"
+   ]
+  },
+  {
+   "id": "baseline-dotnet-baggage-reemitted-as-correlation-context",
+   "title": "Baseline .NET 8: the runtime reads W3C baggage but re-emits it as Correlation-Context",
+   "cause": "On .NET 8/9 the default DistributedContextPropagator is the pre-W3C legacy one: it reads `baggage` but re-emits it as the obsolete Correlation-Context header.",
+   "explanation": "With no agent attached, .NET 8 propagates `traceparent` and `tracestate`\nacross `http/grpc -\u003e http/grpc`, and it *does* read the incoming W3C\n`baggage` header into `Activity.Baggage` — but the default\n`DistributedContextPropagator` on .NET 8/9 is the pre-W3C \"legacy\"\npropagator, which re-emits baggage under the obsolete draft name\n`Correlation-Context`. Values survive one hop and are then invisible to any\nW3C-only reader downstream, so the harness scores `baggage` absent.\n\nVersion dependence: .NET 10 switches the default to a strict W3C propagator\n(`baggage` header out, strict encoding, `CreatePreW3CPropagator()` to opt\nback) — an uninstrumented .NET service changes its propagation behaviour on\na runtime upgrade. Harness runs used .NET 8.",
+   "status": "by-design",
+   "links": [
+    {
+     "title": ".NET 10 breaking change: default trace context propagator",
+     "url": "https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/10.0/default-trace-context-propagator"
+    }
+   ],
+   "cells": [
+    "none-dotnet/baggage/grpc-grpc",
+    "none-dotnet/baggage/grpc-http",
+    "none-dotnet/baggage/http-grpc",
+    "none-dotnet/baggage/http-http"
+   ],
+   "variants": [
+    "none-dotnet"
+   ]
+  },
+  {
+   "id": "php-no-grpc-server",
+   "title": "PHP: no gRPC server exists in any tracer-supported topology, so gRPC-inbound is undeliverable",
+   "cause": "The official gRPC PHP implementation is client-only; the harness's Apache mod_php + CLI worker topology cannot accept gRPC calls, so grpc-\u003e* hops never run.",
+   "explanation": "grpc.io's PHP quickstart: \"You can only create gRPC clients in PHP. Use\nanother language to create a gRPC server.\" (Restated in grpc/grpc #38481,\nopen, filed by a Google engineer.) PHP *can* serve gRPC through a separate\napplication server — RoadRunner's gRPC plugin (Go proxy → PHP workers) or\nSwoole-based frameworks such as Hyperf — but none of the tracers'\nzero-code instrumentation covers those paths: dd-trace-php's RoadRunner\nintegration hooks the HTTP `PSR7Worker` only (Datadog's guidance for\nRoadRunner gRPC is manual `dd_trace_method` hooks, dd-trace-php #805); OTel\nhas no roadrunner-grpc PHP instrumentation (RoadRunner's `otel` plugin\ntraces in the Go proxy layer, not the PHP worker); Elastic and New Relic\nsupport neither.\n\nThe harness measures the documented Apache mod_php + two CLI workers\ntopology, the supported deployment for all three tracers (dd-trace-php does\nnot support `php -S`), so every `grpc-\u003e*` boundary is undelivered for every\nPHP variant including the baseline. A RoadRunner-based relay with manual\ninstrumentation is a candidate follow-up (see the roadmap in DESIGN.md).",
+   "status": "app-limitation",
+   "links": [
+    {
+     "title": "grpc.io PHP quickstart (clients only)",
+     "url": "https://grpc.io/docs/languages/php/quickstart/"
+    },
+    {
+     "title": "grpc/grpc #38481",
+     "url": "https://github.com/grpc/grpc/issues/38481"
+    },
+    {
+     "title": "RoadRunner gRPC plugin",
+     "url": "https://docs.roadrunner.dev/docs/grpc/grpc"
+    },
+    {
+     "title": "dd-trace-php #805 (RoadRunner gRPC guidance)",
+     "url": "https://github.com/DataDog/dd-trace-php/issues/805"
+    }
+   ],
+   "cells": [
+    "datadog-php/baggage/grpc-grpc",
+    "datadog-php/baggage/grpc-http",
+    "datadog-php/baggage/grpc-kafka",
+    "datadog-php/baggage/grpc-rabbitmq",
+    "datadog-php/ot-baggage/grpc-grpc",
+    "datadog-php/ot-baggage/grpc-http",
+    "datadog-php/ot-baggage/grpc-kafka",
+    "datadog-php/ot-baggage/grpc-rabbitmq",
+    "datadog-php/traceparent/grpc-grpc",
+    "datadog-php/traceparent/grpc-http",
+    "datadog-php/traceparent/grpc-kafka",
+    "datadog-php/traceparent/grpc-rabbitmq",
+    "datadog-php/tracestate/grpc-grpc",
+    "datadog-php/tracestate/grpc-http",
+    "datadog-php/tracestate/grpc-kafka",
+    "datadog-php/tracestate/grpc-rabbitmq",
+    "elastic-php/baggage/grpc-grpc",
+    "elastic-php/baggage/grpc-http",
+    "elastic-php/baggage/grpc-kafka",
+    "elastic-php/baggage/grpc-rabbitmq",
+    "elastic-php/ot-baggage/grpc-grpc",
+    "elastic-php/ot-baggage/grpc-http",
+    "elastic-php/ot-baggage/grpc-kafka",
+    "elastic-php/ot-baggage/grpc-rabbitmq",
+    "elastic-php/traceparent/grpc-grpc",
+    "elastic-php/traceparent/grpc-http",
+    "elastic-php/traceparent/grpc-kafka",
+    "elastic-php/traceparent/grpc-rabbitmq",
+    "elastic-php/tracestate/grpc-grpc",
+    "elastic-php/tracestate/grpc-http",
+    "elastic-php/tracestate/grpc-kafka",
+    "elastic-php/tracestate/grpc-rabbitmq",
+    "newrelic-php/baggage/grpc-grpc",
+    "newrelic-php/baggage/grpc-http",
+    "newrelic-php/baggage/grpc-kafka",
+    "newrelic-php/baggage/grpc-rabbitmq",
+    "newrelic-php/ot-baggage/grpc-grpc",
+    "newrelic-php/ot-baggage/grpc-http",
+    "newrelic-php/ot-baggage/grpc-kafka",
+    "newrelic-php/ot-baggage/grpc-rabbitmq",
+    "newrelic-php/traceparent/grpc-grpc",
+    "newrelic-php/traceparent/grpc-http",
+    "newrelic-php/traceparent/grpc-kafka",
+    "newrelic-php/traceparent/grpc-rabbitmq",
+    "newrelic-php/tracestate/grpc-grpc",
+    "newrelic-php/tracestate/grpc-http",
+    "newrelic-php/tracestate/grpc-kafka",
+    "newrelic-php/tracestate/grpc-rabbitmq",
+    "none-php/baggage/grpc-grpc",
+    "none-php/baggage/grpc-http",
+    "none-php/baggage/grpc-kafka",
+    "none-php/baggage/grpc-rabbitmq",
+    "none-php/ot-baggage/grpc-grpc",
+    "none-php/ot-baggage/grpc-http",
+    "none-php/ot-baggage/grpc-kafka",
+    "none-php/ot-baggage/grpc-rabbitmq",
+    "none-php/traceparent/grpc-grpc",
+    "none-php/traceparent/grpc-http",
+    "none-php/traceparent/grpc-kafka",
+    "none-php/traceparent/grpc-rabbitmq",
+    "none-php/tracestate/grpc-grpc",
+    "none-php/tracestate/grpc-http",
+    "none-php/tracestate/grpc-kafka",
+    "none-php/tracestate/grpc-rabbitmq",
+    "otel-php/baggage/grpc-grpc",
+    "otel-php/baggage/grpc-http",
+    "otel-php/baggage/grpc-kafka",
+    "otel-php/baggage/grpc-rabbitmq",
+    "otel-php/ot-baggage/grpc-grpc",
+    "otel-php/ot-baggage/grpc-http",
+    "otel-php/ot-baggage/grpc-kafka",
+    "otel-php/ot-baggage/grpc-rabbitmq",
+    "otel-php/traceparent/grpc-grpc",
+    "otel-php/traceparent/grpc-http",
+    "otel-php/traceparent/grpc-kafka",
+    "otel-php/traceparent/grpc-rabbitmq",
+    "otel-php/tracestate/grpc-grpc",
+    "otel-php/tracestate/grpc-http",
+    "otel-php/tracestate/grpc-kafka",
+    "otel-php/tracestate/grpc-rabbitmq"
+   ],
+   "variants": [
+    "datadog-php",
+    "elastic-php",
+    "newrelic-php",
+    "none-php",
+    "otel-php"
+   ]
+  },
+  {
+   "id": "php-grpc-client-not-instrumented",
+   "title": "PHP: no tool instruments the ext-grpc client, so every *-\u003egrpc leg is header-free",
+   "cause": "Neither OTel PHP, dd-trace-php, Elastic PHP nor New Relic PHP hooks ext-grpc + grpc/grpc client calls; no metadata is injected on any *-\u003egrpc boundary.",
+   "explanation": "Every `*-\u003egrpc` cell is header-free for otel, datadog, elastic and newrelic\nalike: the outbound gRPC client (`ext-grpc` + `grpc/grpc`) is not on any\ntool's instrumentation list, so nothing is injected into call metadata.\n\nDatadog: dd-trace-php #916 is the canonical gRPC request, open since 2020\nand marked \"up-for-grabs\" (\"We do not have enough bandwidth to work on this\nintegration during this quarter\"); gRPC is absent from Datadog's PHP\ncompatibility tables. OpenTelemetry: the opentelemetry-php-contrib\ninstrumentation tree (30 auto-instrumentations) contains no gRPC entry —\ngRPC exists in the OTel PHP ecosystem only as the OTLP *export* transport;\nno issue proposes instrumenting `ext-grpc` client calls (filing candidate).\nElastic and New Relic list ext-grpc as unsupported.\n\nWorkaround: add the propagation headers to the call's metadata array\nyourself at every gRPC call site, using the tool's propagator/inject API.",
+   "status": "open",
+   "links": [
+    {
+     "title": "dd-trace-php #916 (gRPC request, open since 2020)",
+     "url": "https://github.com/DataDog/dd-trace-php/issues/916"
+    },
+    {
+     "title": "Datadog PHP compatibility docs",
+     "url": "https://docs.datadoghq.com/tracing/trace_collection/compatibility/php/"
+    },
+    {
+     "title": "opentelemetry-php-contrib instrumentation tree (no gRPC)",
+     "url": "https://github.com/open-telemetry/opentelemetry-php-contrib/tree/main/src/Instrumentation"
+    },
+    {
+     "title": "grpc.io PHP quickstart",
+     "url": "https://grpc.io/docs/languages/php/quickstart/"
+    }
+   ],
+   "cells": [
+    "datadog-php/baggage/http-grpc",
+    "datadog-php/baggage/kafka-grpc",
+    "datadog-php/baggage/rabbitmq-grpc",
+    "datadog-php/traceparent/http-grpc",
+    "datadog-php/traceparent/kafka-grpc",
+    "datadog-php/traceparent/rabbitmq-grpc",
+    "datadog-php/tracestate/http-grpc",
+    "datadog-php/tracestate/kafka-grpc",
+    "datadog-php/tracestate/rabbitmq-grpc",
+    "elastic-php/traceparent/http-grpc",
+    "elastic-php/traceparent/kafka-grpc",
+    "elastic-php/traceparent/rabbitmq-grpc",
+    "elastic-php/tracestate/http-grpc",
+    "elastic-php/tracestate/kafka-grpc",
+    "elastic-php/tracestate/rabbitmq-grpc",
+    "newrelic-php/traceparent/http-grpc",
+    "newrelic-php/traceparent/kafka-grpc",
+    "newrelic-php/traceparent/rabbitmq-grpc",
+    "newrelic-php/tracestate/http-grpc",
+    "newrelic-php/tracestate/kafka-grpc",
+    "newrelic-php/tracestate/rabbitmq-grpc",
+    "otel-php/baggage/http-grpc",
+    "otel-php/baggage/kafka-grpc",
+    "otel-php/baggage/rabbitmq-grpc",
+    "otel-php/traceparent/http-grpc",
+    "otel-php/traceparent/kafka-grpc",
+    "otel-php/traceparent/rabbitmq-grpc",
+    "otel-php/tracestate/http-grpc",
+    "otel-php/tracestate/kafka-grpc",
+    "otel-php/tracestate/rabbitmq-grpc"
+   ],
+   "variants": [
+    "datadog-php",
+    "elastic-php",
+    "newrelic-php",
+    "otel-php"
+   ]
+  },
+  {
+   "id": "go-weavers-kafka-consume-no-context-activation",
+   "title": "Go build-time weavers: Kafka consumers never hand the extracted context back to application code",
+   "cause": "otelc's kafka-go Reader has no callback to hand back the context; Orchestrion's sarama consumer weave does not continue the trace seeded in record headers.",
+   "explanation": "Both compile-time weavers break at the same place runtime agents do: the\nconsume side of an async hop. Both compile deliberately naive apps (single\n`main.go`, zero tracing imports); only the build command differs from an\nuninstrumented build.\n\n**otel-go-compiletime** (otelc v1.1.0): kafka-go's `Reader` is a pull-style\nAPI (`ReadMessage(ctx)` in an app-owned loop) with no callback boundary, so\nthe woven consumer instrumentation has nowhere to hand the extracted context\nback to application code. The app's loop context is `context.Background()`\nand outbound calls carry nothing — not even a new trace (with no valid span\ncontext the W3C propagator injects nothing). PR #1076 confirms a consume\nspan is created per `FetchMessage`; the missing half is activation, not\nextraction. Issue #695 (open) is the maintainer-acknowledged messaging\nsemconv workstream naming this gap (\"a process-span story for the zero-code\ngap\") and planning IBM/sarama next. By contrast, the same variant carries\nbaggage *into* Kafka with zero source changes, because kafka-go's\n`Writer.WriteMessages(ctx, …)` takes a context.\n\n**datadog-go-orchestrion** (v1.13.0, dd-trace-go v2.10.1, IBM/sarama\nv1.60.2): the woven consumer-group instrumentation does not continue the\ntrace seeded in the record headers, so outbound calls after a consume carry\n`x-datadog-*`/`traceparent` with a fresh trace-id; baggage, `ot-baggage-*`\nand the foreign tracestate entry are gone. The hand-wired `datadog-go` relay\npasses the same legs with the same library versions by following the\ndd-trace-go contrib README (extract-and-activate in the handler). No issue\nreports the Orchestrion sarama consume gap — filing candidate.\n\nWhat a user can do: extract from the record headers and set the context in\nthe consume loop/handler yourself — the one step neither weaver can see.",
+   "status": "open",
+   "links": [
+    {
+     "title": "opentelemetry-go-compile-instrumentation",
+     "url": "https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation"
+    },
+    {
+     "title": "opentelemetry-go-compile-instrumentation #695 (messaging semconv workstream)",
+     "url": "https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/issues/695"
+    },
+    {
+     "title": "opentelemetry-go-compile-instrumentation PR #1076 (kafka.Reader.FetchMessage)",
+     "url": "https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/pull/1076"
+    },
+    {
+     "title": "Orchestrion",
+     "url": "https://github.com/DataDog/orchestrion"
+    },
+    {
+     "title": "dd-trace-go contrib IBM/sarama (manual pattern)",
+     "url": "https://pkg.go.dev/github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2"
+    }
+   ],
+   "cells": [
+    "datadog-go-orchestrion/baggage/kafka-grpc",
+    "datadog-go-orchestrion/baggage/kafka-http",
+    "datadog-go-orchestrion/baggage/kafka-kafka",
+    "datadog-go-orchestrion/baggage/kafka-rabbitmq",
+    "datadog-go-orchestrion/ot-baggage/kafka-grpc",
+    "datadog-go-orchestrion/ot-baggage/kafka-http",
+    "datadog-go-orchestrion/ot-baggage/kafka-kafka",
+    "datadog-go-orchestrion/ot-baggage/kafka-rabbitmq",
+    "datadog-go-orchestrion/traceparent/kafka-grpc",
+    "datadog-go-orchestrion/traceparent/kafka-http",
+    "datadog-go-orchestrion/traceparent/kafka-kafka",
+    "datadog-go-orchestrion/traceparent/kafka-rabbitmq",
+    "datadog-go-orchestrion/tracestate/kafka-grpc",
+    "datadog-go-orchestrion/tracestate/kafka-http",
+    "datadog-go-orchestrion/tracestate/kafka-kafka",
+    "datadog-go-orchestrion/tracestate/kafka-rabbitmq",
+    "otel-go-compiletime/baggage/kafka-grpc",
+    "otel-go-compiletime/baggage/kafka-http",
+    "otel-go-compiletime/baggage/kafka-kafka",
+    "otel-go-compiletime/baggage/kafka-rabbitmq",
+    "otel-go-compiletime/traceparent/kafka-grpc",
+    "otel-go-compiletime/traceparent/kafka-http",
+    "otel-go-compiletime/traceparent/kafka-kafka",
+    "otel-go-compiletime/traceparent/kafka-rabbitmq",
+    "otel-go-compiletime/tracestate/kafka-grpc",
+    "otel-go-compiletime/tracestate/kafka-http",
+    "otel-go-compiletime/tracestate/kafka-kafka",
+    "otel-go-compiletime/tracestate/kafka-rabbitmq"
+   ],
+   "variants": [
+    "datadog-go-orchestrion",
+    "otel-go-compiletime"
+   ]
+  },
+  {
+   "id": "go-weavers-no-amqp-instrumentation",
+   "title": "Go build-time weavers: neither otelc nor dd-trace-go has an AMQP client integration to weave",
+   "cause": "otelc's supported-libraries list has no AMQP client and dd-trace-go has no amqp091 contrib, so RabbitMQ publish injects nothing and consume extracts nothing.",
+   "explanation": "Coverage is an allowlist, and neither weaver's allowlist includes the\namqp091 client. otelc's getting-started supported-libraries table lists\n`segmentio/kafka-go` as its only messaging client — no sarama, no franz-go,\nno AMQP. dd-trace-go has no amqp091/RabbitMQ contrib, so Orchestrion has\nnothing to enable on RabbitMQ legs.\n\nNothing is injected on `*-\u003erabbitmq`. On `rabbitmq-\u003e*` the consumer runs\nwith no incoming context; where the outbound client *is* woven (HTTP, gRPC,\nKafka on Orchestrion) it emits a fresh root trace, and otherwise nothing.\nThe hand-wired `otel-go` and `datadog-go` relays pass all RabbitMQ legs with\nhand-written AMQP carriers — the same manual step a weaver cannot supply for\na library it does not know.",
+   "status": "open",
+   "links": [
+    {
+     "title": "otelc getting-started (supported libraries)",
+     "url": "https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/blob/main/docs/getting-started.md"
+    },
+    {
+     "title": "Orchestrion",
+     "url": "https://github.com/DataDog/orchestrion"
+    },
+    {
+     "title": "Datadog Go compile-time instrumentation docs",
+     "url": "https://docs.datadoghq.com/tracing/trace_collection/automatic_instrumentation/dd_libraries/go/?tab=compiletimeinstrumentation"
+    }
+   ],
+   "cells": [
+    "datadog-go-orchestrion/baggage/grpc-rabbitmq",
+    "datadog-go-orchestrion/baggage/http-rabbitmq",
+    "datadog-go-orchestrion/baggage/kafka-rabbitmq",
+    "datadog-go-orchestrion/baggage/rabbitmq-grpc",
+    "datadog-go-orchestrion/baggage/rabbitmq-http",
+    "datadog-go-orchestrion/baggage/rabbitmq-kafka",
+    "datadog-go-orchestrion/baggage/rabbitmq-rabbitmq",
+    "datadog-go-orchestrion/ot-baggage/grpc-rabbitmq",
+    "datadog-go-orchestrion/ot-baggage/http-rabbitmq",
+    "datadog-go-orchestrion/ot-baggage/kafka-rabbitmq",
+    "datadog-go-orchestrion/ot-baggage/rabbitmq-grpc",
+    "datadog-go-orchestrion/ot-baggage/rabbitmq-http",
+    "datadog-go-orchestrion/ot-baggage/rabbitmq-kafka",
+    "datadog-go-orchestrion/ot-baggage/rabbitmq-rabbitmq",
+    "datadog-go-orchestrion/traceparent/grpc-rabbitmq",
+    "datadog-go-orchestrion/traceparent/http-rabbitmq",
+    "datadog-go-orchestrion/traceparent/kafka-rabbitmq",
+    "datadog-go-orchestrion/traceparent/rabbitmq-grpc",
+    "datadog-go-orchestrion/traceparent/rabbitmq-http",
+    "datadog-go-orchestrion/traceparent/rabbitmq-kafka",
+    "datadog-go-orchestrion/traceparent/rabbitmq-rabbitmq",
+    "datadog-go-orchestrion/tracestate/grpc-rabbitmq",
+    "datadog-go-orchestrion/tracestate/http-rabbitmq",
+    "datadog-go-orchestrion/tracestate/kafka-rabbitmq",
+    "datadog-go-orchestrion/tracestate/rabbitmq-grpc",
+    "datadog-go-orchestrion/tracestate/rabbitmq-http",
+    "datadog-go-orchestrion/tracestate/rabbitmq-kafka",
+    "datadog-go-orchestrion/tracestate/rabbitmq-rabbitmq",
+    "otel-go-compiletime/baggage/grpc-rabbitmq",
+    "otel-go-compiletime/baggage/http-rabbitmq",
+    "otel-go-compiletime/baggage/kafka-rabbitmq",
+    "otel-go-compiletime/baggage/rabbitmq-grpc",
+    "otel-go-compiletime/baggage/rabbitmq-http",
+    "otel-go-compiletime/baggage/rabbitmq-kafka",
+    "otel-go-compiletime/baggage/rabbitmq-rabbitmq",
+    "otel-go-compiletime/traceparent/grpc-rabbitmq",
+    "otel-go-compiletime/traceparent/http-rabbitmq",
+    "otel-go-compiletime/traceparent/kafka-rabbitmq",
+    "otel-go-compiletime/traceparent/rabbitmq-grpc",
+    "otel-go-compiletime/traceparent/rabbitmq-http",
+    "otel-go-compiletime/traceparent/rabbitmq-kafka",
+    "otel-go-compiletime/traceparent/rabbitmq-rabbitmq",
+    "otel-go-compiletime/tracestate/grpc-rabbitmq",
+    "otel-go-compiletime/tracestate/http-rabbitmq",
+    "otel-go-compiletime/tracestate/kafka-rabbitmq",
+    "otel-go-compiletime/tracestate/rabbitmq-grpc",
+    "otel-go-compiletime/tracestate/rabbitmq-http",
+    "otel-go-compiletime/tracestate/rabbitmq-kafka",
+    "otel-go-compiletime/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "datadog-go-orchestrion",
+    "otel-go-compiletime"
+   ]
+  },
+  {
+   "id": "ot-baggage-not-implemented",
+   "title": "OpenTelemetry, Elastic APM and New Relic never implemented the OpenTracing-era ot-baggage-* headers",
+   "cause": "ot-baggage-* is a legacy OpenTracing convention; OpenTelemetry, Elastic APM and New Relic each define their propagation header set without it.",
+   "explanation": "The seeded `ot-baggage-sd-routing-key` header is ignored — neither extracted\nnor re-emitted — by every OpenTelemetry, Elastic and New Relic variant on\nevery delivered boundary. None of these tools ever emitted the OpenTracing\nheader format: OpenTelemetry standardised on W3C `baggage`; Elastic's agent\nspec defines `traceparent`, `tracestate`, `baggage` and the binary\n`elasticapmtraceparent`; New Relic's distributed-tracing model is\n`traceparent`, `tracestate` and the vendor `newrelic` header.\n\nThe header outlives its deprecation only in Datadog's Java, Node and Go\ntracers, where it crosses all 16 boundaries as legacy behaviour of the\n`datadog` style (see `datadog-ot-baggage-not-implemented` for the Datadog\ntracers that do not carry it). Where a tool propagates W3C `baggage`, the\nsame values travel there instead.",
+   "status": "by-design",
+   "links": [
+    {
+     "title": "OpenTracing trace identifiers RFC (ot-baggage-*)",
+     "url": "https://github.com/opentracing/specification/blob/master/rfc/trace_identifiers.md"
+    },
+    {
+     "title": "Elastic agent spec — distributed tracing",
+     "url": "https://github.com/elastic/apm/blob/main/specs/agents/tracing-distributed-tracing.md"
+    },
+    {
+     "title": "How New Relic distributed tracing works",
+     "url": "https://docs.newrelic.com/docs/distributed-tracing/concepts/how-new-relic-distributed-tracing-works/"
+    }
+   ],
+   "cells": [
+    "elastic-dotnet/ot-baggage/grpc-grpc",
+    "elastic-dotnet/ot-baggage/grpc-http",
+    "elastic-dotnet/ot-baggage/grpc-kafka",
+    "elastic-dotnet/ot-baggage/grpc-rabbitmq",
+    "elastic-dotnet/ot-baggage/http-grpc",
+    "elastic-dotnet/ot-baggage/http-http",
+    "elastic-dotnet/ot-baggage/http-kafka",
+    "elastic-dotnet/ot-baggage/http-rabbitmq",
+    "elastic-dotnet/ot-baggage/kafka-grpc",
+    "elastic-dotnet/ot-baggage/kafka-http",
+    "elastic-dotnet/ot-baggage/kafka-kafka",
+    "elastic-dotnet/ot-baggage/kafka-rabbitmq",
+    "elastic-dotnet/ot-baggage/rabbitmq-grpc",
+    "elastic-dotnet/ot-baggage/rabbitmq-http",
+    "elastic-dotnet/ot-baggage/rabbitmq-kafka",
+    "elastic-dotnet/ot-baggage/rabbitmq-rabbitmq",
+    "elastic-go/ot-baggage/grpc-grpc",
+    "elastic-go/ot-baggage/grpc-http",
+    "elastic-go/ot-baggage/grpc-kafka",
+    "elastic-go/ot-baggage/grpc-rabbitmq",
+    "elastic-go/ot-baggage/http-grpc",
+    "elastic-go/ot-baggage/http-http",
+    "elastic-go/ot-baggage/http-kafka",
+    "elastic-go/ot-baggage/http-rabbitmq",
+    "elastic-go/ot-baggage/kafka-grpc",
+    "elastic-go/ot-baggage/kafka-http",
+    "elastic-go/ot-baggage/kafka-kafka",
+    "elastic-go/ot-baggage/kafka-rabbitmq",
+    "elastic-go/ot-baggage/rabbitmq-grpc",
+    "elastic-go/ot-baggage/rabbitmq-http",
+    "elastic-go/ot-baggage/rabbitmq-kafka",
+    "elastic-go/ot-baggage/rabbitmq-rabbitmq",
+    "elastic-java/ot-baggage/grpc-grpc",
+    "elastic-java/ot-baggage/grpc-http",
+    "elastic-java/ot-baggage/grpc-kafka",
+    "elastic-java/ot-baggage/grpc-rabbitmq",
+    "elastic-java/ot-baggage/http-grpc",
+    "elastic-java/ot-baggage/http-http",
+    "elastic-java/ot-baggage/http-kafka",
+    "elastic-java/ot-baggage/http-rabbitmq",
+    "elastic-java/ot-baggage/kafka-grpc",
+    "elastic-java/ot-baggage/kafka-http",
+    "elastic-java/ot-baggage/kafka-kafka",
+    "elastic-java/ot-baggage/kafka-rabbitmq",
+    "elastic-java/ot-baggage/rabbitmq-grpc",
+    "elastic-java/ot-baggage/rabbitmq-http",
+    "elastic-java/ot-baggage/rabbitmq-kafka",
+    "elastic-java/ot-baggage/rabbitmq-rabbitmq",
+    "elastic-node/ot-baggage/grpc-grpc",
+    "elastic-node/ot-baggage/grpc-http",
+    "elastic-node/ot-baggage/grpc-kafka",
+    "elastic-node/ot-baggage/grpc-rabbitmq",
+    "elastic-node/ot-baggage/http-grpc",
+    "elastic-node/ot-baggage/http-http",
+    "elastic-node/ot-baggage/http-kafka",
+    "elastic-node/ot-baggage/http-rabbitmq",
+    "elastic-node/ot-baggage/kafka-grpc",
+    "elastic-node/ot-baggage/kafka-http",
+    "elastic-node/ot-baggage/kafka-kafka",
+    "elastic-node/ot-baggage/kafka-rabbitmq",
+    "elastic-node/ot-baggage/rabbitmq-grpc",
+    "elastic-node/ot-baggage/rabbitmq-http",
+    "elastic-node/ot-baggage/rabbitmq-kafka",
+    "elastic-node/ot-baggage/rabbitmq-rabbitmq",
+    "elastic-php/ot-baggage/http-grpc",
+    "elastic-php/ot-baggage/http-http",
+    "elastic-php/ot-baggage/http-kafka",
+    "elastic-php/ot-baggage/http-rabbitmq",
+    "elastic-php/ot-baggage/kafka-grpc",
+    "elastic-php/ot-baggage/kafka-http",
+    "elastic-php/ot-baggage/kafka-kafka",
+    "elastic-php/ot-baggage/kafka-rabbitmq",
+    "elastic-php/ot-baggage/rabbitmq-grpc",
+    "elastic-php/ot-baggage/rabbitmq-http",
+    "elastic-php/ot-baggage/rabbitmq-kafka",
+    "elastic-php/ot-baggage/rabbitmq-rabbitmq",
+    "elastic-python/ot-baggage/grpc-grpc",
+    "elastic-python/ot-baggage/grpc-http",
+    "elastic-python/ot-baggage/grpc-kafka",
+    "elastic-python/ot-baggage/grpc-rabbitmq",
+    "elastic-python/ot-baggage/http-grpc",
+    "elastic-python/ot-baggage/http-http",
+    "elastic-python/ot-baggage/http-kafka",
+    "elastic-python/ot-baggage/http-rabbitmq",
+    "elastic-python/ot-baggage/kafka-grpc",
+    "elastic-python/ot-baggage/kafka-http",
+    "elastic-python/ot-baggage/kafka-kafka",
+    "elastic-python/ot-baggage/kafka-rabbitmq",
+    "elastic-python/ot-baggage/rabbitmq-grpc",
+    "elastic-python/ot-baggage/rabbitmq-http",
+    "elastic-python/ot-baggage/rabbitmq-kafka",
+    "elastic-python/ot-baggage/rabbitmq-rabbitmq",
+    "elastic-ruby/ot-baggage/grpc-grpc",
+    "elastic-ruby/ot-baggage/grpc-http",
+    "elastic-ruby/ot-baggage/grpc-kafka",
+    "elastic-ruby/ot-baggage/grpc-rabbitmq",
+    "elastic-ruby/ot-baggage/http-grpc",
+    "elastic-ruby/ot-baggage/http-http",
+    "elastic-ruby/ot-baggage/http-kafka",
+    "elastic-ruby/ot-baggage/http-rabbitmq",
+    "elastic-ruby/ot-baggage/kafka-grpc",
+    "elastic-ruby/ot-baggage/kafka-http",
+    "elastic-ruby/ot-baggage/kafka-kafka",
+    "elastic-ruby/ot-baggage/kafka-rabbitmq",
+    "elastic-ruby/ot-baggage/rabbitmq-grpc",
+    "elastic-ruby/ot-baggage/rabbitmq-http",
+    "elastic-ruby/ot-baggage/rabbitmq-kafka",
+    "elastic-ruby/ot-baggage/rabbitmq-rabbitmq",
+    "newrelic-dotnet/ot-baggage/grpc-grpc",
+    "newrelic-dotnet/ot-baggage/grpc-http",
+    "newrelic-dotnet/ot-baggage/grpc-kafka",
+    "newrelic-dotnet/ot-baggage/grpc-rabbitmq",
+    "newrelic-dotnet/ot-baggage/http-grpc",
+    "newrelic-dotnet/ot-baggage/http-http",
+    "newrelic-dotnet/ot-baggage/http-kafka",
+    "newrelic-dotnet/ot-baggage/http-rabbitmq",
+    "newrelic-dotnet/ot-baggage/kafka-grpc",
+    "newrelic-dotnet/ot-baggage/kafka-http",
+    "newrelic-dotnet/ot-baggage/kafka-kafka",
+    "newrelic-dotnet/ot-baggage/kafka-rabbitmq",
+    "newrelic-dotnet/ot-baggage/rabbitmq-grpc",
+    "newrelic-dotnet/ot-baggage/rabbitmq-http",
+    "newrelic-dotnet/ot-baggage/rabbitmq-kafka",
+    "newrelic-dotnet/ot-baggage/rabbitmq-rabbitmq",
+    "newrelic-go/ot-baggage/grpc-grpc",
+    "newrelic-go/ot-baggage/grpc-http",
+    "newrelic-go/ot-baggage/grpc-kafka",
+    "newrelic-go/ot-baggage/grpc-rabbitmq",
+    "newrelic-go/ot-baggage/http-grpc",
+    "newrelic-go/ot-baggage/http-http",
+    "newrelic-go/ot-baggage/http-kafka",
+    "newrelic-go/ot-baggage/http-rabbitmq",
+    "newrelic-go/ot-baggage/kafka-grpc",
+    "newrelic-go/ot-baggage/kafka-http",
+    "newrelic-go/ot-baggage/kafka-kafka",
+    "newrelic-go/ot-baggage/kafka-rabbitmq",
+    "newrelic-go/ot-baggage/rabbitmq-grpc",
+    "newrelic-go/ot-baggage/rabbitmq-http",
+    "newrelic-go/ot-baggage/rabbitmq-kafka",
+    "newrelic-go/ot-baggage/rabbitmq-rabbitmq",
+    "newrelic-java/ot-baggage/grpc-grpc",
+    "newrelic-java/ot-baggage/grpc-http",
+    "newrelic-java/ot-baggage/grpc-kafka",
+    "newrelic-java/ot-baggage/grpc-rabbitmq",
+    "newrelic-java/ot-baggage/http-grpc",
+    "newrelic-java/ot-baggage/http-http",
+    "newrelic-java/ot-baggage/http-kafka",
+    "newrelic-java/ot-baggage/http-rabbitmq",
+    "newrelic-java/ot-baggage/kafka-grpc",
+    "newrelic-java/ot-baggage/kafka-http",
+    "newrelic-java/ot-baggage/kafka-kafka",
+    "newrelic-java/ot-baggage/kafka-rabbitmq",
+    "newrelic-java/ot-baggage/rabbitmq-grpc",
+    "newrelic-java/ot-baggage/rabbitmq-http",
+    "newrelic-java/ot-baggage/rabbitmq-kafka",
+    "newrelic-java/ot-baggage/rabbitmq-rabbitmq",
+    "newrelic-node/ot-baggage/grpc-grpc",
+    "newrelic-node/ot-baggage/grpc-http",
+    "newrelic-node/ot-baggage/grpc-kafka",
+    "newrelic-node/ot-baggage/grpc-rabbitmq",
+    "newrelic-node/ot-baggage/http-grpc",
+    "newrelic-node/ot-baggage/http-http",
+    "newrelic-node/ot-baggage/http-kafka",
+    "newrelic-node/ot-baggage/http-rabbitmq",
+    "newrelic-node/ot-baggage/kafka-grpc",
+    "newrelic-node/ot-baggage/kafka-http",
+    "newrelic-node/ot-baggage/kafka-kafka",
+    "newrelic-node/ot-baggage/kafka-rabbitmq",
+    "newrelic-node/ot-baggage/rabbitmq-grpc",
+    "newrelic-node/ot-baggage/rabbitmq-http",
+    "newrelic-node/ot-baggage/rabbitmq-kafka",
+    "newrelic-node/ot-baggage/rabbitmq-rabbitmq",
+    "newrelic-php/ot-baggage/http-grpc",
+    "newrelic-php/ot-baggage/http-http",
+    "newrelic-php/ot-baggage/http-kafka",
+    "newrelic-php/ot-baggage/http-rabbitmq",
+    "newrelic-php/ot-baggage/kafka-grpc",
+    "newrelic-php/ot-baggage/kafka-http",
+    "newrelic-php/ot-baggage/kafka-kafka",
+    "newrelic-php/ot-baggage/kafka-rabbitmq",
+    "newrelic-php/ot-baggage/rabbitmq-grpc",
+    "newrelic-php/ot-baggage/rabbitmq-http",
+    "newrelic-php/ot-baggage/rabbitmq-kafka",
+    "newrelic-php/ot-baggage/rabbitmq-rabbitmq",
+    "newrelic-python/ot-baggage/grpc-grpc",
+    "newrelic-python/ot-baggage/grpc-http",
+    "newrelic-python/ot-baggage/grpc-kafka",
+    "newrelic-python/ot-baggage/grpc-rabbitmq",
+    "newrelic-python/ot-baggage/http-grpc",
+    "newrelic-python/ot-baggage/http-http",
+    "newrelic-python/ot-baggage/http-kafka",
+    "newrelic-python/ot-baggage/http-rabbitmq",
+    "newrelic-python/ot-baggage/kafka-grpc",
+    "newrelic-python/ot-baggage/kafka-http",
+    "newrelic-python/ot-baggage/kafka-kafka",
+    "newrelic-python/ot-baggage/kafka-rabbitmq",
+    "newrelic-python/ot-baggage/rabbitmq-grpc",
+    "newrelic-python/ot-baggage/rabbitmq-http",
+    "newrelic-python/ot-baggage/rabbitmq-kafka",
+    "newrelic-python/ot-baggage/rabbitmq-rabbitmq",
+    "newrelic-ruby/ot-baggage/grpc-grpc",
+    "newrelic-ruby/ot-baggage/grpc-http",
+    "newrelic-ruby/ot-baggage/grpc-kafka",
+    "newrelic-ruby/ot-baggage/grpc-rabbitmq",
+    "newrelic-ruby/ot-baggage/http-grpc",
+    "newrelic-ruby/ot-baggage/http-http",
+    "newrelic-ruby/ot-baggage/http-kafka",
+    "newrelic-ruby/ot-baggage/http-rabbitmq",
+    "newrelic-ruby/ot-baggage/kafka-grpc",
+    "newrelic-ruby/ot-baggage/kafka-http",
+    "newrelic-ruby/ot-baggage/kafka-kafka",
+    "newrelic-ruby/ot-baggage/kafka-rabbitmq",
+    "newrelic-ruby/ot-baggage/rabbitmq-grpc",
+    "newrelic-ruby/ot-baggage/rabbitmq-http",
+    "newrelic-ruby/ot-baggage/rabbitmq-kafka",
+    "newrelic-ruby/ot-baggage/rabbitmq-rabbitmq",
+    "otel-dotnet/ot-baggage/grpc-grpc",
+    "otel-dotnet/ot-baggage/grpc-http",
+    "otel-dotnet/ot-baggage/grpc-kafka",
+    "otel-dotnet/ot-baggage/grpc-rabbitmq",
+    "otel-dotnet/ot-baggage/http-grpc",
+    "otel-dotnet/ot-baggage/http-http",
+    "otel-dotnet/ot-baggage/http-kafka",
+    "otel-dotnet/ot-baggage/http-rabbitmq",
+    "otel-dotnet/ot-baggage/kafka-grpc",
+    "otel-dotnet/ot-baggage/kafka-http",
+    "otel-dotnet/ot-baggage/kafka-kafka",
+    "otel-dotnet/ot-baggage/kafka-rabbitmq",
+    "otel-dotnet/ot-baggage/rabbitmq-grpc",
+    "otel-dotnet/ot-baggage/rabbitmq-http",
+    "otel-dotnet/ot-baggage/rabbitmq-kafka",
+    "otel-dotnet/ot-baggage/rabbitmq-rabbitmq",
+    "otel-go-compiletime/ot-baggage/grpc-grpc",
+    "otel-go-compiletime/ot-baggage/grpc-http",
+    "otel-go-compiletime/ot-baggage/grpc-kafka",
+    "otel-go-compiletime/ot-baggage/grpc-rabbitmq",
+    "otel-go-compiletime/ot-baggage/http-grpc",
+    "otel-go-compiletime/ot-baggage/http-http",
+    "otel-go-compiletime/ot-baggage/http-kafka",
+    "otel-go-compiletime/ot-baggage/http-rabbitmq",
+    "otel-go-compiletime/ot-baggage/kafka-grpc",
+    "otel-go-compiletime/ot-baggage/kafka-http",
+    "otel-go-compiletime/ot-baggage/kafka-kafka",
+    "otel-go-compiletime/ot-baggage/kafka-rabbitmq",
+    "otel-go-compiletime/ot-baggage/rabbitmq-grpc",
+    "otel-go-compiletime/ot-baggage/rabbitmq-http",
+    "otel-go-compiletime/ot-baggage/rabbitmq-kafka",
+    "otel-go-compiletime/ot-baggage/rabbitmq-rabbitmq",
+    "otel-go/ot-baggage/grpc-grpc",
+    "otel-go/ot-baggage/grpc-http",
+    "otel-go/ot-baggage/grpc-kafka",
+    "otel-go/ot-baggage/grpc-rabbitmq",
+    "otel-go/ot-baggage/http-grpc",
+    "otel-go/ot-baggage/http-http",
+    "otel-go/ot-baggage/http-kafka",
+    "otel-go/ot-baggage/http-rabbitmq",
+    "otel-go/ot-baggage/kafka-grpc",
+    "otel-go/ot-baggage/kafka-http",
+    "otel-go/ot-baggage/kafka-kafka",
+    "otel-go/ot-baggage/kafka-rabbitmq",
+    "otel-go/ot-baggage/rabbitmq-grpc",
+    "otel-go/ot-baggage/rabbitmq-http",
+    "otel-go/ot-baggage/rabbitmq-kafka",
+    "otel-go/ot-baggage/rabbitmq-rabbitmq",
+    "otel-java/ot-baggage/grpc-grpc",
+    "otel-java/ot-baggage/grpc-http",
+    "otel-java/ot-baggage/grpc-kafka",
+    "otel-java/ot-baggage/grpc-rabbitmq",
+    "otel-java/ot-baggage/http-grpc",
+    "otel-java/ot-baggage/http-http",
+    "otel-java/ot-baggage/http-kafka",
+    "otel-java/ot-baggage/http-rabbitmq",
+    "otel-java/ot-baggage/kafka-grpc",
+    "otel-java/ot-baggage/kafka-http",
+    "otel-java/ot-baggage/kafka-kafka",
+    "otel-java/ot-baggage/kafka-rabbitmq",
+    "otel-java/ot-baggage/rabbitmq-grpc",
+    "otel-java/ot-baggage/rabbitmq-http",
+    "otel-java/ot-baggage/rabbitmq-kafka",
+    "otel-java/ot-baggage/rabbitmq-rabbitmq",
+    "otel-node/ot-baggage/grpc-grpc",
+    "otel-node/ot-baggage/grpc-http",
+    "otel-node/ot-baggage/grpc-kafka",
+    "otel-node/ot-baggage/grpc-rabbitmq",
+    "otel-node/ot-baggage/http-grpc",
+    "otel-node/ot-baggage/http-http",
+    "otel-node/ot-baggage/http-kafka",
+    "otel-node/ot-baggage/http-rabbitmq",
+    "otel-node/ot-baggage/kafka-grpc",
+    "otel-node/ot-baggage/kafka-http",
+    "otel-node/ot-baggage/kafka-kafka",
+    "otel-node/ot-baggage/kafka-rabbitmq",
+    "otel-node/ot-baggage/rabbitmq-grpc",
+    "otel-node/ot-baggage/rabbitmq-http",
+    "otel-node/ot-baggage/rabbitmq-kafka",
+    "otel-node/ot-baggage/rabbitmq-rabbitmq",
+    "otel-php/ot-baggage/http-grpc",
+    "otel-php/ot-baggage/http-http",
+    "otel-php/ot-baggage/http-kafka",
+    "otel-php/ot-baggage/http-rabbitmq",
+    "otel-php/ot-baggage/kafka-grpc",
+    "otel-php/ot-baggage/kafka-http",
+    "otel-php/ot-baggage/kafka-kafka",
+    "otel-php/ot-baggage/kafka-rabbitmq",
+    "otel-php/ot-baggage/rabbitmq-grpc",
+    "otel-php/ot-baggage/rabbitmq-http",
+    "otel-php/ot-baggage/rabbitmq-kafka",
+    "otel-php/ot-baggage/rabbitmq-rabbitmq",
+    "otel-python/ot-baggage/grpc-grpc",
+    "otel-python/ot-baggage/grpc-http",
+    "otel-python/ot-baggage/grpc-kafka",
+    "otel-python/ot-baggage/grpc-rabbitmq",
+    "otel-python/ot-baggage/http-grpc",
+    "otel-python/ot-baggage/http-http",
+    "otel-python/ot-baggage/http-kafka",
+    "otel-python/ot-baggage/http-rabbitmq",
+    "otel-python/ot-baggage/kafka-grpc",
+    "otel-python/ot-baggage/kafka-http",
+    "otel-python/ot-baggage/kafka-kafka",
+    "otel-python/ot-baggage/kafka-rabbitmq",
+    "otel-python/ot-baggage/rabbitmq-grpc",
+    "otel-python/ot-baggage/rabbitmq-http",
+    "otel-python/ot-baggage/rabbitmq-kafka",
+    "otel-python/ot-baggage/rabbitmq-rabbitmq",
+    "otel-ruby/ot-baggage/grpc-grpc",
+    "otel-ruby/ot-baggage/grpc-http",
+    "otel-ruby/ot-baggage/grpc-kafka",
+    "otel-ruby/ot-baggage/grpc-rabbitmq",
+    "otel-ruby/ot-baggage/http-grpc",
+    "otel-ruby/ot-baggage/http-http",
+    "otel-ruby/ot-baggage/http-kafka",
+    "otel-ruby/ot-baggage/http-rabbitmq",
+    "otel-ruby/ot-baggage/kafka-grpc",
+    "otel-ruby/ot-baggage/kafka-http",
+    "otel-ruby/ot-baggage/kafka-kafka",
+    "otel-ruby/ot-baggage/kafka-rabbitmq",
+    "otel-ruby/ot-baggage/rabbitmq-grpc",
+    "otel-ruby/ot-baggage/rabbitmq-http",
+    "otel-ruby/ot-baggage/rabbitmq-kafka",
+    "otel-ruby/ot-baggage/rabbitmq-rabbitmq",
+    "otel-rust/ot-baggage/grpc-grpc",
+    "otel-rust/ot-baggage/grpc-http",
+    "otel-rust/ot-baggage/grpc-kafka",
+    "otel-rust/ot-baggage/grpc-rabbitmq",
+    "otel-rust/ot-baggage/http-grpc",
+    "otel-rust/ot-baggage/http-http",
+    "otel-rust/ot-baggage/http-kafka",
+    "otel-rust/ot-baggage/http-rabbitmq",
+    "otel-rust/ot-baggage/kafka-grpc",
+    "otel-rust/ot-baggage/kafka-http",
+    "otel-rust/ot-baggage/kafka-kafka",
+    "otel-rust/ot-baggage/kafka-rabbitmq",
+    "otel-rust/ot-baggage/rabbitmq-grpc",
+    "otel-rust/ot-baggage/rabbitmq-http",
+    "otel-rust/ot-baggage/rabbitmq-kafka",
+    "otel-rust/ot-baggage/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "elastic-dotnet",
+    "elastic-go",
+    "elastic-java",
+    "elastic-node",
+    "elastic-php",
+    "elastic-python",
+    "elastic-ruby",
+    "newrelic-dotnet",
+    "newrelic-go",
+    "newrelic-java",
+    "newrelic-node",
+    "newrelic-php",
+    "newrelic-python",
+    "newrelic-ruby",
+    "otel-dotnet",
+    "otel-go",
+    "otel-go-compiletime",
+    "otel-java",
+    "otel-node",
+    "otel-php",
+    "otel-python",
+    "otel-ruby",
+    "otel-rust"
+   ]
+  },
+  {
+   "id": "datadog-java-baggage-non-http",
+   "title": "dd-trace-java injects W3C baggage only on HTTP clients",
+   "cause": "Non-HTTP client and messaging producer instrumentations inject from the span, not the current context, so the context-scoped baggage propagator finds nothing.",
+   "explanation": "With `DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage` (and with\nagent defaults), dd-trace-java 1.65.1 propagates W3C `baggage` on\n`http-\u003ehttp` only. `traceparent`, `tracestate`, `ot-baggage-*` and\n`x-datadog-*` cross all 16 boundaries — the trace survives, the baggage does\nnot, which makes the failure invisible to trace-waterfall debugging.\n\nRoot cause: Kafka/AMQP producer and non-HTTP client instrumentations call\n`defaultPropagator().inject(span, ...)`. Baggage lives on the thread-local\ncontext, and `AgentSpan.get()` delegates non-span context keys to\n`Context.root()` rather than `Context.current()`, so the baggage propagator\nsees an empty context. Datadog confirmed the scoping on #11286 (\"W3C baggage\npropagation was specifically scoped to HTTP to begin with\"; \"Kafka\ninstrumentation is indeed dropping all context elements except tracing at\ninjection\"). A community fix (PR #11330) documented the root cause exactly\nbut was closed unmerged. Datadog's context-centric migration (PR #12027,\nPR #12033, merged Jul 2026; groundwork in PR #8330 / PR #10767) so far\ncovers async/HTTP paths only.\n\nWhat a user can do: the legacy `ot-baggage-*` headers cross all 16\nboundaries in this agent, or inject `baggage` manually at messaging and gRPC\ncall sites. Upstream fix: inject from `Context.current()` at the messaging\nand gRPC inject sites. Only the Kafka case is reported (#11286); the gRPC\nand RabbitMQ measurements appear unreported — filing candidate.",
+   "status": "open",
+   "links": [
+    {
+     "title": "dd-trace-java #11286",
+     "url": "https://github.com/DataDog/dd-trace-java/issues/11286"
+    },
+    {
+     "title": "dd-trace-java PR #11330 (community fix, closed unmerged)",
+     "url": "https://github.com/DataDog/dd-trace-java/pull/11330"
+    },
+    {
+     "title": "dd-trace-java #11510 (same class on Spring WebClient, fixed)",
+     "url": "https://github.com/DataDog/dd-trace-java/issues/11510"
+    },
+    {
+     "title": "dd-trace-java PR #12027 (context-centric fix, async paths)",
+     "url": "https://github.com/DataDog/dd-trace-java/pull/12027"
+    },
+    {
+     "title": "dd-trace-java PR #12033",
+     "url": "https://github.com/DataDog/dd-trace-java/pull/12033"
+    },
+    {
+     "title": "dd-trace-java PR #8330 (context/tracing decoupling)",
+     "url": "https://github.com/DataDog/dd-trace-java/pull/8330"
+    },
+    {
+     "title": "dd-trace-java PR #10767",
+     "url": "https://github.com/DataDog/dd-trace-java/pull/10767"
+    }
+   ],
+   "cells": [
+    "datadog-java-defaults/baggage/grpc-grpc",
+    "datadog-java-defaults/baggage/grpc-http",
+    "datadog-java-defaults/baggage/grpc-kafka",
+    "datadog-java-defaults/baggage/grpc-rabbitmq",
+    "datadog-java-defaults/baggage/http-grpc",
+    "datadog-java-defaults/baggage/http-kafka",
+    "datadog-java-defaults/baggage/http-rabbitmq",
+    "datadog-java-defaults/baggage/kafka-grpc",
+    "datadog-java-defaults/baggage/kafka-http",
+    "datadog-java-defaults/baggage/kafka-kafka",
+    "datadog-java-defaults/baggage/kafka-rabbitmq",
+    "datadog-java-defaults/baggage/rabbitmq-grpc",
+    "datadog-java-defaults/baggage/rabbitmq-http",
+    "datadog-java-defaults/baggage/rabbitmq-kafka",
+    "datadog-java-defaults/baggage/rabbitmq-rabbitmq",
+    "datadog-java/baggage/grpc-grpc",
+    "datadog-java/baggage/grpc-http",
+    "datadog-java/baggage/grpc-kafka",
+    "datadog-java/baggage/grpc-rabbitmq",
+    "datadog-java/baggage/http-grpc",
+    "datadog-java/baggage/http-kafka",
+    "datadog-java/baggage/http-rabbitmq",
+    "datadog-java/baggage/kafka-grpc",
+    "datadog-java/baggage/kafka-http",
+    "datadog-java/baggage/kafka-kafka",
+    "datadog-java/baggage/kafka-rabbitmq",
+    "datadog-java/baggage/rabbitmq-grpc",
+    "datadog-java/baggage/rabbitmq-http",
+    "datadog-java/baggage/rabbitmq-kafka",
+    "datadog-java/baggage/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "datadog-java",
+    "datadog-java-defaults"
+   ]
+  },
+  {
+   "id": "datadog-python-kafka-propagation-default-off",
+   "title": "dd-trace-py: Kafka header injection is disabled by default",
+   "cause": "ddtrace's Kafka integration ships distributed_tracing_enabled=False; nothing is injected into produced records until DD_KAFKA_PROPAGATION_ENABLED=true.",
+   "explanation": "With default configuration ddtrace 4.14.0 injects *no propagation headers of\nany kind* into produced Kafka records, so every `*-\u003ekafka` cell is absent.\nThis is a documented default-off: `ddtrace.config.kafka[\"distributed_tracing_enabled\"]`\nis \"Default: False\" (env `DD_KAFKA_PROPAGATION_ENABLED`), introduced that\nway in PR #7434 \"to prevent any unexpected changes to users' kafka tracing\".\n\nSetting `DD_KAFKA_PROPAGATION_ENABLED=true` turns on full W3C injection\nincluding baggage — the `datadog-python-kafkaprop` variant measures this and\npasses `http-\u003ekafka` and `grpc-\u003ekafka`. The consume side remains broken with\nthe flag on (see `datadog-python-kafka-consume-no-activation`).",
+   "status": "config",
+   "links": [
+    {
+     "title": "ddtrace Kafka integration docs (DD_KAFKA_PROPAGATION_ENABLED)",
+     "url": "https://ddtrace.readthedocs.io/en/stable/integrations.html#kafka"
+    },
+    {
+     "title": "dd-trace-py PR #7434 (flag introduced default-off)",
+     "url": "https://github.com/DataDog/dd-trace-py/pull/7434"
+    }
+   ],
+   "cells": [
+    "datadog-python-defaults/baggage/grpc-kafka",
+    "datadog-python-defaults/baggage/http-kafka",
+    "datadog-python-defaults/baggage/kafka-kafka",
+    "datadog-python-defaults/baggage/rabbitmq-kafka",
+    "datadog-python-defaults/traceparent/grpc-kafka",
+    "datadog-python-defaults/traceparent/http-kafka",
+    "datadog-python-defaults/traceparent/kafka-kafka",
+    "datadog-python-defaults/traceparent/rabbitmq-kafka",
+    "datadog-python-defaults/tracestate/grpc-kafka",
+    "datadog-python-defaults/tracestate/http-kafka",
+    "datadog-python-defaults/tracestate/kafka-kafka",
+    "datadog-python-defaults/tracestate/rabbitmq-kafka",
+    "datadog-python/baggage/grpc-kafka",
+    "datadog-python/baggage/http-kafka",
+    "datadog-python/baggage/kafka-kafka",
+    "datadog-python/baggage/rabbitmq-kafka",
+    "datadog-python/traceparent/grpc-kafka",
+    "datadog-python/traceparent/http-kafka",
+    "datadog-python/traceparent/kafka-kafka",
+    "datadog-python/traceparent/rabbitmq-kafka",
+    "datadog-python/tracestate/grpc-kafka",
+    "datadog-python/tracestate/http-kafka",
+    "datadog-python/tracestate/kafka-kafka",
+    "datadog-python/tracestate/rabbitmq-kafka"
+   ],
+   "variants": [
+    "datadog-python",
+    "datadog-python-defaults"
+   ]
+  },
+  {
+   "id": "datadog-python-kafka-consume-no-activation",
+   "title": "dd-trace-py: consumed Kafka context is not activated for the code that processes the message",
+   "cause": "ddtrace's kafka.consume span is created without using the extracted context, so downstream calls start a new trace and baggage is dropped.",
+   "explanation": "Even with `DD_KAFKA_PROPAGATION_ENABLED=true`, `kafka-\u003e*` starts a new trace\n(traceparent carries a fresh trace-id, the foreign tracestate entry is lost,\nbaggage is gone). A Datadog engineer's own description in PR #7345:\n\"`kafka.consume` and `kafka.produce` spans are not connected … because the\ncontext isn't used when the `kafka.consume` span is created.\"\n\nUser-report trail: #8967 (flag on, traces still detached; the workaround is\n`tracer.context_provider.activate(Propagator.extract(dict(msg.headers())))`)\nand #17980 (open, on batch-activation semantics). Datadog is now migrating\nconsume to links-instead-of-continuation behind a config\n(`propagation_as_span_links`; PR #18667, PR #19858: \"We can't do that directly\nbecause we would break existing semantics\").\n\nWorkaround: extract and activate manually after `poll()`, as in #8967. No\nupstream issue covers the *baggage* dimension of this gap (existing issues\ncover trace identity only).",
+   "status": "open",
+   "links": [
+    {
+     "title": "dd-trace-py PR #7345",
+     "url": "https://github.com/DataDog/dd-trace-py/pull/7345"
+    },
+    {
+     "title": "dd-trace-py #8967 (manual activate workaround)",
+     "url": "https://github.com/DataDog/dd-trace-py/issues/8967"
+    },
+    {
+     "title": "dd-trace-py #17980",
+     "url": "https://github.com/DataDog/dd-trace-py/issues/17980"
+    },
+    {
+     "title": "dd-trace-py PR #18667",
+     "url": "https://github.com/DataDog/dd-trace-py/pull/18667"
+    },
+    {
+     "title": "dd-trace-py PR #19858",
+     "url": "https://github.com/DataDog/dd-trace-py/pull/19858"
+    }
+   ],
+   "cells": [
+    "datadog-python-defaults/baggage/kafka-grpc",
+    "datadog-python-defaults/baggage/kafka-http",
+    "datadog-python-defaults/baggage/kafka-kafka",
+    "datadog-python-defaults/baggage/kafka-rabbitmq",
+    "datadog-python-defaults/traceparent/kafka-grpc",
+    "datadog-python-defaults/traceparent/kafka-http",
+    "datadog-python-defaults/traceparent/kafka-kafka",
+    "datadog-python-defaults/traceparent/kafka-rabbitmq",
+    "datadog-python-defaults/tracestate/kafka-grpc",
+    "datadog-python-defaults/tracestate/kafka-http",
+    "datadog-python-defaults/tracestate/kafka-kafka",
+    "datadog-python-defaults/tracestate/kafka-rabbitmq",
+    "datadog-python-kafkaprop/baggage/kafka-grpc",
+    "datadog-python-kafkaprop/baggage/kafka-http",
+    "datadog-python-kafkaprop/baggage/kafka-kafka",
+    "datadog-python-kafkaprop/baggage/kafka-rabbitmq",
+    "datadog-python-kafkaprop/traceparent/kafka-grpc",
+    "datadog-python-kafkaprop/traceparent/kafka-http",
+    "datadog-python-kafkaprop/traceparent/kafka-kafka",
+    "datadog-python-kafkaprop/traceparent/kafka-rabbitmq",
+    "datadog-python-kafkaprop/tracestate/kafka-grpc",
+    "datadog-python-kafkaprop/tracestate/kafka-http",
+    "datadog-python-kafkaprop/tracestate/kafka-kafka",
+    "datadog-python-kafkaprop/tracestate/kafka-rabbitmq",
+    "datadog-python/baggage/kafka-grpc",
+    "datadog-python/baggage/kafka-http",
+    "datadog-python/baggage/kafka-kafka",
+    "datadog-python/baggage/kafka-rabbitmq",
+    "datadog-python/traceparent/kafka-grpc",
+    "datadog-python/traceparent/kafka-http",
+    "datadog-python/traceparent/kafka-kafka",
+    "datadog-python/traceparent/kafka-rabbitmq",
+    "datadog-python/tracestate/kafka-grpc",
+    "datadog-python/tracestate/kafka-http",
+    "datadog-python/tracestate/kafka-kafka",
+    "datadog-python/tracestate/kafka-rabbitmq"
+   ],
+   "variants": [
+    "datadog-python",
+    "datadog-python-defaults",
+    "datadog-python-kafkaprop"
+   ]
+  },
+  {
+   "id": "datadog-python-pika-not-instrumented",
+   "title": "dd-trace-py has no pika integration; RabbitMQ legs lose everything",
+   "cause": "ddtrace's only AMQP coverage is the kombu library; pika is not instrumented, so nothing is injected on publish or extracted on consume.",
+   "explanation": "Nothing is injected on any `*-\u003erabbitmq` leg and nothing is extracted on any\n`rabbitmq-\u003e*` leg, flag or no flag. dd-trace-py's AMQP coverage is `kombu`\nonly (and kombu is not auto-patched); pika has zero mentions in the Python\ncompatibility docs. Datadog's disposition in #2047 (2021): \"The request for\na pika integration is in our team's feature backlog and is not planned for\nthe short term.\" aio-pika was re-requested in #17225 (open, Mar 2026),\nwhich confirms kombu-only AMQP coverage.\n\nWhere the outbound client is instrumented (`rabbitmq-\u003ehttp`, `rabbitmq-\u003egrpc`)\na fresh trace is injected; where it is not (`rabbitmq-\u003ekafka`,\n`rabbitmq-\u003erabbitmq`) nothing is. Workaround: inject into message properties\non publish and use the same manual\n`tracer.context_provider.activate(Propagator.extract(...))` pattern as the\nKafka workaround in the consumer callback. Uninstrumented library ⇒ silent\ntotal loss.",
+   "status": "open",
+   "links": [
+    {
+     "title": "Datadog Python compatibility docs",
+     "url": "https://docs.datadoghq.com/tracing/trace_collection/compatibility/python/"
+    },
+    {
+     "title": "ddtrace integrations docs",
+     "url": "https://ddtrace.readthedocs.io/en/stable/integrations.html"
+    },
+    {
+     "title": "dd-trace-py #2047 (pika request, not planned)",
+     "url": "https://github.com/DataDog/dd-trace-py/issues/2047"
+    },
+    {
+     "title": "dd-trace-py #17225 (aio-pika request, open)",
+     "url": "https://github.com/DataDog/dd-trace-py/issues/17225"
+    },
+    {
+     "title": "dd-trace-py #2048",
+     "url": "https://github.com/DataDog/dd-trace-py/issues/2048"
+    }
+   ],
+   "cells": [
+    "datadog-python-defaults/baggage/grpc-rabbitmq",
+    "datadog-python-defaults/baggage/http-rabbitmq",
+    "datadog-python-defaults/baggage/kafka-rabbitmq",
+    "datadog-python-defaults/baggage/rabbitmq-grpc",
+    "datadog-python-defaults/baggage/rabbitmq-http",
+    "datadog-python-defaults/baggage/rabbitmq-kafka",
+    "datadog-python-defaults/baggage/rabbitmq-rabbitmq",
+    "datadog-python-defaults/traceparent/grpc-rabbitmq",
+    "datadog-python-defaults/traceparent/http-rabbitmq",
+    "datadog-python-defaults/traceparent/kafka-rabbitmq",
+    "datadog-python-defaults/traceparent/rabbitmq-grpc",
+    "datadog-python-defaults/traceparent/rabbitmq-http",
+    "datadog-python-defaults/traceparent/rabbitmq-kafka",
+    "datadog-python-defaults/traceparent/rabbitmq-rabbitmq",
+    "datadog-python-defaults/tracestate/grpc-rabbitmq",
+    "datadog-python-defaults/tracestate/http-rabbitmq",
+    "datadog-python-defaults/tracestate/kafka-rabbitmq",
+    "datadog-python-defaults/tracestate/rabbitmq-grpc",
+    "datadog-python-defaults/tracestate/rabbitmq-http",
+    "datadog-python-defaults/tracestate/rabbitmq-kafka",
+    "datadog-python-defaults/tracestate/rabbitmq-rabbitmq",
+    "datadog-python-kafkaprop/baggage/grpc-rabbitmq",
+    "datadog-python-kafkaprop/baggage/http-rabbitmq",
+    "datadog-python-kafkaprop/baggage/kafka-rabbitmq",
+    "datadog-python-kafkaprop/baggage/rabbitmq-grpc",
+    "datadog-python-kafkaprop/baggage/rabbitmq-http",
+    "datadog-python-kafkaprop/baggage/rabbitmq-kafka",
+    "datadog-python-kafkaprop/baggage/rabbitmq-rabbitmq",
+    "datadog-python-kafkaprop/traceparent/grpc-rabbitmq",
+    "datadog-python-kafkaprop/traceparent/http-rabbitmq",
+    "datadog-python-kafkaprop/traceparent/kafka-rabbitmq",
+    "datadog-python-kafkaprop/traceparent/rabbitmq-grpc",
+    "datadog-python-kafkaprop/traceparent/rabbitmq-http",
+    "datadog-python-kafkaprop/traceparent/rabbitmq-kafka",
+    "datadog-python-kafkaprop/traceparent/rabbitmq-rabbitmq",
+    "datadog-python-kafkaprop/tracestate/grpc-rabbitmq",
+    "datadog-python-kafkaprop/tracestate/http-rabbitmq",
+    "datadog-python-kafkaprop/tracestate/kafka-rabbitmq",
+    "datadog-python-kafkaprop/tracestate/rabbitmq-grpc",
+    "datadog-python-kafkaprop/tracestate/rabbitmq-http",
+    "datadog-python-kafkaprop/tracestate/rabbitmq-kafka",
+    "datadog-python-kafkaprop/tracestate/rabbitmq-rabbitmq",
+    "datadog-python/baggage/grpc-rabbitmq",
+    "datadog-python/baggage/http-rabbitmq",
+    "datadog-python/baggage/kafka-rabbitmq",
+    "datadog-python/baggage/rabbitmq-grpc",
+    "datadog-python/baggage/rabbitmq-http",
+    "datadog-python/baggage/rabbitmq-kafka",
+    "datadog-python/baggage/rabbitmq-rabbitmq",
+    "datadog-python/traceparent/grpc-rabbitmq",
+    "datadog-python/traceparent/http-rabbitmq",
+    "datadog-python/traceparent/kafka-rabbitmq",
+    "datadog-python/traceparent/rabbitmq-grpc",
+    "datadog-python/traceparent/rabbitmq-http",
+    "datadog-python/traceparent/rabbitmq-kafka",
+    "datadog-python/traceparent/rabbitmq-rabbitmq",
+    "datadog-python/tracestate/grpc-rabbitmq",
+    "datadog-python/tracestate/http-rabbitmq",
+    "datadog-python/tracestate/kafka-rabbitmq",
+    "datadog-python/tracestate/rabbitmq-grpc",
+    "datadog-python/tracestate/rabbitmq-http",
+    "datadog-python/tracestate/rabbitmq-kafka",
+    "datadog-python/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "datadog-python",
+    "datadog-python-defaults",
+    "datadog-python-kafkaprop"
+   ]
+  },
+  {
+   "id": "datadog-python-ot-baggage-flag-off",
+   "title": "dd-trace-py: ot-baggage-* inject and extract are gated behind a default-off flag",
+   "cause": "ddtrace has ot-baggage-* code, but both inject and extract require DD_TRACE_PROPAGATION_HTTP_BAGGAGE_ENABLED=true (default False).",
+   "explanation": "dd-trace-py's `propagation/http.py` handles `ot-baggage-*` only when\n`config._propagation_http_baggage_enabled` is true. The flag\n`DD_TRACE_PROPAGATION_HTTP_BAGGAGE_ENABLED` defaults to False; it was added\nin v2.4.0 (PR #6072) explicitly \"to have baggage item support … compatible\nwith other language DataDog tracing libs e.g. java, nodejs\". The other\nhistorical `ot-baggage` path, the OpenTracing bridge, was removed in v3.0.0.\n\nThe seeded `ot-baggage-*` header is therefore ignored — neither extracted nor\nre-emitted — on all 16 boundaries. The values still flow via W3C `baggage`\nwhere that works. Enabling the flag is expected to restore the header on\nHTTP; the harness has not measured the flag, and whether it applies to\nnon-HTTP carriers is not covered by our references. Datadog's propagation\nreference documents no `ot-baggage` style at all.",
+   "status": "config",
+   "links": [
+    {
+     "title": "dd-trace-py propagation/http.py",
+     "url": "https://github.com/DataDog/dd-trace-py/blob/main/ddtrace/propagation/http.py"
+    },
+    {
+     "title": "ddtrace configuration docs (DD_TRACE_PROPAGATION_HTTP_BAGGAGE_ENABLED)",
+     "url": "https://ddtrace.readthedocs.io/en/stable/configuration.html"
+    },
+    {
+     "title": "dd-trace-py PR #6072",
+     "url": "https://github.com/DataDog/dd-trace-py/pull/6072"
+    },
+    {
+     "title": "dd-trace-py v3.0.0 (OpenTracing bridge removed)",
+     "url": "https://github.com/DataDog/dd-trace-py/releases/tag/v3.0.0"
+    },
+    {
+     "title": "Datadog trace context propagation reference",
+     "url": "https://docs.datadoghq.com/tracing/trace_collection/trace_context_propagation/"
+    }
+   ],
+   "cells": [
+    "datadog-python-defaults/ot-baggage/grpc-grpc",
+    "datadog-python-defaults/ot-baggage/grpc-http",
+    "datadog-python-defaults/ot-baggage/grpc-kafka",
+    "datadog-python-defaults/ot-baggage/grpc-rabbitmq",
+    "datadog-python-defaults/ot-baggage/http-grpc",
+    "datadog-python-defaults/ot-baggage/http-http",
+    "datadog-python-defaults/ot-baggage/http-kafka",
+    "datadog-python-defaults/ot-baggage/http-rabbitmq",
+    "datadog-python-defaults/ot-baggage/kafka-grpc",
+    "datadog-python-defaults/ot-baggage/kafka-http",
+    "datadog-python-defaults/ot-baggage/kafka-kafka",
+    "datadog-python-defaults/ot-baggage/kafka-rabbitmq",
+    "datadog-python-defaults/ot-baggage/rabbitmq-grpc",
+    "datadog-python-defaults/ot-baggage/rabbitmq-http",
+    "datadog-python-defaults/ot-baggage/rabbitmq-kafka",
+    "datadog-python-defaults/ot-baggage/rabbitmq-rabbitmq",
+    "datadog-python-kafkaprop/ot-baggage/grpc-grpc",
+    "datadog-python-kafkaprop/ot-baggage/grpc-http",
+    "datadog-python-kafkaprop/ot-baggage/grpc-kafka",
+    "datadog-python-kafkaprop/ot-baggage/grpc-rabbitmq",
+    "datadog-python-kafkaprop/ot-baggage/http-grpc",
+    "datadog-python-kafkaprop/ot-baggage/http-http",
+    "datadog-python-kafkaprop/ot-baggage/http-kafka",
+    "datadog-python-kafkaprop/ot-baggage/http-rabbitmq",
+    "datadog-python-kafkaprop/ot-baggage/kafka-grpc",
+    "datadog-python-kafkaprop/ot-baggage/kafka-http",
+    "datadog-python-kafkaprop/ot-baggage/kafka-kafka",
+    "datadog-python-kafkaprop/ot-baggage/kafka-rabbitmq",
+    "datadog-python-kafkaprop/ot-baggage/rabbitmq-grpc",
+    "datadog-python-kafkaprop/ot-baggage/rabbitmq-http",
+    "datadog-python-kafkaprop/ot-baggage/rabbitmq-kafka",
+    "datadog-python-kafkaprop/ot-baggage/rabbitmq-rabbitmq",
+    "datadog-python/ot-baggage/grpc-grpc",
+    "datadog-python/ot-baggage/grpc-http",
+    "datadog-python/ot-baggage/grpc-kafka",
+    "datadog-python/ot-baggage/grpc-rabbitmq",
+    "datadog-python/ot-baggage/http-grpc",
+    "datadog-python/ot-baggage/http-http",
+    "datadog-python/ot-baggage/http-kafka",
+    "datadog-python/ot-baggage/http-rabbitmq",
+    "datadog-python/ot-baggage/kafka-grpc",
+    "datadog-python/ot-baggage/kafka-http",
+    "datadog-python/ot-baggage/kafka-kafka",
+    "datadog-python/ot-baggage/kafka-rabbitmq",
+    "datadog-python/ot-baggage/rabbitmq-grpc",
+    "datadog-python/ot-baggage/rabbitmq-http",
+    "datadog-python/ot-baggage/rabbitmq-kafka",
+    "datadog-python/ot-baggage/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "datadog-python",
+    "datadog-python-defaults",
+    "datadog-python-kafkaprop"
+   ]
+  },
+  {
+   "id": "datadog-ot-baggage-not-implemented",
+   "title": "dd-trace .NET, Ruby, Rust and PHP do not emit the legacy ot-baggage-* headers",
+   "cause": "ot-baggage-* is undocumented legacy behaviour of dd-trace java/js/go; .NET never had it, Ruby removed it with OpenTracing, Rust and PHP do not emit it.",
+   "explanation": "dd-trace-java, dd-trace-js and dd-trace-go carry `ot-baggage-*` across all\n16 boundaries; these four tracers ignore the seeded header (not extracted,\nnot re-emitted). Datadog's propagation reference lists the styles `datadog`,\n`tracecontext`, `b3single`, `b3multi`, `baggage`, `none` — `ot-baggage`\nappears nowhere, so the headers the first group emits are legacy behaviour\nof their `datadog` style rather than a configurable format.\n\nPer tracer: dd-trace-rb removed OpenTracing (and with it `ot-baggage-*`) in\n2.0 (PR #3443; maintainer confirmation in #4055 — W3C baggage landed later in\n2.13.0 via #4493/#4505). dd-trace-dotnet never had it — a code search for\n`ot-baggage` returns zero results. datadog-opentelemetry (Rust) has no\n`ot-baggage-*` style. dd-trace-php *can* emit `ot-baggage-*` in some\nconfigurations (#3614, nginx rejecting `ot-baggage-true-client-ip`), so\n\"never emits\" would overstate — but at 1.25.0 with the harness configuration\nit measured absent on every delivered boundary.\n\nThe values still flow via W3C `baggage` wherever that header works for the\nsame tracer.",
+   "status": "by-design",
+   "links": [
+    {
+     "title": "Datadog trace context propagation reference",
+     "url": "https://docs.datadoghq.com/tracing/trace_collection/trace_context_propagation/"
+    },
+    {
+     "title": "dd-trace-rb PR #3443 (OpenTracing removed in 2.0)",
+     "url": "https://github.com/DataDog/dd-trace-rb/pull/3443"
+    },
+    {
+     "title": "dd-trace-rb #4055",
+     "url": "https://github.com/DataDog/dd-trace-rb/issues/4055"
+    },
+    {
+     "title": "dd-trace-rb PR #4493 (W3C baggage)",
+     "url": "https://github.com/DataDog/dd-trace-rb/pull/4493"
+    },
+    {
+     "title": "dd-trace-rb PR #4505",
+     "url": "https://github.com/DataDog/dd-trace-rb/pull/4505"
+    },
+    {
+     "title": "dd-trace-php #3614",
+     "url": "https://github.com/DataDog/dd-trace-php/issues/3614"
+    }
+   ],
+   "cells": [
+    "datadog-dotnet-defaults/ot-baggage/grpc-grpc",
+    "datadog-dotnet-defaults/ot-baggage/grpc-http",
+    "datadog-dotnet-defaults/ot-baggage/grpc-kafka",
+    "datadog-dotnet-defaults/ot-baggage/grpc-rabbitmq",
+    "datadog-dotnet-defaults/ot-baggage/http-grpc",
+    "datadog-dotnet-defaults/ot-baggage/http-http",
+    "datadog-dotnet-defaults/ot-baggage/http-kafka",
+    "datadog-dotnet-defaults/ot-baggage/http-rabbitmq",
+    "datadog-dotnet-defaults/ot-baggage/kafka-grpc",
+    "datadog-dotnet-defaults/ot-baggage/kafka-http",
+    "datadog-dotnet-defaults/ot-baggage/kafka-kafka",
+    "datadog-dotnet-defaults/ot-baggage/kafka-rabbitmq",
+    "datadog-dotnet-defaults/ot-baggage/rabbitmq-grpc",
+    "datadog-dotnet-defaults/ot-baggage/rabbitmq-http",
+    "datadog-dotnet-defaults/ot-baggage/rabbitmq-kafka",
+    "datadog-dotnet-defaults/ot-baggage/rabbitmq-rabbitmq",
+    "datadog-dotnet/ot-baggage/grpc-grpc",
+    "datadog-dotnet/ot-baggage/grpc-http",
+    "datadog-dotnet/ot-baggage/grpc-kafka",
+    "datadog-dotnet/ot-baggage/grpc-rabbitmq",
+    "datadog-dotnet/ot-baggage/http-grpc",
+    "datadog-dotnet/ot-baggage/http-http",
+    "datadog-dotnet/ot-baggage/http-kafka",
+    "datadog-dotnet/ot-baggage/http-rabbitmq",
+    "datadog-dotnet/ot-baggage/kafka-grpc",
+    "datadog-dotnet/ot-baggage/kafka-http",
+    "datadog-dotnet/ot-baggage/kafka-kafka",
+    "datadog-dotnet/ot-baggage/kafka-rabbitmq",
+    "datadog-dotnet/ot-baggage/rabbitmq-grpc",
+    "datadog-dotnet/ot-baggage/rabbitmq-http",
+    "datadog-dotnet/ot-baggage/rabbitmq-kafka",
+    "datadog-dotnet/ot-baggage/rabbitmq-rabbitmq",
+    "datadog-php/ot-baggage/http-grpc",
+    "datadog-php/ot-baggage/http-http",
+    "datadog-php/ot-baggage/http-kafka",
+    "datadog-php/ot-baggage/http-rabbitmq",
+    "datadog-php/ot-baggage/kafka-grpc",
+    "datadog-php/ot-baggage/kafka-http",
+    "datadog-php/ot-baggage/kafka-kafka",
+    "datadog-php/ot-baggage/kafka-rabbitmq",
+    "datadog-php/ot-baggage/rabbitmq-grpc",
+    "datadog-php/ot-baggage/rabbitmq-http",
+    "datadog-php/ot-baggage/rabbitmq-kafka",
+    "datadog-php/ot-baggage/rabbitmq-rabbitmq",
+    "datadog-ruby-defaults/ot-baggage/grpc-grpc",
+    "datadog-ruby-defaults/ot-baggage/grpc-http",
+    "datadog-ruby-defaults/ot-baggage/grpc-kafka",
+    "datadog-ruby-defaults/ot-baggage/grpc-rabbitmq",
+    "datadog-ruby-defaults/ot-baggage/http-grpc",
+    "datadog-ruby-defaults/ot-baggage/http-http",
+    "datadog-ruby-defaults/ot-baggage/http-kafka",
+    "datadog-ruby-defaults/ot-baggage/http-rabbitmq",
+    "datadog-ruby-defaults/ot-baggage/kafka-grpc",
+    "datadog-ruby-defaults/ot-baggage/kafka-http",
+    "datadog-ruby-defaults/ot-baggage/kafka-kafka",
+    "datadog-ruby-defaults/ot-baggage/kafka-rabbitmq",
+    "datadog-ruby-defaults/ot-baggage/rabbitmq-grpc",
+    "datadog-ruby-defaults/ot-baggage/rabbitmq-http",
+    "datadog-ruby-defaults/ot-baggage/rabbitmq-kafka",
+    "datadog-ruby-defaults/ot-baggage/rabbitmq-rabbitmq",
+    "datadog-ruby/ot-baggage/grpc-grpc",
+    "datadog-ruby/ot-baggage/grpc-http",
+    "datadog-ruby/ot-baggage/grpc-kafka",
+    "datadog-ruby/ot-baggage/grpc-rabbitmq",
+    "datadog-ruby/ot-baggage/http-grpc",
+    "datadog-ruby/ot-baggage/http-http",
+    "datadog-ruby/ot-baggage/http-kafka",
+    "datadog-ruby/ot-baggage/http-rabbitmq",
+    "datadog-ruby/ot-baggage/kafka-grpc",
+    "datadog-ruby/ot-baggage/kafka-http",
+    "datadog-ruby/ot-baggage/kafka-kafka",
+    "datadog-ruby/ot-baggage/kafka-rabbitmq",
+    "datadog-ruby/ot-baggage/rabbitmq-grpc",
+    "datadog-ruby/ot-baggage/rabbitmq-http",
+    "datadog-ruby/ot-baggage/rabbitmq-kafka",
+    "datadog-ruby/ot-baggage/rabbitmq-rabbitmq",
+    "datadog-rust/ot-baggage/grpc-grpc",
+    "datadog-rust/ot-baggage/grpc-http",
+    "datadog-rust/ot-baggage/grpc-kafka",
+    "datadog-rust/ot-baggage/grpc-rabbitmq",
+    "datadog-rust/ot-baggage/http-grpc",
+    "datadog-rust/ot-baggage/http-http",
+    "datadog-rust/ot-baggage/http-kafka",
+    "datadog-rust/ot-baggage/http-rabbitmq",
+    "datadog-rust/ot-baggage/kafka-grpc",
+    "datadog-rust/ot-baggage/kafka-http",
+    "datadog-rust/ot-baggage/kafka-kafka",
+    "datadog-rust/ot-baggage/kafka-rabbitmq",
+    "datadog-rust/ot-baggage/rabbitmq-grpc",
+    "datadog-rust/ot-baggage/rabbitmq-http",
+    "datadog-rust/ot-baggage/rabbitmq-kafka",
+    "datadog-rust/ot-baggage/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "datadog-dotnet",
+    "datadog-dotnet-defaults",
+    "datadog-php",
+    "datadog-ruby",
+    "datadog-ruby-defaults",
+    "datadog-rust"
+   ]
+  },
+  {
+   "id": "datadog-ruby-bunny-not-instrumented",
+   "title": "dd-trace-rb has no bunny integration; RabbitMQ legs lose everything",
+   "cause": "The datadog gem's AMQP coverage is the Sneakers/Kicks worker framework only; the bunny client is not instrumented on publish or consume.",
+   "explanation": "All HTTP, gRPC and Kafka boundaries pass (W3C baggage included) on datadog\n2.42.0. RabbitMQ: nothing is injected on publish, and consume does not\nextract, so `rabbitmq-\u003ehttp/grpc/kafka` start a fresh trace on the outbound\nleg and `rabbitmq-\u003erabbitmq` carries nothing. The dd-trace-rb compatibility\nlist has no bunny entry (AMQP coverage exists only via Sneakers/Kicks), and\nthe contrib source tree confirms no bunny integration exists in code.\n\nWorkaround: inject the trace context into message headers on publish and\ncontinue the trace from them in the consumer block yourself. No feature\nrequest for bunny exists upstream at all — filing candidate. Same class as\ndd-trace-py/pika: canonical client, zero coverage.",
+   "status": "open",
+   "links": [
+    {
+     "title": "Datadog Ruby compatibility docs",
+     "url": "https://docs.datadoghq.com/tracing/trace_collection/compatibility/ruby/"
+    },
+    {
+     "title": "dd-trace-rb contrib directory (no bunny)",
+     "url": "https://github.com/DataDog/dd-trace-rb/tree/master/lib/datadog/tracing/contrib"
+    }
+   ],
+   "cells": [
+    "datadog-ruby-defaults/baggage/grpc-rabbitmq",
+    "datadog-ruby-defaults/baggage/http-rabbitmq",
+    "datadog-ruby-defaults/baggage/kafka-rabbitmq",
+    "datadog-ruby-defaults/baggage/rabbitmq-grpc",
+    "datadog-ruby-defaults/baggage/rabbitmq-http",
+    "datadog-ruby-defaults/baggage/rabbitmq-kafka",
+    "datadog-ruby-defaults/baggage/rabbitmq-rabbitmq",
+    "datadog-ruby-defaults/traceparent/grpc-rabbitmq",
+    "datadog-ruby-defaults/traceparent/http-rabbitmq",
+    "datadog-ruby-defaults/traceparent/kafka-rabbitmq",
+    "datadog-ruby-defaults/traceparent/rabbitmq-grpc",
+    "datadog-ruby-defaults/traceparent/rabbitmq-http",
+    "datadog-ruby-defaults/traceparent/rabbitmq-kafka",
+    "datadog-ruby-defaults/traceparent/rabbitmq-rabbitmq",
+    "datadog-ruby-defaults/tracestate/grpc-rabbitmq",
+    "datadog-ruby-defaults/tracestate/http-rabbitmq",
+    "datadog-ruby-defaults/tracestate/kafka-rabbitmq",
+    "datadog-ruby-defaults/tracestate/rabbitmq-grpc",
+    "datadog-ruby-defaults/tracestate/rabbitmq-http",
+    "datadog-ruby-defaults/tracestate/rabbitmq-kafka",
+    "datadog-ruby-defaults/tracestate/rabbitmq-rabbitmq",
+    "datadog-ruby/baggage/grpc-rabbitmq",
+    "datadog-ruby/baggage/http-rabbitmq",
+    "datadog-ruby/baggage/kafka-rabbitmq",
+    "datadog-ruby/baggage/rabbitmq-grpc",
+    "datadog-ruby/baggage/rabbitmq-http",
+    "datadog-ruby/baggage/rabbitmq-kafka",
+    "datadog-ruby/baggage/rabbitmq-rabbitmq",
+    "datadog-ruby/traceparent/grpc-rabbitmq",
+    "datadog-ruby/traceparent/http-rabbitmq",
+    "datadog-ruby/traceparent/kafka-rabbitmq",
+    "datadog-ruby/traceparent/rabbitmq-grpc",
+    "datadog-ruby/traceparent/rabbitmq-http",
+    "datadog-ruby/traceparent/rabbitmq-kafka",
+    "datadog-ruby/traceparent/rabbitmq-rabbitmq",
+    "datadog-ruby/tracestate/grpc-rabbitmq",
+    "datadog-ruby/tracestate/http-rabbitmq",
+    "datadog-ruby/tracestate/kafka-rabbitmq",
+    "datadog-ruby/tracestate/rabbitmq-grpc",
+    "datadog-ruby/tracestate/rabbitmq-http",
+    "datadog-ruby/tracestate/rabbitmq-kafka",
+    "datadog-ruby/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "datadog-ruby",
+    "datadog-ruby-defaults"
+   ]
+  },
+  {
+   "id": "datadog-php-rdkafka-consume-span-closed-early",
+   "title": "dd-trace-php closes the rdkafka consume span inside consume(), before user code runs",
+   "cause": "The Kafka consume hook attaches the extracted headers to a span it closes before returning the message, so outbound calls run outside the extracted context.",
+   "explanation": "Kafka *injection* works on dd-trace-php 1.25.0 (`*-\u003ekafka` passes, baggage\nincluded), but the rdkafka *consume* side does not continue context:\n`kafka-\u003e*` starts a new trace and baggage is gone. The mechanism is visible\nin `KafkaIntegration.php`: the consume hook opens a new trace root, attaches\nthe extracted headers to *that span*, and calls `close_span()` inside the\n`consume()` call itself — before application code ever sees the message.\n\n`DD_TRACE_KAFKA_DISTRIBUTED_TRACING` defaults to true (`configuration.h`), so\nthe gap is the scoping, not the flag. The historical rdkafka request (#639)\nwas never closed after injection shipped.\n\nWorkaround: read the record headers after `consume()` returns and continue\nthe trace from them manually before outbound calls. Upstream fix: keep the\nconsume span (and the extracted context) active until the application has\nprocessed the message. No upstream issue reports that consumed Kafka context\ndoes not reach post-consume user code — filing candidate.",
+   "status": "open",
+   "links": [
+    {
+     "title": "dd-trace-php KafkaIntegration.php",
+     "url": "https://github.com/DataDog/dd-trace-php/blob/master/src/DDTrace/Integrations/Kafka/KafkaIntegration.php"
+    },
+    {
+     "title": "dd-trace-php configuration.h (DD_TRACE_KAFKA_DISTRIBUTED_TRACING default true)",
+     "url": "https://github.com/DataDog/dd-trace-php/blob/master/tracer/configuration.h"
+    },
+    {
+     "title": "dd-trace-php #639 (rdkafka request, still open)",
+     "url": "https://github.com/DataDog/dd-trace-php/issues/639"
+    },
+    {
+     "title": "Datadog PHP compatibility docs",
+     "url": "https://docs.datadoghq.com/tracing/trace_collection/compatibility/php/"
+    }
+   ],
+   "cells": [
+    "datadog-php/baggage/kafka-grpc",
+    "datadog-php/baggage/kafka-http",
+    "datadog-php/baggage/kafka-kafka",
+    "datadog-php/baggage/kafka-rabbitmq",
+    "datadog-php/traceparent/kafka-grpc",
+    "datadog-php/traceparent/kafka-http",
+    "datadog-php/traceparent/kafka-kafka",
+    "datadog-php/traceparent/kafka-rabbitmq",
+    "datadog-php/tracestate/kafka-grpc",
+    "datadog-php/tracestate/kafka-http",
+    "datadog-php/tracestate/kafka-kafka",
+    "datadog-php/tracestate/kafka-rabbitmq"
+   ],
+   "variants": [
+    "datadog-php"
+   ]
+  },
+  {
+   "id": "datadog-go-orchestrion-sarama-produce-root-span",
+   "title": "Orchestrion: sarama SendMessage has no context parameter, so the woven produce span is a new root",
+   "cause": "Orchestrion finds a context.Context only in the woven function's parameters; sarama's SendMessage(msg) has none, so the produce span is a new root.",
+   "explanation": "`datadog-go-orchestrion` (Orchestrion v1.13.0 weaving dd-trace-go v2.10.1,\nsame IBM/sarama v1.60.2 as the hand-wired `datadog-go` relay) passes all four\n`http/grpc -\u003e http/grpc` legs with baggage and `ot-baggage-*`. Into Kafka,\nheaders are *present* but carry a brand-new trace-id: `x-datadog-*` and\n`traceparent` arrive with a fresh trace, the foreign tracestate entry is\nreplaced, and baggage is gone.\n\nOrchestrion's advice templates resolve a `context.Context` only from the\ninnermost function's parameter list (orchestrion #871). sarama's\n`SyncProducer.SendMessage(msg)` takes no context at all, so the woven\nproducer starts a *root* produce span and injects that. The hand-wired relay\npasses these legs with identical library versions because the dd-trace-go\ncontrib pattern injects from the request context before `SendMessage`.\n\nWorkaround: follow the contrib IBM/sarama README and inject from `ctx` into\nthe message before `SendMessage` (one manual step). Upstream: a\ncontext-carrying producer API, or weaver support for goroutine-local context\nat sites with no ctx parameter. A related operational note: `orchestrion\npin` prints a spurious \"removing unnecessary import\" warning against the\npublished `all/v2` module; cosmetic, build unaffected — filing candidate.",
+   "status": "open",
+   "links": [
+    {
+     "title": "Orchestrion",
+     "url": "https://github.com/DataDog/orchestrion"
+    },
+    {
+     "title": "Datadog Go compile-time instrumentation docs",
+     "url": "https://docs.datadoghq.com/tracing/trace_collection/automatic_instrumentation/dd_libraries/go/?tab=compiletimeinstrumentation"
+    },
+    {
+     "title": "orchestrion #871 (context discovery limitation)",
+     "url": "https://github.com/DataDog/orchestrion/issues/871"
+    },
+    {
+     "title": "dd-trace-go contrib IBM/sarama (manual pattern)",
+     "url": "https://pkg.go.dev/github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2"
+    }
+   ],
+   "cells": [
+    "datadog-go-orchestrion/baggage/grpc-kafka",
+    "datadog-go-orchestrion/baggage/http-kafka",
+    "datadog-go-orchestrion/ot-baggage/grpc-kafka",
+    "datadog-go-orchestrion/ot-baggage/http-kafka",
+    "datadog-go-orchestrion/traceparent/grpc-kafka",
+    "datadog-go-orchestrion/traceparent/http-kafka",
+    "datadog-go-orchestrion/tracestate/grpc-kafka",
+    "datadog-go-orchestrion/tracestate/http-kafka"
+   ],
+   "variants": [
+    "datadog-go-orchestrion"
+   ]
+  },
+  {
+   "id": "elastic-go-no-baggage-api",
+   "title": "apm-agent-go has no baggage API, by explicit decision",
+   "cause": "Elastic's Go agent carries trace identity on all 16 boundaries but implements no W3C baggage at all; the request was closed not-planned in 2019.",
+   "explanation": "`apmhttp`/`apmgrpc` wrappers plus the documented manual traceparent/tracestate\npattern carry trace identity across all 16 boundaries on apm-agent-go\nv2.7.12, but the agent has no baggage API. This was declined upstream:\napm-agent-go #537 was closed not-planned (\"no plans for baggage at the\nmoment\"), and `apmot/span.go` states \"SetBaggageItem is a no-op; we do not\nsupport baggage\" (`apmot/doc.go`: \"Things not implemented by this tracer:\nbinary propagation format, baggage, logging\"). A repo-wide search hits\nbaggage only in the OpenTracing bridge — there is no W3C baggage code.\n\nThis contradicts Elastic's own agent spec (\"Agents MUST parse, validate, and\nattach the `baggage` header according to the W3C specification\"). A user who\nneeds baggage must carry it as an application header on every hop\nthemselves.",
+   "status": "wontfix",
+   "links": [
+    {
+     "title": "apm-agent-go #537 (closed not-planned)",
+     "url": "https://github.com/elastic/apm-agent-go/issues/537"
+    },
+    {
+     "title": "apmot/span.go (SetBaggageItem is a no-op)",
+     "url": "https://github.com/elastic/apm-agent-go/blob/main/module/apmot/span.go#L127-L136"
+    },
+    {
+     "title": "apmot/doc.go",
+     "url": "https://github.com/elastic/apm-agent-go/blob/main/module/apmot/doc.go"
+    },
+    {
+     "title": "Elastic agent spec — distributed tracing",
+     "url": "https://github.com/elastic/apm/blob/main/specs/agents/tracing-distributed-tracing.md"
+    }
+   ],
+   "cells": [
+    "elastic-go/baggage/grpc-grpc",
+    "elastic-go/baggage/grpc-http",
+    "elastic-go/baggage/grpc-kafka",
+    "elastic-go/baggage/grpc-rabbitmq",
+    "elastic-go/baggage/http-grpc",
+    "elastic-go/baggage/http-http",
+    "elastic-go/baggage/http-kafka",
+    "elastic-go/baggage/http-rabbitmq",
+    "elastic-go/baggage/kafka-grpc",
+    "elastic-go/baggage/kafka-http",
+    "elastic-go/baggage/kafka-kafka",
+    "elastic-go/baggage/kafka-rabbitmq",
+    "elastic-go/baggage/rabbitmq-grpc",
+    "elastic-go/baggage/rabbitmq-http",
+    "elastic-go/baggage/rabbitmq-kafka",
+    "elastic-go/baggage/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "elastic-go"
+   ]
+  },
+  {
+   "id": "elastic-agents-no-w3c-baggage",
+   "title": "Elastic Node, Python, Ruby and PHP agents do not propagate W3C baggage on any boundary",
+   "cause": "Only Elastic's Java agent (and .NET over HTTP/gRPC) implements the baggage propagation the agent spec mandates; these agents drop it on every boundary.",
+   "explanation": "Elastic's agent spec mandates baggage support, but only the Java agent\ndelivers it end-to-end. elastic-apm-node 4.18.0 has no W3C baggage\nimplementation; elastic-apm (Python) 6.26.2, elastic-apm (Ruby) 4.9.0 and\nelastic_apm (PHP) 1.17.0 measure `baggage` absent on every boundary,\nincluding `http-\u003ehttp` where `traceparent`/`tracestate` continue. The\nseeded member is neither extracted nor re-emitted.\n\nOutside Java, Elastic APM cannot currently carry application baggage across\nprotocol boundaries; a user must forward the `baggage` header as an\napplication header themselves. Elastic's Node distributed-tracing docs\nlikewise describe manual `traceparent` passing only (no tracestate or\nbaggage). Our references record no upstream issue requesting W3C baggage in\nthese agents.",
+   "status": "open",
+   "links": [
+    {
+     "title": "Elastic agent spec — distributed tracing",
+     "url": "https://github.com/elastic/apm/blob/main/specs/agents/tracing-distributed-tracing.md"
+    },
+    {
+     "title": "Elastic Node.js agent — distributed tracing docs",
+     "url": "https://www.elastic.co/docs/reference/apm/agents/nodejs/distributed-tracing"
+    }
+   ],
+   "cells": [
+    "elastic-node/baggage/grpc-grpc",
+    "elastic-node/baggage/grpc-http",
+    "elastic-node/baggage/grpc-kafka",
+    "elastic-node/baggage/grpc-rabbitmq",
+    "elastic-node/baggage/http-grpc",
+    "elastic-node/baggage/http-http",
+    "elastic-node/baggage/http-kafka",
+    "elastic-node/baggage/http-rabbitmq",
+    "elastic-node/baggage/kafka-grpc",
+    "elastic-node/baggage/kafka-http",
+    "elastic-node/baggage/kafka-kafka",
+    "elastic-node/baggage/kafka-rabbitmq",
+    "elastic-node/baggage/rabbitmq-grpc",
+    "elastic-node/baggage/rabbitmq-http",
+    "elastic-node/baggage/rabbitmq-kafka",
+    "elastic-node/baggage/rabbitmq-rabbitmq",
+    "elastic-php/baggage/http-grpc",
+    "elastic-php/baggage/http-http",
+    "elastic-php/baggage/http-kafka",
+    "elastic-php/baggage/http-rabbitmq",
+    "elastic-php/baggage/kafka-grpc",
+    "elastic-php/baggage/kafka-http",
+    "elastic-php/baggage/kafka-kafka",
+    "elastic-php/baggage/kafka-rabbitmq",
+    "elastic-php/baggage/rabbitmq-grpc",
+    "elastic-php/baggage/rabbitmq-http",
+    "elastic-php/baggage/rabbitmq-kafka",
+    "elastic-php/baggage/rabbitmq-rabbitmq",
+    "elastic-python/baggage/grpc-grpc",
+    "elastic-python/baggage/grpc-http",
+    "elastic-python/baggage/grpc-kafka",
+    "elastic-python/baggage/grpc-rabbitmq",
+    "elastic-python/baggage/http-grpc",
+    "elastic-python/baggage/http-http",
+    "elastic-python/baggage/http-kafka",
+    "elastic-python/baggage/http-rabbitmq",
+    "elastic-python/baggage/kafka-grpc",
+    "elastic-python/baggage/kafka-http",
+    "elastic-python/baggage/kafka-kafka",
+    "elastic-python/baggage/kafka-rabbitmq",
+    "elastic-python/baggage/rabbitmq-grpc",
+    "elastic-python/baggage/rabbitmq-http",
+    "elastic-python/baggage/rabbitmq-kafka",
+    "elastic-python/baggage/rabbitmq-rabbitmq",
+    "elastic-ruby/baggage/grpc-grpc",
+    "elastic-ruby/baggage/grpc-http",
+    "elastic-ruby/baggage/grpc-kafka",
+    "elastic-ruby/baggage/grpc-rabbitmq",
+    "elastic-ruby/baggage/http-grpc",
+    "elastic-ruby/baggage/http-http",
+    "elastic-ruby/baggage/http-kafka",
+    "elastic-ruby/baggage/http-rabbitmq",
+    "elastic-ruby/baggage/kafka-grpc",
+    "elastic-ruby/baggage/kafka-http",
+    "elastic-ruby/baggage/kafka-kafka",
+    "elastic-ruby/baggage/kafka-rabbitmq",
+    "elastic-ruby/baggage/rabbitmq-grpc",
+    "elastic-ruby/baggage/rabbitmq-http",
+    "elastic-ruby/baggage/rabbitmq-kafka",
+    "elastic-ruby/baggage/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "elastic-node",
+    "elastic-php",
+    "elastic-python",
+    "elastic-ruby"
+   ]
+  },
+  {
+   "id": "elastic-node-amqplib-not-instrumented",
+   "title": "elastic-apm-node does not instrument amqplib; RabbitMQ legs carry nothing",
+   "cause": "amqplib is absent from the Node agent's supported technologies; long-standing requests (#1188, #1791) have been open since 2019/2020.",
+   "explanation": "elastic-apm-node 4.18.0 propagates `traceparent` and `tracestate` over\nHTTP, gRPC and kafkajs, but amqplib is absent from the supported-technologies\npage, so nothing is injected on `*-\u003erabbitmq` and nothing is extracted on\n`rabbitmq-\u003e*`. Elastic's docs direct queue users to manual `traceparent`\npassing (the recipe carries `traceparent` only).\n\nThe amqplib requests #1188 (Jul 2019) and #1791 (Jul 2020) remain open.\nWorkaround: pass `traceparent`/`tracestate` in message headers yourself and\nstart the consumer transaction with the received `traceparent`.",
+   "status": "open",
+   "links": [
+    {
+     "title": "Elastic Node.js agent — supported technologies",
+     "url": "https://www.elastic.co/docs/reference/apm/agents/nodejs/supported-technologies"
+    },
+    {
+     "title": "Elastic Node.js agent — distributed tracing docs",
+     "url": "https://www.elastic.co/docs/reference/apm/agents/nodejs/distributed-tracing"
+    },
+    {
+     "title": "apm-agent-nodejs #1188",
+     "url": "https://github.com/elastic/apm-agent-nodejs/issues/1188"
+    },
+    {
+     "title": "apm-agent-nodejs #1791",
+     "url": "https://github.com/elastic/apm-agent-nodejs/issues/1791"
+    }
+   ],
+   "cells": [
+    "elastic-node/traceparent/grpc-rabbitmq",
+    "elastic-node/traceparent/http-rabbitmq",
+    "elastic-node/traceparent/kafka-rabbitmq",
+    "elastic-node/traceparent/rabbitmq-grpc",
+    "elastic-node/traceparent/rabbitmq-http",
+    "elastic-node/traceparent/rabbitmq-kafka",
+    "elastic-node/traceparent/rabbitmq-rabbitmq",
+    "elastic-node/tracestate/grpc-rabbitmq",
+    "elastic-node/tracestate/http-rabbitmq",
+    "elastic-node/tracestate/kafka-rabbitmq",
+    "elastic-node/tracestate/rabbitmq-grpc",
+    "elastic-node/tracestate/rabbitmq-http",
+    "elastic-node/tracestate/rabbitmq-kafka",
+    "elastic-node/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "elastic-node"
+   ]
+  },
+  {
+   "id": "elastic-python-grpc-tracestate-key-bug",
+   "title": "elastic-apm Python: gRPC server interceptor assigns the tracestate header name instead of its value",
+   "cause": "server_interceptor.py has `tracestate = metadata.key`, so after a gRPC hop the outbound tracestate is the literal string 'tracestate'; foreign entries are lost.",
+   "explanation": "gRPC-inbound continues the trace (`traceparent` passes) but drops foreign\n`tracestate` entries: the outbound `tracestate` header emitted after a gRPC\nhop is the literal string `tracestate`. The root cause is a one-line bug in\n`elasticapm/contrib/grpc/server_interceptor.py` (v6.26.2, lines 66–73):\n`elif metadata.key == \"tracestate\": tracestate = metadata.key` — the header\n*name* is assigned instead of its value. Still unfixed on main (file last\ntouched Oct 2023).\n\nBonus finding for the same report: the async variant\n(`async_server_interceptor.py`) never reads `invocation_metadata` at all, so\nthe async gRPC server path does not extract trace context, period.\n\nUnreported upstream — filing candidate with the one-line fix\n(`metadata.key` → `metadata.value`). This is the only tracestate corruption\nobserved among all tracers that continued a trace.",
+   "status": "open",
+   "links": [
+    {
+     "title": "apm-agent-python server_interceptor.py @ v6.26.2 L66-L73",
+     "url": "https://github.com/elastic/apm-agent-python/blob/v6.26.2/elasticapm/contrib/grpc/server_interceptor.py#L66-L73"
+    },
+    {
+     "title": "apm-agent-python server_interceptor.py @ main (still unfixed)",
+     "url": "https://github.com/elastic/apm-agent-python/blob/main/elasticapm/contrib/grpc/server_interceptor.py#L70-L71"
+    }
+   ],
+   "cells": [
+    "elastic-python/tracestate/grpc-grpc",
+    "elastic-python/tracestate/grpc-http"
+   ],
+   "variants": [
+    "elastic-python"
+   ]
+  },
+  {
+   "id": "elastic-python-no-confluent-kafka-or-pika",
+   "title": "elastic-apm Python has no confluent-kafka or pika instrumentation",
+   "cause": "The Python agent's only messaging client is kafka-python; confluent-kafka and pika are uninstrumented: nothing is injected, consumers start no transaction.",
+   "explanation": "The Python supported-technologies page lists `kafka-python` (\u003e=2.0,\u003c3) as\nits only messaging client; confluent-kafka and pika appear nowhere. On\nelastic-apm 6.26.2 nothing is injected into produced Kafka records or\npublished AMQP messages, and consumers start no transaction — so even the\noutbound HTTP/gRPC calls after a consume carry no headers at all (absent,\nnot a new trace).\n\nRabbitMQ has been requested since Dec 2019 (#678: \"It would be of high value\nto add instrumentation and distributed tracing for message brokers and, in\nparticular, RabbitMQ\"), still open. Workaround: start a transaction manually\nin the consumer with the received `traceparent` and inject headers manually\non produce/publish.",
+   "status": "open",
+   "links": [
+    {
+     "title": "Elastic Python agent — supported technologies",
+     "url": "https://www.elastic.co/docs/reference/apm/agents/python/supported-technologies"
+    },
+    {
+     "title": "apm-agent-python #678 (RabbitMQ request, open since 2019)",
+     "url": "https://github.com/elastic/apm-agent-python/issues/678"
+    }
+   ],
+   "cells": [
+    "elastic-python/traceparent/grpc-kafka",
+    "elastic-python/traceparent/grpc-rabbitmq",
+    "elastic-python/traceparent/http-kafka",
+    "elastic-python/traceparent/http-rabbitmq",
+    "elastic-python/traceparent/kafka-grpc",
+    "elastic-python/traceparent/kafka-http",
+    "elastic-python/traceparent/kafka-kafka",
+    "elastic-python/traceparent/kafka-rabbitmq",
+    "elastic-python/traceparent/rabbitmq-grpc",
+    "elastic-python/traceparent/rabbitmq-http",
+    "elastic-python/traceparent/rabbitmq-kafka",
+    "elastic-python/traceparent/rabbitmq-rabbitmq",
+    "elastic-python/tracestate/grpc-kafka",
+    "elastic-python/tracestate/grpc-rabbitmq",
+    "elastic-python/tracestate/http-kafka",
+    "elastic-python/tracestate/http-rabbitmq",
+    "elastic-python/tracestate/kafka-grpc",
+    "elastic-python/tracestate/kafka-http",
+    "elastic-python/tracestate/kafka-kafka",
+    "elastic-python/tracestate/kafka-rabbitmq",
+    "elastic-python/tracestate/rabbitmq-grpc",
+    "elastic-python/tracestate/rabbitmq-http",
+    "elastic-python/tracestate/rabbitmq-kafka",
+    "elastic-python/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "elastic-python"
+   ]
+  },
+  {
+   "id": "elastic-dotnet-kafka-profiler-deployment-only",
+   "title": "Elastic .NET: Kafka instrumentation exists only in the CLR-profiler deployment, not the startup hook",
+   "cause": "The startup-hook zero-code deployment covers neither Kafka nor RabbitMQ; the profiler that does is x64-only and caps at Confluent.Kafka \u003c3.0.0.",
+   "explanation": "elastic-apm-dotnet 1.34.7 with the startup-hook zero-code deployment passes\nHTTP and gRPC including baggage. Kafka and RabbitMQ are the only rows in the\nprofiler docs' technology table without the startup-hook marker: the agent's\nown messaging instrumentation exists only in the CLR-profiler deployment,\nwhich is x64-only on Windows and Linux (\"ARM and 32-bit processes are not\nsupported\") and even then caps at `Confluent.Kafka \u003e=1.4.0 \u003c3.0.0` and\n`RabbitMQ.Client \u003e=3.6.9 \u003c7.0.0`.\n\nConfluent.Kafka has no native `ActivitySource` for the agent's OpenTelemetry\nbridge to pick up, so Kafka measures fully absent: `*-\u003ekafka` injects\nnothing and `kafka-\u003e*` starts a new trace. (RabbitMQ trace context still\nflows via RabbitMQ.Client 7.x's native ActivitySource — see\n`elastic-dotnet-rabbitmq-native-no-baggage` for the baggage half.)\n\nWorkaround: inject/extract `traceparent`/`tracestate` manually around\nConfluent.Kafka produce and consume using the agent's public API.",
+   "status": "by-design",
+   "links": [
+    {
+     "title": "Elastic .NET profiler auto-instrumentation docs",
+     "url": "https://www.elastic.co/docs/reference/apm/agents/dotnet/setup-auto-instrumentation"
+    }
+   ],
+   "cells": [
+    "elastic-dotnet/baggage/grpc-kafka",
+    "elastic-dotnet/baggage/http-kafka",
+    "elastic-dotnet/baggage/kafka-grpc",
+    "elastic-dotnet/baggage/kafka-http",
+    "elastic-dotnet/baggage/kafka-kafka",
+    "elastic-dotnet/baggage/kafka-rabbitmq",
+    "elastic-dotnet/baggage/rabbitmq-kafka",
+    "elastic-dotnet/traceparent/grpc-kafka",
+    "elastic-dotnet/traceparent/http-kafka",
+    "elastic-dotnet/traceparent/kafka-grpc",
+    "elastic-dotnet/traceparent/kafka-http",
+    "elastic-dotnet/traceparent/kafka-kafka",
+    "elastic-dotnet/traceparent/kafka-rabbitmq",
+    "elastic-dotnet/traceparent/rabbitmq-kafka",
+    "elastic-dotnet/tracestate/grpc-kafka",
+    "elastic-dotnet/tracestate/http-kafka",
+    "elastic-dotnet/tracestate/kafka-grpc",
+    "elastic-dotnet/tracestate/kafka-http",
+    "elastic-dotnet/tracestate/kafka-kafka",
+    "elastic-dotnet/tracestate/kafka-rabbitmq",
+    "elastic-dotnet/tracestate/rabbitmq-kafka"
+   ],
+   "variants": [
+    "elastic-dotnet"
+   ]
+  },
+  {
+   "id": "elastic-dotnet-rabbitmq-native-no-baggage",
+   "title": "Elastic .NET: RabbitMQ trace context flows via the client's native ActivitySource, but baggage does not",
+   "cause": "The Elastic agent has no RabbitMQ.Client 7 instrumentation; the client's own default propagation carries trace id and tracestate only, never baggage.",
+   "explanation": "`*-\u003erabbitmq` injection and `rabbitmq-\u003e*` continuation both pass for\n`traceparent`/`tracestate` on elastic-apm-dotnet 1.34.7 — not because the\nagent instruments RabbitMQ (its own instrumentation is profiler-only and\ncaps at `RabbitMQ.Client \u003c7.0.0`), but because RabbitMQ.Client 7.x ships\nnative `ActivitySource` instrumentation (PR #1261) that the agent's\nOpenTelemetry bridge picks up.\n\nThat native path cannot carry baggage: its `DefaultContextExtractor` calls\n`ExtractTraceIdAndState(...)` only. Baggage was addressed via an opt-in\npackage (PR #1528) that has never shipped stable (#1728, open since Nov\n2024). Workaround: forward `baggage` as an application header in the AMQP\nmessage properties yourself.",
+   "status": "open",
+   "links": [
+    {
+     "title": "Elastic .NET profiler auto-instrumentation docs",
+     "url": "https://www.elastic.co/docs/reference/apm/agents/dotnet/setup-auto-instrumentation"
+    },
+    {
+     "title": "rabbitmq-dotnet-client PR #1261 (native ActivitySource)",
+     "url": "https://github.com/rabbitmq/rabbitmq-dotnet-client/pull/1261"
+    },
+    {
+     "title": "rabbitmq-dotnet-client PR #1528 (opt-in baggage package)",
+     "url": "https://github.com/rabbitmq/rabbitmq-dotnet-client/pull/1528"
+    },
+    {
+     "title": "rabbitmq-dotnet-client #1728",
+     "url": "https://github.com/rabbitmq/rabbitmq-dotnet-client/issues/1728"
+    }
+   ],
+   "cells": [
+    "elastic-dotnet/baggage/grpc-rabbitmq",
+    "elastic-dotnet/baggage/http-rabbitmq",
+    "elastic-dotnet/baggage/rabbitmq-grpc",
+    "elastic-dotnet/baggage/rabbitmq-http",
+    "elastic-dotnet/baggage/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "elastic-dotnet"
+   ]
+  },
+  {
+   "id": "elastic-ruby-grpc-manual-only",
+   "title": "Elastic Ruby: gRPC support is experimental and manual, with no zero-code client or server path",
+   "cause": "The Ruby agent instruments gRPC only via a hand-added ClientInterceptor at stub creation; the init-only setup adds none, and there is no server-side path.",
+   "explanation": "elastic-apm (Ruby) 4.9.0 passes `http-\u003ehttp` only. gRPC support exists but\nis experimental and manual: \"To instrument a client, add the\n`ElasticAPM::GRPC::ClientInterceptor` as an `interceptor` at Stub creation\".\nThe harness's init-only setup (`require 'elastic_apm'; ElasticAPM.start`)\nadds no interceptor, so `*-\u003egrpc` carries nothing, and with no server-side\ninstrumentation `grpc-\u003e*` runs with no transaction and injects nothing on\nthe outbound leg.\n\nWhat a user can do: wire the client interceptor into every stub. Nothing\ndocumented covers the server side. The accurate claim is \"no zero-code\ngRPC\", not \"no gRPC at all\".",
+   "status": "open",
+   "links": [
+    {
+     "title": "Elastic Ruby agent — supported technologies",
+     "url": "https://www.elastic.co/docs/reference/apm/agents/ruby/supported-technologies"
+    }
+   ],
+   "cells": [
+    "elastic-ruby/traceparent/grpc-grpc",
+    "elastic-ruby/traceparent/grpc-http",
+    "elastic-ruby/traceparent/grpc-kafka",
+    "elastic-ruby/traceparent/grpc-rabbitmq",
+    "elastic-ruby/traceparent/http-grpc",
+    "elastic-ruby/traceparent/kafka-grpc",
+    "elastic-ruby/traceparent/rabbitmq-grpc",
+    "elastic-ruby/tracestate/grpc-grpc",
+    "elastic-ruby/tracestate/grpc-http",
+    "elastic-ruby/tracestate/grpc-kafka",
+    "elastic-ruby/tracestate/grpc-rabbitmq",
+    "elastic-ruby/tracestate/http-grpc",
+    "elastic-ruby/tracestate/kafka-grpc",
+    "elastic-ruby/tracestate/rabbitmq-grpc"
+   ],
+   "variants": [
+    "elastic-ruby"
+   ]
+  },
+  {
+   "id": "elastic-ruby-no-client-kafka-or-bunny",
+   "title": "Elastic Ruby: no bunny or client-level Kafka instrumentation, and the Racecar spy never reads headers",
+   "cause": "The Ruby agent covers Kafka only via Racecar (whose spy never reads a trace_parent) and RabbitMQ only via Sneakers; rdkafka and bunny are uninstrumented.",
+   "explanation": "Nothing is injected on `*-\u003ekafka` or `*-\u003erabbitmq` and nothing is extracted\non `kafka-\u003e*` or `rabbitmq-\u003e*` on elastic-apm (Ruby) 4.9.0. The supported\ntechnologies page lists RabbitMQ only as \"Sneakers (Experimental)\" and no\nKafka client library at all; Kafka is covered only via the Racecar\nframework.\n\nEven under Racecar, consume-side continuation is impossible: the racecar spy\n(`lib/elastic_apm/spies/racecar.rb`, added by PR #1284) calls\n`ElasticAPM.start_transaction(kind, TYPE)` with no `trace_parent`, so it\nnever reads message headers.\n\nNo upstream issues request bunny or client-level Kafka (rdkafka/ruby-kafka)\ninstrumentation. Workaround: inject `traceparent`/`tracestate` into message\nheaders manually and start the consumer transaction with the received\n`trace_parent`.",
+   "status": "open",
+   "links": [
+    {
+     "title": "Elastic Ruby agent — supported technologies",
+     "url": "https://www.elastic.co/docs/reference/apm/agents/ruby/supported-technologies"
+    },
+    {
+     "title": "apm-agent-ruby racecar.rb spy (no trace_parent)",
+     "url": "https://github.com/elastic/apm-agent-ruby/blob/main/lib/elastic_apm/spies/racecar.rb"
+    },
+    {
+     "title": "apm-agent-ruby PR #1284",
+     "url": "https://github.com/elastic/apm-agent-ruby/pull/1284"
+    }
+   ],
+   "cells": [
+    "elastic-ruby/traceparent/grpc-kafka",
+    "elastic-ruby/traceparent/grpc-rabbitmq",
+    "elastic-ruby/traceparent/http-kafka",
+    "elastic-ruby/traceparent/http-rabbitmq",
+    "elastic-ruby/traceparent/kafka-grpc",
+    "elastic-ruby/traceparent/kafka-http",
+    "elastic-ruby/traceparent/kafka-kafka",
+    "elastic-ruby/traceparent/kafka-rabbitmq",
+    "elastic-ruby/traceparent/rabbitmq-grpc",
+    "elastic-ruby/traceparent/rabbitmq-http",
+    "elastic-ruby/traceparent/rabbitmq-kafka",
+    "elastic-ruby/traceparent/rabbitmq-rabbitmq",
+    "elastic-ruby/tracestate/grpc-kafka",
+    "elastic-ruby/tracestate/grpc-rabbitmq",
+    "elastic-ruby/tracestate/http-kafka",
+    "elastic-ruby/tracestate/http-rabbitmq",
+    "elastic-ruby/tracestate/kafka-grpc",
+    "elastic-ruby/tracestate/kafka-http",
+    "elastic-ruby/tracestate/kafka-kafka",
+    "elastic-ruby/tracestate/kafka-rabbitmq",
+    "elastic-ruby/tracestate/rabbitmq-grpc",
+    "elastic-ruby/tracestate/rabbitmq-http",
+    "elastic-ruby/tracestate/rabbitmq-kafka",
+    "elastic-ruby/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "elastic-ruby"
+   ]
+  },
+  {
+   "id": "elastic-php-messaging-not-supported",
+   "title": "Elastic PHP: Kafka and RabbitMQ are not supported technologies; only http-\u003ehttp propagates",
+   "cause": "elastic_apm instruments neither rdkafka nor php-amqplib: nothing is injected on produce/publish and consumed messages start a fresh trace on the outbound leg.",
+   "explanation": "On elastic_apm 1.17.0 (PHP 8.3, Apache mod_php + CLI workers) only\n`http-\u003ehttp` propagates `traceparent`/`tracestate`. Kafka and RabbitMQ are\nnot in the agent's supported-technologies list: `http-\u003ekafka` and\n`http-\u003erabbitmq` inject nothing, and the CLI consumers do not extract, so\n`kafka-\u003ehttp` and `rabbitmq-\u003ehttp` start a fresh trace (new trace-id, the\nforeign tracestate entry lost) while `kafka-\u003ekafka`, `kafka-\u003erabbitmq`,\n`rabbitmq-\u003ekafka` and `rabbitmq-\u003erabbitmq` carry nothing.\n\ngRPC-outbound legs are covered separately (`php-grpc-client-not-instrumented`)\nand gRPC-inbound is undeliverable in this topology (`php-no-grpc-server`).\nOur references cite no upstream issue for PHP messaging support in this\nagent.",
+   "status": "open",
+   "cells": [
+    "elastic-php/traceparent/http-kafka",
+    "elastic-php/traceparent/http-rabbitmq",
+    "elastic-php/traceparent/kafka-grpc",
+    "elastic-php/traceparent/kafka-http",
+    "elastic-php/traceparent/kafka-kafka",
+    "elastic-php/traceparent/kafka-rabbitmq",
+    "elastic-php/traceparent/rabbitmq-grpc",
+    "elastic-php/traceparent/rabbitmq-http",
+    "elastic-php/traceparent/rabbitmq-kafka",
+    "elastic-php/traceparent/rabbitmq-rabbitmq",
+    "elastic-php/tracestate/http-kafka",
+    "elastic-php/tracestate/http-rabbitmq",
+    "elastic-php/tracestate/kafka-grpc",
+    "elastic-php/tracestate/kafka-http",
+    "elastic-php/tracestate/kafka-kafka",
+    "elastic-php/tracestate/kafka-rabbitmq",
+    "elastic-php/tracestate/rabbitmq-grpc",
+    "elastic-php/tracestate/rabbitmq-http",
+    "elastic-php/tracestate/rabbitmq-kafka",
+    "elastic-php/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "elastic-php"
+   ]
+  },
+  {
+   "id": "newrelic-no-baggage",
+   "title": "New Relic agents carry no W3C baggage on any boundary",
+   "cause": "Baggage is not part of New Relic's distributed-tracing model (traceparent, tracestate, newrelic); no agent forwards the header and no feature request exists.",
+   "explanation": "New Relic's \"How distributed tracing works\" defines the complete header\nmodel as exactly three headers — `traceparent`, `tracestate` and the vendor\n`newrelic` header. The seeded W3C `baggage` member is neither extracted nor\nre-emitted by any of the seven agents on any of the 16 boundaries, even\nwhere trace context continues perfectly (Python is 16/16 for trace\ncontext).\n\nAn org-wide search for \"baggage\" across all New Relic agent repositories\nreturns three unrelated hits; no feature request for W3C baggage exists in\nany of the seven agent repos. If you route on baggage, New Relic contributes\nnothing on any protocol — carry it as an application header yourself.",
+   "status": "by-design",
+   "links": [
+    {
+     "title": "How New Relic distributed tracing works",
+     "url": "https://docs.newrelic.com/docs/distributed-tracing/concepts/how-new-relic-distributed-tracing-works/"
+    }
+   ],
+   "cells": [
+    "newrelic-dotnet/baggage/grpc-grpc",
+    "newrelic-dotnet/baggage/grpc-http",
+    "newrelic-dotnet/baggage/grpc-kafka",
+    "newrelic-dotnet/baggage/grpc-rabbitmq",
+    "newrelic-dotnet/baggage/http-grpc",
+    "newrelic-dotnet/baggage/http-http",
+    "newrelic-dotnet/baggage/http-kafka",
+    "newrelic-dotnet/baggage/http-rabbitmq",
+    "newrelic-dotnet/baggage/kafka-grpc",
+    "newrelic-dotnet/baggage/kafka-http",
+    "newrelic-dotnet/baggage/kafka-kafka",
+    "newrelic-dotnet/baggage/kafka-rabbitmq",
+    "newrelic-dotnet/baggage/rabbitmq-grpc",
+    "newrelic-dotnet/baggage/rabbitmq-http",
+    "newrelic-dotnet/baggage/rabbitmq-kafka",
+    "newrelic-dotnet/baggage/rabbitmq-rabbitmq",
+    "newrelic-go/baggage/grpc-grpc",
+    "newrelic-go/baggage/grpc-http",
+    "newrelic-go/baggage/grpc-kafka",
+    "newrelic-go/baggage/grpc-rabbitmq",
+    "newrelic-go/baggage/http-grpc",
+    "newrelic-go/baggage/http-http",
+    "newrelic-go/baggage/http-kafka",
+    "newrelic-go/baggage/http-rabbitmq",
+    "newrelic-go/baggage/kafka-grpc",
+    "newrelic-go/baggage/kafka-http",
+    "newrelic-go/baggage/kafka-kafka",
+    "newrelic-go/baggage/kafka-rabbitmq",
+    "newrelic-go/baggage/rabbitmq-grpc",
+    "newrelic-go/baggage/rabbitmq-http",
+    "newrelic-go/baggage/rabbitmq-kafka",
+    "newrelic-go/baggage/rabbitmq-rabbitmq",
+    "newrelic-java/baggage/grpc-grpc",
+    "newrelic-java/baggage/grpc-http",
+    "newrelic-java/baggage/grpc-kafka",
+    "newrelic-java/baggage/grpc-rabbitmq",
+    "newrelic-java/baggage/http-grpc",
+    "newrelic-java/baggage/http-http",
+    "newrelic-java/baggage/http-kafka",
+    "newrelic-java/baggage/http-rabbitmq",
+    "newrelic-java/baggage/kafka-grpc",
+    "newrelic-java/baggage/kafka-http",
+    "newrelic-java/baggage/kafka-kafka",
+    "newrelic-java/baggage/kafka-rabbitmq",
+    "newrelic-java/baggage/rabbitmq-grpc",
+    "newrelic-java/baggage/rabbitmq-http",
+    "newrelic-java/baggage/rabbitmq-kafka",
+    "newrelic-java/baggage/rabbitmq-rabbitmq",
+    "newrelic-node/baggage/grpc-grpc",
+    "newrelic-node/baggage/grpc-http",
+    "newrelic-node/baggage/grpc-kafka",
+    "newrelic-node/baggage/grpc-rabbitmq",
+    "newrelic-node/baggage/http-grpc",
+    "newrelic-node/baggage/http-http",
+    "newrelic-node/baggage/http-kafka",
+    "newrelic-node/baggage/http-rabbitmq",
+    "newrelic-node/baggage/kafka-grpc",
+    "newrelic-node/baggage/kafka-http",
+    "newrelic-node/baggage/kafka-kafka",
+    "newrelic-node/baggage/kafka-rabbitmq",
+    "newrelic-node/baggage/rabbitmq-grpc",
+    "newrelic-node/baggage/rabbitmq-http",
+    "newrelic-node/baggage/rabbitmq-kafka",
+    "newrelic-node/baggage/rabbitmq-rabbitmq",
+    "newrelic-php/baggage/http-grpc",
+    "newrelic-php/baggage/http-http",
+    "newrelic-php/baggage/http-kafka",
+    "newrelic-php/baggage/http-rabbitmq",
+    "newrelic-php/baggage/kafka-grpc",
+    "newrelic-php/baggage/kafka-http",
+    "newrelic-php/baggage/kafka-kafka",
+    "newrelic-php/baggage/kafka-rabbitmq",
+    "newrelic-php/baggage/rabbitmq-grpc",
+    "newrelic-php/baggage/rabbitmq-http",
+    "newrelic-php/baggage/rabbitmq-kafka",
+    "newrelic-php/baggage/rabbitmq-rabbitmq",
+    "newrelic-python/baggage/grpc-grpc",
+    "newrelic-python/baggage/grpc-http",
+    "newrelic-python/baggage/grpc-kafka",
+    "newrelic-python/baggage/grpc-rabbitmq",
+    "newrelic-python/baggage/http-grpc",
+    "newrelic-python/baggage/http-http",
+    "newrelic-python/baggage/http-kafka",
+    "newrelic-python/baggage/http-rabbitmq",
+    "newrelic-python/baggage/kafka-grpc",
+    "newrelic-python/baggage/kafka-http",
+    "newrelic-python/baggage/kafka-kafka",
+    "newrelic-python/baggage/kafka-rabbitmq",
+    "newrelic-python/baggage/rabbitmq-grpc",
+    "newrelic-python/baggage/rabbitmq-http",
+    "newrelic-python/baggage/rabbitmq-kafka",
+    "newrelic-python/baggage/rabbitmq-rabbitmq",
+    "newrelic-ruby/baggage/grpc-grpc",
+    "newrelic-ruby/baggage/grpc-http",
+    "newrelic-ruby/baggage/grpc-kafka",
+    "newrelic-ruby/baggage/grpc-rabbitmq",
+    "newrelic-ruby/baggage/http-grpc",
+    "newrelic-ruby/baggage/http-http",
+    "newrelic-ruby/baggage/http-kafka",
+    "newrelic-ruby/baggage/http-rabbitmq",
+    "newrelic-ruby/baggage/kafka-grpc",
+    "newrelic-ruby/baggage/kafka-http",
+    "newrelic-ruby/baggage/kafka-kafka",
+    "newrelic-ruby/baggage/kafka-rabbitmq",
+    "newrelic-ruby/baggage/rabbitmq-grpc",
+    "newrelic-ruby/baggage/rabbitmq-http",
+    "newrelic-ruby/baggage/rabbitmq-kafka",
+    "newrelic-ruby/baggage/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "newrelic-dotnet",
+    "newrelic-go",
+    "newrelic-java",
+    "newrelic-node",
+    "newrelic-php",
+    "newrelic-python",
+    "newrelic-ruby"
+   ]
+  },
+  {
+   "id": "newrelic-java-kafka-dt-headers-opt-in",
+   "title": "New Relic Java: Kafka DT header injection is opt-in via a class_transformer setting",
+   "cause": "kafka-clients instrumentation is telemetry-only by default; header injection requires enabling the kafka-clients-spans-0.11.0.0 module in newrelic.yml.",
+   "explanation": "On newrelic-agent 9.4.0 with default configuration, every `*-\u003ekafka` leg\ninjects nothing. New Relic's Kafka docs make DT header injection opt-in:\n`class_transformer: com.newrelic.instrumentation.kafka-clients-spans-0.11.0.0: enabled: true`,\nwarning that \"the instrumentation adds a 150 to 200 byte payload to message\nheaders… we recommend testing… before enabling them in production\". The\nmodule exists in the agent repository.\n\nThe harness has not measured the opt-in (backlog: a\n`newrelic-java-kafkaspans` variant), so whether it makes these cells pass is\ndocumented, not verified. `kafka-\u003ekafka` and `rabbitmq-\u003ekafka` also fail on\nthe consume side (see `newrelic-java-messaging-inbound-never-accepted`).",
+   "status": "config",
+   "links": [
+    {
+     "title": "New Relic Java agent — instrument Kafka message queues",
+     "url": "https://docs.newrelic.com/docs/apm/agents/java-agent/instrumentation/java-agent-instrument-kafka-message-queues/"
+    },
+    {
+     "title": "kafka-clients-spans-0.11.0.0 instrumentation module",
+     "url": "https://github.com/newrelic/newrelic-java-agent/tree/main/instrumentation/kafka-clients-spans-0.11.0.0"
+    }
+   ],
+   "cells": [
+    "newrelic-java/traceparent/grpc-kafka",
+    "newrelic-java/traceparent/http-kafka",
+    "newrelic-java/traceparent/kafka-kafka",
+    "newrelic-java/traceparent/rabbitmq-kafka",
+    "newrelic-java/tracestate/grpc-kafka",
+    "newrelic-java/tracestate/http-kafka",
+    "newrelic-java/tracestate/kafka-kafka",
+    "newrelic-java/tracestate/rabbitmq-kafka"
+   ],
+   "variants": [
+    "newrelic-java"
+   ]
+  },
+  {
+   "id": "newrelic-java-messaging-inbound-never-accepted",
+   "title": "New Relic Java: Kafka consumers and spring-rabbit listeners never accept inbound DT headers",
+   "cause": "No spring-rabbit module: DT accept runs on the AMQP connection thread, not the listener's thread; the Kafka consumer instrumentation never accepts DT headers.",
+   "explanation": "Every messaging-inbound row is dead on newrelic-agent 9.4.0: `kafka-\u003e*` and\n`rabbitmq-\u003e*` outbound calls carry no headers at all (no transaction is\nactive, so nothing is injected). spring-rabbit *publish* injects fine\n(`http-\u003erabbitmq`, `grpc-\u003erabbitmq` pass).\n\nMechanism found in source: the agent has only `rabbit-amqp-2.7.0/5.0.0` and\n`spring-kafka` modules — no spring-rabbit module at all. DT accept is woven\naround `Consumer.handleDelivery` inside a transaction on the AMQP connection\nthread, while spring-rabbit's listener container processes the message on a\ndifferent thread, outside that transaction. The Kafka consumer never\naccepts either.\n\nWorkaround: in the listener, start a transaction with the New Relic agent\nAPI and accept the message headers into it manually. No upstream issue\ncovers either gap — filing candidate.",
+   "status": "open",
+   "links": [
+    {
+     "title": "newrelic-java-agent rabbit-amqp-5.0.0 Consumer_Instrumentation.java",
+     "url": "https://github.com/newrelic/newrelic-java-agent/blob/main/instrumentation/rabbit-amqp-5.0.0/src/main/java/com/rabbitmq/client/Consumer_Instrumentation.java"
+    }
+   ],
+   "cells": [
+    "newrelic-java/traceparent/kafka-grpc",
+    "newrelic-java/traceparent/kafka-http",
+    "newrelic-java/traceparent/kafka-kafka",
+    "newrelic-java/traceparent/kafka-rabbitmq",
+    "newrelic-java/traceparent/rabbitmq-grpc",
+    "newrelic-java/traceparent/rabbitmq-http",
+    "newrelic-java/traceparent/rabbitmq-kafka",
+    "newrelic-java/traceparent/rabbitmq-rabbitmq",
+    "newrelic-java/tracestate/kafka-grpc",
+    "newrelic-java/tracestate/kafka-http",
+    "newrelic-java/tracestate/kafka-kafka",
+    "newrelic-java/tracestate/kafka-rabbitmq",
+    "newrelic-java/tracestate/rabbitmq-grpc",
+    "newrelic-java/tracestate/rabbitmq-http",
+    "newrelic-java/tracestate/rabbitmq-kafka",
+    "newrelic-java/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "newrelic-java"
+   ]
+  },
+  {
+   "id": "newrelic-node-kafkajs-feature-flag-off",
+   "title": "New Relic Node: kafkajs instrumentation is behind a default-off feature flag",
+   "cause": "feature_flags.js ships kafkajs_instrumentation: false; with it off the agent skips kafkajs entirely, so no headers are injected or accepted on Kafka.",
+   "explanation": "newrelic 14.3.10 is 9/16: HTTP, gRPC and RabbitMQ pass in both directions,\nKafka is dead in both directions. `lib/feature_flags.js` has\n`kafkajs_instrumentation: false` (still false on main); with the flag off\nthe agent logs \"skipping instrumentation of kafkajs\" and does nothing. The\ninstrumentation shipped behind the flag in v11.19.0 (Jun 2024) and was never\npromoted to default; the compatibility list also caps kafkajs at 2.2.4.\n\nEmpirically confirmed: rerunning with\n`NEW_RELIC_FEATURE_FLAG_KAFKAJS_INSTRUMENTATION=true` flips all seven Kafka\nboundaries to pass (W3C headers both directions) — 16/16, one environment\nvariable apart. Run archived at\n`results/experiments/newrelic-node-kafkajs-flag.json`.",
+   "status": "config",
+   "links": [
+    {
+     "title": "node-newrelic feature_flags.js @ v14.3.10",
+     "url": "https://github.com/newrelic/node-newrelic/blob/v14.3.10/lib/feature_flags.js"
+    },
+    {
+     "title": "node-newrelic kafkajs client-constructor.js (skip log)",
+     "url": "https://github.com/newrelic/node-newrelic/blob/v14.3.10/lib/subscribers/kafkajs/client-constructor.js#L56-L64"
+    },
+    {
+     "title": "node-newrelic feature-flags.md @ v14.3.10",
+     "url": "https://github.com/newrelic/node-newrelic/blob/v14.3.10/documentation/feature-flags.md"
+    },
+    {
+     "title": "node-newrelic v11.19.0 release",
+     "url": "https://github.com/newrelic/node-newrelic/releases/tag/v11.19.0"
+    },
+    {
+     "title": "node-newrelic compatibility.md",
+     "url": "https://github.com/newrelic/node-newrelic/blob/main/compatibility.md"
+    }
+   ],
+   "cells": [
+    "newrelic-node/traceparent/grpc-kafka",
+    "newrelic-node/traceparent/http-kafka",
+    "newrelic-node/traceparent/kafka-grpc",
+    "newrelic-node/traceparent/kafka-http",
+    "newrelic-node/traceparent/kafka-kafka",
+    "newrelic-node/traceparent/kafka-rabbitmq",
+    "newrelic-node/traceparent/rabbitmq-kafka",
+    "newrelic-node/tracestate/grpc-kafka",
+    "newrelic-node/tracestate/http-kafka",
+    "newrelic-node/tracestate/kafka-grpc",
+    "newrelic-node/tracestate/kafka-http",
+    "newrelic-node/tracestate/kafka-kafka",
+    "newrelic-node/tracestate/kafka-rabbitmq",
+    "newrelic-node/tracestate/rabbitmq-kafka"
+   ],
+   "variants": [
+    "newrelic-node"
+   ]
+  },
+  {
+   "id": "newrelic-go-nrsarama-producer-discards-headers",
+   "title": "New Relic Go: nrsarama's producer injects DT headers into a throwaway map",
+   "cause": "nrsarama calls InsertDistributedTraceHeaders on the carrier's embedded http.Header, bypassing the Set method that would copy headers into msg.Headers.",
+   "explanation": "go-agent v3.44.2 is 12/16 with manual wiring per vendor docs (nrgrpc,\nnrsarama, nramqp). All Kafka-outbound legs are dead, and the root cause is a\nvisible bug in `nrsarama/producer.go`: it builds a carrier whose `Set` would\ncopy headers into `msg.Headers`, but then calls\n`txn.InsertDistributedTraceHeaders(carrier.Header)` on the plain embedded\n`http.Header` — bypassing `Set`, so the DT headers land in a discarded map\nand never reach the Kafka message.\n\nThe consumer side (`nrsarama/consumer.go`) never calls\n`AcceptDistributedTraceHeaders` either (it even calls *Insert* on the\nconsumed headers), and neither does the official example; the relay's manual\naccept on consume is why `kafka-\u003ehttp/grpc/rabbitmq` pass here — that went\nbeyond the documented flow.\n\nWorkaround: call `txn.InsertDistributedTraceHeaders` yourself into a carrier\nthat writes `msg.Headers`, and accept manually on consume. Neither bug is\nreported upstream (only the original 2019/2020 feature requests #98/#160) —\nstrong filing candidates.",
+   "status": "open",
+   "links": [
+    {
+     "title": "go-agent nrsarama/producer.go",
+     "url": "https://github.com/newrelic/go-agent/blob/master/v3/integrations/nrsarama/producer.go"
+    },
+    {
+     "title": "go-agent nrsarama/consumer.go",
+     "url": "https://github.com/newrelic/go-agent/blob/master/v3/integrations/nrsarama/consumer.go"
+    },
+    {
+     "title": "go-agent nrsarama consumer example (no accept call)",
+     "url": "https://github.com/newrelic/go-agent/blob/master/v3/integrations/nrsarama/example/consumer/consumerexample.go"
+    },
+    {
+     "title": "go-agent #98",
+     "url": "https://github.com/newrelic/go-agent/issues/98"
+    },
+    {
+     "title": "go-agent #160",
+     "url": "https://github.com/newrelic/go-agent/issues/160"
+    }
+   ],
+   "cells": [
+    "newrelic-go/traceparent/grpc-kafka",
+    "newrelic-go/traceparent/http-kafka",
+    "newrelic-go/traceparent/kafka-kafka",
+    "newrelic-go/traceparent/rabbitmq-kafka",
+    "newrelic-go/tracestate/grpc-kafka",
+    "newrelic-go/tracestate/http-kafka",
+    "newrelic-go/tracestate/kafka-kafka",
+    "newrelic-go/tracestate/rabbitmq-kafka"
+   ],
+   "variants": [
+    "newrelic-go"
+   ]
+  },
+  {
+   "id": "newrelic-dotnet-rabbitmq-client7-not-instrumented",
+   "title": "New Relic .NET: RabbitMQ.Client 7's async IChannel API is not instrumented by the classic agent",
+   "cause": "The agent instruments the classic IModel API that RabbitMQ.Client 7 removed; v7 support exists only via the default-off hybrid agent, which emits span links.",
+   "explanation": "newrelic-dotnet-agent 10.54.0 injects on all `*-\u003ekafka` legs but every\n`*-\u003erabbitmq` leg is dead, and `rabbitmq-\u003e*` never accepts. The agent's\ninstrumented-methods list is exclusively the classic `IModel.*` surface,\nwhich RabbitMQ.Client 7 removed entirely; this relay uses 7.2.2's async-only\n`IChannel.BasicPublishAsync`. The v7 async instrumentation PR #2890 was\nclosed unmerged on a `ValueTask\u003cT\u003e` blocker.\n\nThe compatibility docs' \"7.1.2 verified\" claim refers to the hybrid-agent\npath (#2885: \"RabbitMQ 7+ versions are supported with the new hybrid agent\nfeature in agent versions 10.49.0+\"), which picks up the client's native\n`ActivitySource` — but it is disabled by default and, per New Relic's docs,\n\"Distributed tracing works differently (span links vs. parent/child\nrelationships)\". Default config: dead, exactly as measured.\n\nWhat a user can do: enable the hybrid agent (accepting links rather than\ncontinuity), pin RabbitMQ.Client \u003c7, or insert/accept DT headers manually\nwith the agent API.",
+   "status": "open",
+   "links": [
+    {
+     "title": "newrelic-dotnet-agent PR #2890 (closed unmerged)",
+     "url": "https://github.com/newrelic/newrelic-dotnet-agent/pull/2890"
+    },
+    {
+     "title": "newrelic-dotnet-agent #2885",
+     "url": "https://github.com/newrelic/newrelic-dotnet-agent/issues/2885"
+    },
+    {
+     "title": "New Relic OpenTelemetry API support (hybrid agent)",
+     "url": "https://docs.newrelic.com/docs/apm/agents/manage-apm-agents/opentelemetry-api-support/"
+    },
+    {
+     "title": "New Relic .NET agent compatibility and requirements",
+     "url": "https://docs.newrelic.com/docs/apm/agents/net-agent/getting-started/net-agent-compatibility-requirements/"
+    }
+   ],
+   "cells": [
+    "newrelic-dotnet/traceparent/grpc-rabbitmq",
+    "newrelic-dotnet/traceparent/http-rabbitmq",
+    "newrelic-dotnet/traceparent/kafka-rabbitmq",
+    "newrelic-dotnet/traceparent/rabbitmq-grpc",
+    "newrelic-dotnet/traceparent/rabbitmq-http",
+    "newrelic-dotnet/traceparent/rabbitmq-kafka",
+    "newrelic-dotnet/traceparent/rabbitmq-rabbitmq",
+    "newrelic-dotnet/tracestate/grpc-rabbitmq",
+    "newrelic-dotnet/tracestate/http-rabbitmq",
+    "newrelic-dotnet/tracestate/kafka-rabbitmq",
+    "newrelic-dotnet/tracestate/rabbitmq-grpc",
+    "newrelic-dotnet/tracestate/rabbitmq-http",
+    "newrelic-dotnet/tracestate/rabbitmq-kafka",
+    "newrelic-dotnet/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "newrelic-dotnet"
+   ]
+  },
+  {
+   "id": "newrelic-dotnet-kafka-consume-never-accepted",
+   "title": "New Relic .NET: Confluent.Kafka produce injects, but consumed records are never accepted",
+   "cause": "Confluent.Kafka instrumentation injects on produce but never accepts record headers into a transaction on consume, so outbound calls carry no headers.",
+   "explanation": "All `*-\u003ekafka` legs inject on newrelic-dotnet-agent 10.54.0, but every\n`kafka-\u003e*` leg is dead: after a consume, outbound HTTP/gRPC/Kafka calls\ncarry no DT headers at all (no active transaction). FINDINGS records this as\n\"messaging-inbound all dead\" and classes it with the consume-side\ncontext-activation failures seen across vendors.\n\nOur references do not include a source-level citation for the .NET Kafka\nconsume path; confirming the mechanism (whether the consume wrapper starts\na transaction and whether it calls accept on the record headers) in the\nagent's Confluent.Kafka wrapper is the remaining investigation. No upstream\nissue is cited. Workaround: start a transaction in the consume loop and\naccept the record headers into it with the agent API.",
+   "status": "open",
+   "cells": [
+    "newrelic-dotnet/traceparent/kafka-grpc",
+    "newrelic-dotnet/traceparent/kafka-http",
+    "newrelic-dotnet/traceparent/kafka-kafka",
+    "newrelic-dotnet/traceparent/kafka-rabbitmq",
+    "newrelic-dotnet/tracestate/kafka-grpc",
+    "newrelic-dotnet/tracestate/kafka-http",
+    "newrelic-dotnet/tracestate/kafka-kafka",
+    "newrelic-dotnet/tracestate/kafka-rabbitmq"
+   ],
+   "variants": [
+    "newrelic-dotnet"
+   ]
+  },
+  {
+   "id": "newrelic-ruby-bunny-publish-vendor-header-only",
+   "title": "New Relic Ruby: bunny publish injects only the legacy newrelic header, not W3C headers",
+   "cause": "newrelic_rpm's bunny publish instrumentation emits the vendor newrelic header only; traceparent and tracestate are absent on every *-\u003erabbitmq leg.",
+   "explanation": "newrelic_rpm 10.7.1 is 12/16 on W3C headers but 16/16 on the vendor header:\neverything works, but bunny *publish* injects only the legacy `newrelic`\nheader. On all four `*-\u003erabbitmq` boundaries `traceparent`/`tracestate` are\nabsent, so a W3C-only consumer downstream (or another vendor's agent) sees\nnothing. Consume (`rabbitmq-\u003e*`) accepts and continues correctly.\n\nOur references cite no upstream issue for this asymmetry. Workaround: insert\nthe W3C headers into the message headers yourself with the agent's\ndistributed-tracing API before publishing.",
+   "status": "open",
+   "cells": [
+    "newrelic-ruby/traceparent/grpc-rabbitmq",
+    "newrelic-ruby/traceparent/http-rabbitmq",
+    "newrelic-ruby/traceparent/kafka-rabbitmq",
+    "newrelic-ruby/traceparent/rabbitmq-rabbitmq",
+    "newrelic-ruby/tracestate/grpc-rabbitmq",
+    "newrelic-ruby/tracestate/http-rabbitmq",
+    "newrelic-ruby/tracestate/kafka-rabbitmq",
+    "newrelic-ruby/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "newrelic-ruby"
+   ]
+  },
+  {
+   "id": "newrelic-php-rdkafka-not-supported",
+   "title": "New Relic PHP does not instrument rdkafka; Kafka produce injects nothing",
+   "cause": "The PHP agent's messaging support is php-amqplib publish only; rdkafka is unsupported, so no headers are injected into produced records.",
+   "explanation": "newrelic-php-agent 12.10.0.39 is 2/16: `http-\u003ehttp` (curl) and\n`http-\u003erabbitmq` (php-amqplib \u003e= 3.7 publish instrumentation, agent \u003e= 11.6)\ncarry all three trace headers. rdkafka is unsupported, so `http-\u003ekafka`\ninjects nothing; `kafka-\u003ekafka` and `rabbitmq-\u003ekafka` additionally fail on\nthe consume side (see `newrelic-php-cli-consumers-never-accept`).\n\nDocker footgun worth knowing: `newrelic-install` symlinks the extension into\nthe extracted tarball directory by default — deleting the tarball leaves a\ndangling symlink and a silently uninstrumented app; build with\n`NR_INSTALL_USE_CP_NOT_LN=1`.",
+   "status": "open",
+   "cells": [
+    "newrelic-php/traceparent/http-kafka",
+    "newrelic-php/traceparent/kafka-kafka",
+    "newrelic-php/traceparent/rabbitmq-kafka",
+    "newrelic-php/tracestate/http-kafka",
+    "newrelic-php/tracestate/kafka-kafka",
+    "newrelic-php/tracestate/rabbitmq-kafka"
+   ],
+   "variants": [
+    "newrelic-php"
+   ]
+  },
+  {
+   "id": "newrelic-php-cli-consumers-never-accept",
+   "title": "New Relic PHP: long-running CLI consumers never accept inbound context",
+   "cause": "The PHP agent has no rdkafka consume or php-amqplib consume instrumentation, so the CLI worker processes never start a transaction from message headers.",
+   "explanation": "On newrelic-php-agent 12.10.0.39 every `kafka-\u003e*` and `rabbitmq-\u003e*` leg is\ndead: the long-running CLI consumer workers never accept inbound context, so\noutbound calls after a consume carry no headers (no transaction is active).\nphp-amqplib coverage is publish-side only, and rdkafka is unsupported\nentirely.\n\nWorkaround: in the consumer loop, start a background transaction with the\nagent API and accept the message headers manually. Our references cite no\nupstream issue for consume-side support in the PHP agent.",
+   "status": "open",
+   "cells": [
+    "newrelic-php/traceparent/kafka-grpc",
+    "newrelic-php/traceparent/kafka-http",
+    "newrelic-php/traceparent/kafka-kafka",
+    "newrelic-php/traceparent/kafka-rabbitmq",
+    "newrelic-php/traceparent/rabbitmq-grpc",
+    "newrelic-php/traceparent/rabbitmq-http",
+    "newrelic-php/traceparent/rabbitmq-kafka",
+    "newrelic-php/traceparent/rabbitmq-rabbitmq",
+    "newrelic-php/tracestate/kafka-grpc",
+    "newrelic-php/tracestate/kafka-http",
+    "newrelic-php/tracestate/kafka-kafka",
+    "newrelic-php/tracestate/kafka-rabbitmq",
+    "newrelic-php/tracestate/rabbitmq-grpc",
+    "newrelic-php/tracestate/rabbitmq-http",
+    "newrelic-php/tracestate/rabbitmq-kafka",
+    "newrelic-php/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "newrelic-php"
+   ]
+  },
+  {
+   "id": "otel-python-confluent-kafka-consume-no-attach",
+   "title": "OTel Python: confluent-kafka consumer links the producer context but never attaches it",
+   "cause": "opentelemetry-instrumentation-confluent-kafka starts the consume span with the producer context as a link and never calls context.attach().",
+   "explanation": "The `poll()` wrapper in `opentelemetry-instrumentation-confluent-kafka` (0.65b0)\ncalls `_create_new_consume_span`, which does `start_span(..., links=links)`\nwith the extracted producer context as a *link*. The package never calls\n`opentelemetry.context.attach()`, so the extracted context — and the baggage\nriding on it — is never made current for the code that processes the message.\nEvery `kafka-\u003e*` leg therefore starts a new trace, and `baggage` and the\nforeign `tracestate` entry are gone. All eight RabbitMQ boundaries pass via\n`opentelemetry-instrumentation-pika`, whose per-message callback wrapper\nextracts *and attaches* before invoking the handler — the failure is a\nper-instrumentation design choice, not a language limitation.\n\nReported at least four times since 2023 across confluent-kafka, kafka-python\nand aiokafka. The only fix attempt (PR #1678) was closed unmerged by the stale\nbot; the maintainers' position (#3465) is that manually attaching the context\nis the intended usage.\n\nWorkaround: after `poll()`, run `context.attach(propagate.extract(headers))`\nyourself before making outbound calls. Upstream fix: attach the extracted\ncontext (or make the consume span current) in the instrumentation, as the\npika instrumentation already does. No upstream issue names the *baggage*\nloss specifically — filing candidate.",
+   "status": "open",
+   "links": [
+    {
+     "title": "opentelemetry-python-contrib #1674",
+     "url": "https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1674"
+    },
+    {
+     "title": "opentelemetry-python-contrib #1962 (maintainer meta-issue)",
+     "url": "https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1962"
+    },
+    {
+     "title": "opentelemetry-python-contrib #1732 (kafka-python sibling)",
+     "url": "https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1732"
+    },
+    {
+     "title": "opentelemetry-python-contrib #3026 (aiokafka sibling)",
+     "url": "https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3026"
+    },
+    {
+     "title": "opentelemetry-python-contrib #3465 (maintainer position)",
+     "url": "https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3465"
+    },
+    {
+     "title": "opentelemetry-python-contrib PR #1678 (closed unmerged)",
+     "url": "https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1678"
+    }
+   ],
+   "cells": [
+    "otel-python/baggage/kafka-grpc",
+    "otel-python/baggage/kafka-http",
+    "otel-python/baggage/kafka-kafka",
+    "otel-python/baggage/kafka-rabbitmq",
+    "otel-python/traceparent/kafka-grpc",
+    "otel-python/traceparent/kafka-http",
+    "otel-python/traceparent/kafka-kafka",
+    "otel-python/traceparent/kafka-rabbitmq",
+    "otel-python/tracestate/kafka-grpc",
+    "otel-python/tracestate/kafka-http",
+    "otel-python/tracestate/kafka-kafka",
+    "otel-python/tracestate/kafka-rabbitmq"
+   ],
+   "variants": [
+    "otel-python"
+   ]
+  },
+  {
+   "id": "otel-dotnet-kafka-consumer-links-not-parent",
+   "title": "OTel .NET: Confluent.Kafka consumer spans link to the producer instead of continuing it",
+   "cause": "Since 1.7.0 the .NET auto-instrumentation deliberately stops using the message-creation context as the consumer span's parent, per OTel messaging semconv.",
+   "explanation": "`opentelemetry-dotnet-instrumentation` 1.7.0 shipped #3434 / PR #3438 (\"Do not\nuse message creation context as a parent for consumer spans for\n`Confluent.Kafka` client instrumentation\"). This follows the OTel messaging\nsemantic conventions, which \"use span links as the default mechanism to\ncorrelate producers and consumer(s)\" (rule traced to OTEP-0220; parent-child\nwas later re-allowed as an *option* by semantic-conventions PR #1414). The\nconsumer span is therefore a new root: `kafka-\u003e*` starts a new trace, and\n`baggage` and the foreign `tracestate` entry are not carried forward.\n\nMaintainers treat same-symptom reports as by design: contrib #3995 (open,\n\"no bug here… as long as we are not switching to the modern [semconv]\nversion there is nothing to change\") and #2351 (closed by-design).\n\nApplications that need continuity or baggage across a Kafka hop must extract\nthe record headers and set the context themselves before making outbound\ncalls. All `*-\u003ekafka` injection, baggage included, works. No upstream issue\nnames the Kafka *baggage* loss — filing candidate.",
+   "status": "by-design",
+   "links": [
+    {
+     "title": "opentelemetry-dotnet-instrumentation #3434",
+     "url": "https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/issues/3434"
+    },
+    {
+     "title": "opentelemetry-dotnet-instrumentation PR #3438",
+     "url": "https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/pull/3438"
+    },
+    {
+     "title": "OTel messaging semantic conventions (span structure)",
+     "url": "https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-spans.md"
+    },
+    {
+     "title": "OTEP-0220",
+     "url": "https://github.com/open-telemetry/opentelemetry-specification/blob/main/oteps/trace/0220-messaging-semantic-conventions-span-structure.md"
+    },
+    {
+     "title": "semantic-conventions PR #1414 (parent-child re-allowed as option)",
+     "url": "https://github.com/open-telemetry/semantic-conventions/pull/1414"
+    },
+    {
+     "title": "opentelemetry-dotnet-contrib #3995",
+     "url": "https://github.com/open-telemetry/opentelemetry-dotnet-contrib/issues/3995"
+    },
+    {
+     "title": "opentelemetry-dotnet-contrib #2351",
+     "url": "https://github.com/open-telemetry/opentelemetry-dotnet-contrib/issues/2351"
+    }
+   ],
+   "cells": [
+    "otel-dotnet/baggage/kafka-grpc",
+    "otel-dotnet/baggage/kafka-http",
+    "otel-dotnet/baggage/kafka-kafka",
+    "otel-dotnet/baggage/kafka-rabbitmq",
+    "otel-dotnet/traceparent/kafka-grpc",
+    "otel-dotnet/traceparent/kafka-http",
+    "otel-dotnet/traceparent/kafka-kafka",
+    "otel-dotnet/traceparent/kafka-rabbitmq",
+    "otel-dotnet/tracestate/kafka-grpc",
+    "otel-dotnet/tracestate/kafka-http",
+    "otel-dotnet/tracestate/kafka-kafka",
+    "otel-dotnet/tracestate/kafka-rabbitmq"
+   ],
+   "variants": [
+    "otel-dotnet"
+   ]
+  },
+  {
+   "id": "otel-dotnet-rabbitmq-consume-drops-baggage",
+   "title": "OTel .NET: RabbitMQ.Client's native propagation continues the trace but carries no baggage",
+   "cause": "RabbitMQ.Client 7's native ActivitySource extractor reads trace id and tracestate only; baggage lives in an opt-in package that never shipped stable.",
+   "explanation": "On `rabbitmq-\u003e*` the trace continues (`traceparent` and `tracestate` pass) but\n`baggage` is dropped. The propagation here is RabbitMQ.Client's own, not\nOTel's: 7.x ships native `ActivitySource` instrumentation (PR #1261) whose\n`DefaultContextExtractor` calls `ExtractTraceIdAndState(...)` only — the word\n\"baggage\" does not appear in the propagation code.\n\nBaggage was addressed only via an opt-in companion package (PR #1528: \"Making\nit possible to override the default context propagation … to have proper\nOpenTelemetry Baggage propagation\"). That package, `RabbitMQ.Client.OpenTelemetry`,\nhas only ever shipped as 1.0.0-rc.1/rc.2 (#1728, open since Nov 2024), and\nzero-code deployments never wire it in. The OTel auto-instrumentation tracks\ndeliver-span baggage as an unbuilt feature (#3662, open).\n\nVersion caveat for the passing half: parent-child continuity on consume is\nthe default only since RabbitMQ.Client 7.2.0 (`UsePublisherAsParent`, PR\n#1779); on 7.0–7.1 the deliver activity was link-only. The relay pins 7.2.2.",
+   "status": "open",
+   "links": [
+    {
+     "title": "rabbitmq-dotnet-client PR #1261 (native ActivitySource)",
+     "url": "https://github.com/rabbitmq/rabbitmq-dotnet-client/pull/1261"
+    },
+    {
+     "title": "rabbitmq-dotnet-client PR #1528 (opt-in baggage package)",
+     "url": "https://github.com/rabbitmq/rabbitmq-dotnet-client/pull/1528"
+    },
+    {
+     "title": "rabbitmq-dotnet-client #1728 (ship RabbitMQ.Client.OpenTelemetry 1.0.0)",
+     "url": "https://github.com/rabbitmq/rabbitmq-dotnet-client/issues/1728"
+    },
+    {
+     "title": "opentelemetry-dotnet-instrumentation #3662",
+     "url": "https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/issues/3662"
+    },
+    {
+     "title": "rabbitmq-dotnet-client PR #1779 (UsePublisherAsParent default, 7.2.0)",
+     "url": "https://github.com/rabbitmq/rabbitmq-dotnet-client/pull/1779"
+    },
+    {
+     "title": "rabbitmq-dotnet-client #1967",
+     "url": "https://github.com/rabbitmq/rabbitmq-dotnet-client/issues/1967"
+    }
+   ],
+   "cells": [
+    "otel-dotnet/baggage/rabbitmq-grpc",
+    "otel-dotnet/baggage/rabbitmq-http",
+    "otel-dotnet/baggage/rabbitmq-kafka",
+    "otel-dotnet/baggage/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "otel-dotnet"
+   ]
+  },
+  {
+   "id": "otel-ruby-bunny-consume-new-trace",
+   "title": "OTel Ruby: bunny consumer drops the producer context and starts a new trace",
+   "cause": "opentelemetry-instrumentation-bunny parents the process span on its own re-injected local headers and demotes the producer context to a span link.",
+   "explanation": "Injection into RabbitMQ (`*-\u003erabbitmq`) via `opentelemetry-instrumentation-bunny`\n0.25.0 is correct, baggage included. On consume, `with_process_span` in\n`patch_helpers.rb` parents the process span on the instrumentation's own\n`:tracer_receive_headers` (a local receive span it injected itself) and adds\nthe producer's real context only as a `Link`. Every `rabbitmq-\u003e*` leg starts\na new trace and loses baggage and the foreign tracestate entry.\n\nExact-match issue #526 (\"Instead of propagating any contexts (including\nbaggage), the bunny instrumentation drops all contexts in the consumer and\nstarts a new trace\") has been open since June 2023 with no fix PR.\nMaintainers describe the behaviour as links-by-design per the OTel messaging\nspec (discussion #1098).\n\nWorkaround: extract from the delivery headers and attach the context in the\nconsumer block before outbound calls. This is the same consume-side\nactivation gap seen in OTel Python (confluent-kafka) and OTel .NET (Kafka).",
+   "status": "open",
+   "links": [
+    {
+     "title": "opentelemetry-ruby-contrib #526",
+     "url": "https://github.com/open-telemetry/opentelemetry-ruby-contrib/issues/526"
+    },
+    {
+     "title": "opentelemetry-ruby discussion #1098",
+     "url": "https://github.com/open-telemetry/opentelemetry-ruby/discussions/1098"
+    },
+    {
+     "title": "bunny patch_helpers.rb",
+     "url": "https://github.com/open-telemetry/opentelemetry-ruby-contrib/blob/main/instrumentation/bunny/lib/opentelemetry/instrumentation/bunny/patch_helpers.rb"
+    },
+    {
+     "title": "opentelemetry-ruby PR #566 (design lineage)",
+     "url": "https://github.com/open-telemetry/opentelemetry-ruby/pull/566"
+    }
+   ],
+   "cells": [
+    "otel-ruby/baggage/rabbitmq-grpc",
+    "otel-ruby/baggage/rabbitmq-http",
+    "otel-ruby/baggage/rabbitmq-kafka",
+    "otel-ruby/baggage/rabbitmq-rabbitmq",
+    "otel-ruby/traceparent/rabbitmq-grpc",
+    "otel-ruby/traceparent/rabbitmq-http",
+    "otel-ruby/traceparent/rabbitmq-kafka",
+    "otel-ruby/traceparent/rabbitmq-rabbitmq",
+    "otel-ruby/tracestate/rabbitmq-grpc",
+    "otel-ruby/tracestate/rabbitmq-http",
+    "otel-ruby/tracestate/rabbitmq-kafka",
+    "otel-ruby/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "otel-ruby"
+   ]
+  },
+  {
+   "id": "otel-ruby-grpc-server-not-instrumented",
+   "title": "OTel Ruby: the gRPC instrumentation is client-only, so gRPC-inbound requests start a new trace",
+   "cause": "opentelemetry-instrumentation-grpc only instruments outbound calls; there is no server-side instrumentation for the plain grpc gem.",
+   "explanation": "The contrib gRPC instrumentation (donated from\nhibachrach/opentelemetry-instrumentation-grpc via PR #1164, Sep 2024,\nanswering a request open since 2020) is explicitly client-only — its README\nwarns \"Right now, the gem only instruments outbound requests to gRPC\nservices\". It *is* bundled in `opentelemetry-instrumentation-all`, so the\naccurate statement is \"loaded but client-only\", and even client injection\nrequires manually wiring the interceptor into stubs. Server spans exist only\nfor the Gruf framework.\n\nWith no server-side extraction, `grpc-\u003e*` legs run with no incoming context;\noutbound calls start a fresh trace and baggage/tracestate are lost.\n\nWorkaround: add a server interceptor that extracts from the call metadata and\nattaches the context. No upstream issue requests server-side `grpc` gem\nsupport — filing candidate.",
+   "status": "open",
+   "links": [
+    {
+     "title": "opentelemetry-ruby-contrib gRPC README (client-only warning)",
+     "url": "https://github.com/open-telemetry/opentelemetry-ruby-contrib/blob/main/instrumentation/grpc/README.md"
+    },
+    {
+     "title": "opentelemetry-ruby-contrib #10 (original 2020 request)",
+     "url": "https://github.com/open-telemetry/opentelemetry-ruby-contrib/issues/10"
+    },
+    {
+     "title": "opentelemetry-ruby-contrib #1041",
+     "url": "https://github.com/open-telemetry/opentelemetry-ruby-contrib/issues/1041"
+    },
+    {
+     "title": "opentelemetry-ruby-contrib PR #1164 (donation)",
+     "url": "https://github.com/open-telemetry/opentelemetry-ruby-contrib/pull/1164"
+    },
+    {
+     "title": "hibachrach/opentelemetry-instrumentation-grpc",
+     "url": "https://github.com/hibachrach/opentelemetry-instrumentation-grpc"
+    },
+    {
+     "title": "opentelemetry-ruby-contrib gruf README (server spans for Gruf only)",
+     "url": "https://github.com/open-telemetry/opentelemetry-ruby-contrib/blob/main/instrumentation/gruf/README.md"
+    }
+   ],
+   "cells": [
+    "otel-ruby/baggage/grpc-grpc",
+    "otel-ruby/baggage/grpc-http",
+    "otel-ruby/baggage/grpc-kafka",
+    "otel-ruby/baggage/grpc-rabbitmq",
+    "otel-ruby/traceparent/grpc-grpc",
+    "otel-ruby/traceparent/grpc-http",
+    "otel-ruby/traceparent/grpc-kafka",
+    "otel-ruby/traceparent/grpc-rabbitmq",
+    "otel-ruby/tracestate/grpc-grpc",
+    "otel-ruby/tracestate/grpc-http",
+    "otel-ruby/tracestate/grpc-kafka",
+    "otel-ruby/tracestate/grpc-rabbitmq"
+   ],
+   "variants": [
+    "otel-ruby"
+   ]
+  },
+  {
+   "id": "otel-php-rdkafka-producev-headers-argument",
+   "title": "OTel PHP: rdkafka producev() injection silently no-ops unless the $headers argument is present",
+   "cause": "ext-opentelemetry drops arguments a pre-hook adds to a native function call, so the rdkafka instrumentation's injected $headers never reach producev().",
+   "explanation": "The ExtRdKafka instrumentation *does* set `$params[4]` (the `$headers` slot)\nfrom its pre-hook unconditionally. But the `ext-opentelemetry` extension\nsilently drops arguments *added* to internal functions ever since argument\nexpansion was disabled to prevent a segfault (PR #84, formalised in PR #120;\noriginal crash opentelemetry-php #1155). A naive\n`producev($partition, 0, $payload)` therefore gets no headers at all, while\n`producev($partition, 0, $payload, null, [])` — an explicit empty array —\nmakes injection (baggage included) work. Verified empirically both ways; the\ndrop produced no error_log line in our runs.\n\nEscape hatch, documented only in the extension repo's README:\n`opentelemetry.allow_stack_extension=On`. With that ini set, the naive call\ninjects traceparent, tracestate and baggage and `http-\u003ekafka` /\n`kafka-\u003ekafka` flip to pass (run archived at\n`results/experiments/otel-php-allow-stack-extension.json`). Neither the\nargument requirement nor the ini setting is mentioned in the ExtRdKafka README.\n\nConsume-side rdkafka extraction is correct (`kafka-\u003ehttp` passes) — this\nasymmetry is outbound-only. No upstream issue exists — filing candidate\nagainst open-telemetry/opentelemetry-php.",
+   "status": "config",
+   "links": [
+    {
+     "title": "ExtRdKafkaInstrumentation.php",
+     "url": "https://github.com/open-telemetry/opentelemetry-php-contrib/blob/main/src/Instrumentation/ExtRdKafka/src/ExtRdKafkaInstrumentation.php"
+    },
+    {
+     "title": "opentelemetry-php-instrumentation PR #84 (disable argument expansion)",
+     "url": "https://github.com/open-telemetry/opentelemetry-php-instrumentation/pull/84"
+    },
+    {
+     "title": "opentelemetry-php-instrumentation PR #120",
+     "url": "https://github.com/open-telemetry/opentelemetry-php-instrumentation/pull/120"
+    },
+    {
+     "title": "opentelemetry-php #1155 (original segfault)",
+     "url": "https://github.com/open-telemetry/opentelemetry-php/issues/1155"
+    },
+    {
+     "title": "ext-opentelemetry README (allow_stack_extension)",
+     "url": "https://github.com/open-telemetry/opentelemetry-php-instrumentation/blob/main/README.md"
+    },
+    {
+     "title": "ExtRdKafka README",
+     "url": "https://github.com/open-telemetry/opentelemetry-php-contrib/blob/main/src/Instrumentation/ExtRdKafka/README.md"
+    },
+    {
+     "title": "opentelemetry-php-contrib PR #284 (instrumentation origin)",
+     "url": "https://github.com/open-telemetry/opentelemetry-php-contrib/pull/284"
+    },
+    {
+     "title": "php-rdkafka topic.stub.php ($headers optional)",
+     "url": "https://github.com/arnaud-lb/php-rdkafka/blob/6.x/topic.stub.php"
+    }
+   ],
+   "cells": [
+    "otel-php/baggage/http-kafka",
+    "otel-php/baggage/kafka-kafka",
+    "otel-php/traceparent/http-kafka",
+    "otel-php/traceparent/kafka-kafka",
+    "otel-php/tracestate/http-kafka",
+    "otel-php/tracestate/kafka-kafka"
+   ],
+   "variants": [
+    "otel-php"
+   ]
+  },
+  {
+   "id": "otel-php-amqplib-not-instrumented",
+   "title": "OTel PHP: no php-amqplib instrumentation exists, so every RabbitMQ leg loses context",
+   "cause": "opentelemetry-php-contrib has no instrumentation for php-amqplib; its only AMQP coverage is the PECL ext-amqp client, a different library.",
+   "explanation": "The opentelemetry-php-contrib instrumentation tree has no `PhpAmqpLib`\nentry. Its only AMQP coverage is `ExtAmqp` (the PECL `ext-amqp` client), and\neven there consumers are manual by design. Nothing is injected on\n`*-\u003erabbitmq`, and nothing is extracted on `rabbitmq-\u003e*`; where the outbound\nHTTP client is instrumented (`rabbitmq-\u003ehttp`) it injects a fresh trace.\n\nConsumer hooks are structurally hard in PHP (opentelemetry-php #937: \"You\ncannot hook an anonymous function, only methods\" — consume callbacks are\nclosures).\n\nWorkaround: use the OTel PHP propagator API to inject into the message's\napplication headers on publish and extract/attach in the consume callback.\nNo upstream feature request for php-amqplib exists — filing candidate\n(php-amqplib is the dominant PHP AMQP client).",
+   "status": "open",
+   "links": [
+    {
+     "title": "opentelemetry-php-contrib instrumentation tree",
+     "url": "https://github.com/open-telemetry/opentelemetry-php-contrib/tree/main/src/Instrumentation"
+    },
+    {
+     "title": "ExtAmqp README (ext-amqp only)",
+     "url": "https://github.com/open-telemetry/opentelemetry-php-contrib/blob/main/src/Instrumentation/ExtAmqp/README.md"
+    },
+    {
+     "title": "opentelemetry-php #937 (cannot hook closures)",
+     "url": "https://github.com/open-telemetry/opentelemetry-php/issues/937"
+    }
+   ],
+   "cells": [
+    "otel-php/baggage/http-rabbitmq",
+    "otel-php/baggage/kafka-rabbitmq",
+    "otel-php/baggage/rabbitmq-grpc",
+    "otel-php/baggage/rabbitmq-http",
+    "otel-php/baggage/rabbitmq-kafka",
+    "otel-php/baggage/rabbitmq-rabbitmq",
+    "otel-php/traceparent/http-rabbitmq",
+    "otel-php/traceparent/kafka-rabbitmq",
+    "otel-php/traceparent/rabbitmq-grpc",
+    "otel-php/traceparent/rabbitmq-http",
+    "otel-php/traceparent/rabbitmq-kafka",
+    "otel-php/traceparent/rabbitmq-rabbitmq",
+    "otel-php/tracestate/http-rabbitmq",
+    "otel-php/tracestate/kafka-rabbitmq",
+    "otel-php/tracestate/rabbitmq-grpc",
+    "otel-php/tracestate/rabbitmq-http",
+    "otel-php/tracestate/rabbitmq-kafka",
+    "otel-php/tracestate/rabbitmq-rabbitmq"
+   ],
+   "variants": [
+    "otel-php"
+   ]
+  }
+ ],
  "summary": {
   "variant_count": 47,
   "instrumented_variant_count": 39,

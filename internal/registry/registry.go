@@ -62,6 +62,9 @@ type Package struct {
 	Registry string `yaml:"registry" json:"registry"`
 	Package  string `yaml:"package" json:"package"`
 	GitHub   string `yaml:"github,omitempty" json:"github,omitempty"`
+	// TagPrefix is stripped from GitHub release tags to obtain the version
+	// (most projects tag "v1.2.3"; dd-trace-php tags "1.2.3").
+	TagPrefix string `yaml:"tag_prefix,omitempty" json:"tag_prefix,omitempty"`
 }
 
 type Variant struct {
