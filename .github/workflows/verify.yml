@@ -22,7 +22,9 @@ concurrency:
 
 permissions:
   contents: read
-  packages: read
+  # write: the smoke job pushes the GHCR layer cache for same-repo branches.
+  # Fork PRs get a read-only token regardless, and CAN_PUSH_CACHE skips cache-to.
+  packages: write
 
 env:
   CACHE_IMAGE: ghcr.io/${{ github.repository }}/cache
