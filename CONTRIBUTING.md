@@ -193,6 +193,19 @@ read; if none exists, say "no upstream issue yet" and consider filing one
 - Merging anything under `relays/**`, `driver/**`, `sink/**`, `variants.yaml`
   or `docker-compose.yml` triggers a full matrix run and a new release.
 
+### Repository secrets (maintainers)
+
+`matrix.yml` and `backtest.yml` publish releases with the built-in
+`GITHUB_TOKEN`; these three are configured under *Settings → Secrets and
+variables → Actions* and are optional in the sense that the workflow degrades
+rather than fails without them:
+
+| Secret | Used by | Without it |
+|---|---|---|
+| `NEW_RELIC_LICENSE_KEY` | New Relic relays (`tool:newrelic`) | New Relic variants are skipped (they appear in `results.json` as registered but not run); every other cell is unaffected. A free-tier key is sufficient. |
+| `NETLIFY_BUILD_HOOK_URL` | `matrix.yml` after a release | contextpropagation.io is not rebuilt until its next scheduled build; the release itself is unaffected. |
+| `SLACK_WEBHOOK_URL` | `matrix.yml` summary step | No Slack summary is posted. |
+
 ## Reporting a wrong cell
 
 Use the "Dispute or question a result" issue template. Include the cell id
