@@ -46,7 +46,7 @@ http = "1"
 # global propagator calls resolve to a single copy of the API crate.
 opentelemetry = "0.32"
 opentelemetry_sdk = "0.32"
-opentelemetry-http = "0.32"
+opentelemetry-http = "0.33"
 datadog-opentelemetry = "0.5"
 
 [build-dependencies]
