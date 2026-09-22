@@ -20,7 +20,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.14.0
 	github.com/signadot/context-propagation-matrix v0.0.0-00010101000000-000000000000
 	github.com/twmb/franz-go v1.21.6
-	github.com/twmb/franz-go/plugin/kotel v1.7.0
+	github.com/twmb/franz-go/plugin/kotel v1.7.1
 	go.elastic.co/apm/module/apmgrpc/v2 v2.7.12
 	go.elastic.co/apm/module/apmhttp/v2 v2.7.12
 	go.elastic.co/apm/v2 v2.7.12
