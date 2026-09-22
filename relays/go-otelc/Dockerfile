@@ -27,8 +27,10 @@ COPY relays/go-otelc ./relays/go-otelc
 # CGO_ENABLED=0 matches the hand-wired Go relays. otelc's dependency
 # synchronization edits go.mod/go.sum during the build (adding its
 # instrumentation packages), which is fine inside the image.
+ARG TRACER_VERSION
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     cd relays/go-otelc && \
+    if [ -n "$TRACER_VERSION" ]; then go get go.opentelemetry.io/otelc@v"${TRACER_VERSION#v}" && go mod tidy; fi && \
     CGO_ENABLED=0 GOFLAGS=-buildvcs=false go tool otelc go build -o /relay . && \
     # Fail the build if weaving silently did not happen: the woven binary must
     # contain OTel SDK + kafka-go instrumentation symbols (injected at link

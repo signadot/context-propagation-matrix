@@ -219,7 +219,7 @@ variants:
     display_name: .NET
     setup_tier: zero-code
     attach: "CLR profiler env (OpenTelemetry.AutoInstrumentation)"
-    tracer: { name: OpenTelemetry.AutoInstrumentation, registry: github-releases, package: open-telemetry/opentelemetry-dotnet-instrumentation, github: open-telemetry/opentelemetry-dotnet-instrumentation }
+    tracer: { name: OpenTelemetry.AutoInstrumentation, registry: github-releases, package: open-telemetry/opentelemetry-dotnet-instrumentation, tag_prefix: v, github: open-telemetry/opentelemetry-dotnet-instrumentation }
     source: relays/dotnet
   - id: otel-ruby
     tool: otel
@@ -348,7 +348,7 @@ variants:
     display_name: .NET
     setup_tier: zero-code
     attach: "CLR profiler env (Datadog.Trace), DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage"
-    tracer: { name: dd-trace-dotnet, registry: github-releases, package: DataDog/dd-trace-dotnet, github: DataDog/dd-trace-dotnet }
+    tracer: { name: dd-trace-dotnet, registry: github-releases, package: DataDog/dd-trace-dotnet, tag_prefix: v, github: DataDog/dd-trace-dotnet }
     source: relays/dotnet
   - id: datadog-dotnet-defaults
     tool: datadog
@@ -357,7 +357,7 @@ variants:
     display_name: .NET (defaults)
     setup_tier: zero-code
     attach: "CLR profiler env, propagation style left at default"
-    tracer: { name: dd-trace-dotnet, registry: github-releases, package: DataDog/dd-trace-dotnet, github: DataDog/dd-trace-dotnet }
+    tracer: { name: dd-trace-dotnet, registry: github-releases, package: DataDog/dd-trace-dotnet, tag_prefix: v, github: DataDog/dd-trace-dotnet }
     source: relays/dotnet
   - id: datadog-ruby
     tool: datadog
@@ -440,7 +440,7 @@ variants:
     display_name: .NET
     setup_tier: zero-code
     attach: "CLR profiler env (Elastic.Apm.Profiler.Managed)"
-    tracer: { name: elastic-apm-dotnet, registry: github-releases, package: elastic/apm-agent-dotnet, github: elastic/apm-agent-dotnet }
+    tracer: { name: elastic-apm-dotnet, registry: github-releases, package: elastic/apm-agent-dotnet, tag_prefix: v, github: elastic/apm-agent-dotnet }
     source: relays/dotnet
   - id: elastic-ruby
     tool: elastic
@@ -458,7 +458,7 @@ variants:
     display_name: PHP
     setup_tier: zero-code
     attach: "apm-agent-php .deb (elastic_apm extension)"
-    tracer: { name: elastic-apm-php, registry: github-releases, package: elastic/apm-agent-php, github: elastic/apm-agent-php }
+    tracer: { name: elastic-apm-php, registry: github-releases, package: elastic/apm-agent-php, tag_prefix: v, github: elastic/apm-agent-php }
     source: relays/php
 
   # ---- New Relic ----------------------------------------------------------
@@ -505,7 +505,7 @@ variants:
     display_name: .NET
     setup_tier: zero-code
     attach: "CLR profiler env (New Relic .NET agent)"
-    tracer: { name: newrelic-dotnet-agent, registry: github-releases, package: newrelic/newrelic-dotnet-agent, github: newrelic/newrelic-dotnet-agent }
+    tracer: { name: newrelic-dotnet-agent, registry: github-releases, package: newrelic/newrelic-dotnet-agent, tag_prefix: v, github: newrelic/newrelic-dotnet-agent }
     source: relays/dotnet
   - id: newrelic-ruby
     tool: newrelic

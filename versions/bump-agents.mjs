@@ -52,7 +52,8 @@ function loadManifest(path) {
 
 function patternFor(a) {
   if (a.pattern) return new RegExp(a.pattern);
-  if (a.arg) return new RegExp(`^ARG ${a.arg}=(?<version>\\S+)`, 'm');
+  // Matches both `ARG X=1.2.3` and the backtest-friendly `ARG X=${TRACER_VERSION:-1.2.3}`.
+  if (a.arg) return new RegExp(`^ARG ${a.arg}=(?:\\$\\{TRACER_VERSION:-)?(?<version>[^}\\s]+)`, 'm');
   throw new Error(`${a.id}: needs arg or pattern`);
 }
 

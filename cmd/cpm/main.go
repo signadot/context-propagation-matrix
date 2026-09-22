@@ -45,6 +45,8 @@ func main() {
 		err = cmdDiff(os.Args[2:])
 	case "summary":
 		err = cmdSummary(os.Args[2:])
+	case "coords":
+		err = cmdCoords(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -64,7 +66,8 @@ func usage() {
   validate   check variants.yaml, docker-compose.yml and annotations/ agree
   aggregate  results/raw/*.json -> results.json + MATRIX.md (+ changes.json)
   diff       compare two results.json files into changes.json
-  summary    markdown summary of a results.json for CI/Slack`)
+  summary    markdown summary of a results.json for CI/Slack
+  coords     tracer package coordinates per variant as JSON (for version discovery)`)
 	os.Exit(2)
 }
 
@@ -109,6 +112,51 @@ func cmdList(args []string) error {
 		fmt.Println(id)
 	}
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+
+// cmdCoords prints, for every instrumented variant, the tracer (and weaver)
+// package coordinates plus the version observed in the latest results, so
+// versions/discover.mjs can enumerate back-test candidates without parsing
+// YAML.
+func cmdCoords(args []string) error {
+	fs := flag.NewFlagSet("coords", flag.ExitOnError)
+	regPath := regFlag(fs)
+	resPath := fs.String("results", "results/latest/results.json", "results.json for current versions (optional)")
+	fs.Parse(args)
+
+	reg, err := registry.Load(*regPath)
+	if err != nil {
+		return err
+	}
+	current := map[string]string{}
+	if res, err := results.Load(*resPath); err == nil {
+		for _, v := range res.Variants {
+			if v.Tracer != nil {
+				current[v.ID] = v.Tracer.Version
+			}
+		}
+	}
+	type coord struct {
+		Variant  string            `json:"variant"`
+		Tool     string            `json:"tool"`
+		Language string            `json:"language"`
+		Tracer   *registry.Package `json:"tracer"`
+		Weaver   *registry.Package `json:"weaver,omitempty"`
+		Current  string            `json:"current_version,omitempty"`
+		Secret   string            `json:"requires_secret,omitempty"`
+	}
+	var out []coord
+	for _, v := range reg.SortedVariants() {
+		if v.Tracer == nil {
+			continue
+		}
+		out = append(out, coord{v.ID, v.Tool, v.Language, v.Tracer, v.Weaver, current[v.ID], reg.RequiresSecret(v)})
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", " ")
+	return enc.Encode(out)
 }
 
 // ---------------------------------------------------------------------------

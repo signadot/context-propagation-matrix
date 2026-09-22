@@ -58,7 +58,7 @@ agents:
   # ---- PHP -----------------------------------------------------------------
   - id: otel-php-ext
     file: relays/php/Dockerfile
-    pattern: 'install-php-extensions opentelemetry-(?<version>[\d.]+)'
+    pattern: 'install-php-extensions opentelemetry-(?:\$\{TRACER_VERSION:-)?(?<version>[\d.]+)'
     source: { registry: pecl, package: opentelemetry }
     variants: [otel-php]
   - id: otel-php-auto-slim

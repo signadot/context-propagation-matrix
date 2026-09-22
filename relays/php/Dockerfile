@@ -7,6 +7,11 @@
 # proto/relay.proto at build time with Debian's protoc + grpc_php_plugin.
 # Tool targets differ only in which instrumentation is installed.
 
+# TRACER_VERSION (build-arg) overrides the pinned tracer/agent version for the
+# target being built; empty means "use the pin". Used by backtest.yml to
+# measure older releases without editing this file.
+ARG TRACER_VERSION=
+
 FROM php:8.3-apache AS app
 
 COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /usr/local/bin/
@@ -52,9 +57,11 @@ ENTRYPOINT ["/entrypoint.sh"]
 # consume/produce). No packages exist for php-amqplib or ext-grpc clients —
 # recorded as findings in README.md.
 FROM app AS otel
+ARG TRACER_VERSION
 # Extension + instrumentation packages pinned exactly (composer requires in
-# a Dockerfile are not Dependabot-visible; bump manually per DESIGN.md).
-RUN install-php-extensions opentelemetry-1.2.1
+# a Dockerfile are bumped by bump-agents.yml). TRACER_VERSION overrides the
+# extension version only; the composer packages keep their pins.
+RUN install-php-extensions opentelemetry-${TRACER_VERSION:-1.2.1}
 RUN composer require --no-interaction \
       open-telemetry/sdk:1.15.0 \
       open-telemetry/opentelemetry-auto-slim:1.5.0 \
@@ -69,7 +76,8 @@ ENV OTEL_PHP_AUTOLOAD_ENABLED=true \
 # (each release's setup script installs that release's tracer). Tracer
 # version is read at runtime via phpversion('ddtrace') for /info.
 FROM app AS datadog
-ARG DD_PHP_TRACER_VERSION=1.25.0
+ARG TRACER_VERSION
+ARG DD_PHP_TRACER_VERSION=${TRACER_VERSION:-1.25.0}
 RUN curl -fLo /tmp/datadog-setup.php \
       "https://github.com/DataDog/dd-trace-php/releases/download/${DD_PHP_TRACER_VERSION}/datadog-setup.php" \
  && php /tmp/datadog-setup.php --php-bin=all \
@@ -84,7 +92,8 @@ RUN curl -fLo /tmp/datadog-setup.php \
 # are auto-instrumented for distributed tracing; php-amqplib has agent
 # instrumentation (agent >= 11.6); ext-rdkafka and ext-grpc are unsupported.
 FROM app AS newrelic
-ARG NEWRELIC_PHP_AGENT_VERSION=12.10.0.39
+ARG TRACER_VERSION
+ARG NEWRELIC_PHP_AGENT_VERSION=${TRACER_VERSION:-12.10.0.39}
 RUN set -eux; \
     ver="${NEWRELIC_PHP_AGENT_VERSION}"; \
     curl -fsSL "https://download.newrelic.com/php_agent/archive/${ver}/newrelic-php5-${ver}-linux.tar.gz" \
@@ -100,7 +109,8 @@ ENTRYPOINT ["/newrelic-entrypoint.sh"]
 # --- Elastic: APM PHP agent via the documented .deb package (per-arch).
 # Must tolerate an unreachable ELASTIC_APM_SERVER_URL (it logs and drops).
 FROM app AS elastic
-ARG ELASTIC_APM_PHP_VERSION=1.17.0
+ARG TRACER_VERSION
+ARG ELASTIC_APM_PHP_VERSION=${TRACER_VERSION:-1.17.0}
 RUN set -eux; \
     arch="$(dpkg --print-architecture)"; \
     curl -fLo /tmp/apm-agent-php.deb \
