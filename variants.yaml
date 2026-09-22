@@ -1,0 +1,537 @@
+# variants.yaml — the registry of everything the harness measures.
+#
+# This file is the single source of truth for the matrix's dimensions. It is
+# read by:
+#   - run.sh                      (which variants exist, which need a secret)
+#   - go run ./cmd/cpm validate   (docker-compose.yml must define relay-<id>
+#                                  with profile <id> for every variant, and
+#                                  nothing else; annotations must match cells)
+#   - go run ./cmd/cpm aggregate  (results.json + MATRIX.md: ordering, display
+#                                  names, setup tiers, tracer coordinates)
+#   - versions/discover.mjs       (tracer package coordinates → last N versions)
+#   - the contextpropagation.io site (via results.json, never directly)
+#
+# Versions are deliberately NOT here. Exact pins live in the manifests and
+# Dockerfile ARGs next to each relay (Dependabot / bump-agents.yml bump them);
+# the aggregator records the version the relay actually reported at run time.
+
+schema_version: 1
+
+tools:
+  otel:
+    display_name: OpenTelemetry
+    short_name: OTel
+    vendor: CNCF
+    url: https://opentelemetry.io/
+    native_headers: []            # OTel has no vendor header; W3C only
+    default_propagators: [tracecontext, baggage]
+  datadog:
+    display_name: Datadog
+    short_name: Datadog
+    vendor: Datadog
+    url: https://docs.datadoghq.com/tracing/
+    native_headers: [x-datadog-trace-id, x-datadog-parent-id, x-datadog-sampling-priority, x-datadog-tags]
+    default_propagators: [datadog, tracecontext]
+  elastic:
+    display_name: Elastic APM
+    short_name: Elastic
+    vendor: Elastic
+    url: https://www.elastic.co/observability/application-performance-monitoring
+    native_headers: [elastic-apm-traceparent]
+    default_propagators: [tracecontext]
+  newrelic:
+    display_name: New Relic
+    short_name: New Relic
+    vendor: New Relic
+    url: https://docs.newrelic.com/docs/distributed-tracing/
+    native_headers: [newrelic]
+    default_propagators: [newrelic, tracecontext]
+    requires_secret: NEW_RELIC_LICENSE_KEY   # agents will not propagate until connected
+  none:
+    display_name: No instrumentation (baseline)
+    short_name: Baseline
+    vendor: null
+    url: null
+    native_headers: []
+    default_propagators: []
+    is_baseline: true
+
+languages:
+  java:   { display_name: Java,    order: 0 }
+  node:   { display_name: Node.js, order: 1 }
+  python: { display_name: Python,  order: 2 }
+  go:     { display_name: Go,      order: 3 }
+  dotnet: { display_name: .NET,    order: 4 }
+  ruby:   { display_name: Ruby,    order: 5 }
+  php:    { display_name: PHP,     order: 6 }
+  rust:   { display_name: Rust,    order: 7 }
+
+protocols:
+  http:     { display_name: HTTP,     carrier: "HTTP request headers" }
+  grpc:     { display_name: gRPC,     carrier: "gRPC metadata" }
+  kafka:    { display_name: Kafka,    carrier: "Kafka record headers", async: true }
+  rabbitmq: { display_name: RabbitMQ, carrier: "AMQP 0-9-1 message headers", async: true }
+
+# Boundaries are every inbound × outbound protocol pair through one relay.
+# Order here is the column order in every table.
+boundaries:
+  - http->http
+  - http->grpc
+  - http->kafka
+  - http->rabbitmq
+  - grpc->http
+  - grpc->grpc
+  - grpc->kafka
+  - grpc->rabbitmq
+  - kafka->http
+  - kafka->grpc
+  - kafka->kafka
+  - kafka->rabbitmq
+  - rabbitmq->http
+  - rabbitmq->grpc
+  - rabbitmq->kafka
+  - rabbitmq->rabbitmq
+
+# Headers we seed and evaluate. `raw_field` is the key in the driver's status
+# object; `success` lists raw statuses that count as a pass.
+headers:
+  baggage:
+    display_name: "W3C baggage"
+    wire_name: baggage
+    raw_field: baggage
+    question: "Did the seeded `sd-routing-key` baggage member arrive intact?"
+    success: [propagated]
+    partial: [partial]
+    spec: https://www.w3.org/TR/baggage/
+  tracestate:
+    display_name: "W3C tracestate"
+    wire_name: tracestate
+    raw_field: tracestate
+    question: "Did the seeded foreign vendor entry (`sdtest=v1`) survive?"
+    success: [preserved]
+    partial: [present_entry_lost]
+    spec: https://www.w3.org/TR/trace-context/#tracestate-header
+  traceparent:
+    display_name: "W3C traceparent (trace continuity)"
+    wire_name: traceparent
+    raw_field: traceparent
+    question: "Was the seeded trace-id continued (a new span-id is expected)?"
+    success: [same_trace]
+    partial: []
+    new_trace: [new_trace]
+    spec: https://www.w3.org/TR/trace-context/#traceparent-header
+  ot-baggage:
+    display_name: "ot-baggage-* (OpenTracing legacy)"
+    wire_name: ot-baggage-sd-routing-key
+    raw_field: ot_baggage
+    question: "Did `ot-baggage-sd-routing-key` arrive with the seeded value?"
+    success: [propagated]
+    partial: [partial]
+    spec: https://github.com/opentracing/specification/blob/master/rfc/trace_identifiers.md
+
+setup_tiers:
+  zero-code:
+    display_name: zero-code
+    description: >-
+      Runtime attach only: an agent flag, a preload require, the CLR profiler
+      environment, a php.ini extension. No application source involved.
+  init-only:
+    display_name: init-only
+    description: >-
+      A boot-file initializer loads and configures the tool before application
+      code runs (Ruby's require+configure pattern, Elastic Python's
+      middleware). Request-path code is untouched.
+  build-time:
+    display_name: build-time
+    description: >-
+      Source is untouched but the build command is wrapped by a compile-time
+      weaver (`orchestrion go build`, `go tool otelc go build`) that injects
+      instrumentation during compilation.
+  in-code:
+    display_name: in-code
+    description: >-
+      Instrumentation is woven into application code: wrappers at every
+      client/server construction site and contexts threaded through (Go
+      contribs, Rust propagator API with hand-written carriers).
+
+# ---------------------------------------------------------------------------
+# Variants. One entry per relay container. Conventions:
+#   id               = compose profile = compose service minus the "relay-" prefix
+#   flavour          "default" for the plain tool×language variant; anything
+#                    else is a configuration or attach-mechanism twist
+#   tracer.registry  where versions can be discovered:
+#                    maven | npm | pypi | goproxy | nuget | rubygems | pecl |
+#                    packagist | crates | github-releases | newrelic-download
+#   tracer.package   the coordinate in that registry
+#   source           relay directory (relative) whose manifests pin the version
+# ---------------------------------------------------------------------------
+variants:
+  # ---- OpenTelemetry ------------------------------------------------------
+  - id: otel-java
+    tool: otel
+    language: java
+    flavour: default
+    display_name: Java
+    setup_tier: zero-code
+    attach: "-javaagent:opentelemetry-javaagent.jar"
+    tracer: { name: opentelemetry-javaagent, registry: maven, package: "io.opentelemetry.javaagent:opentelemetry-javaagent", github: open-telemetry/opentelemetry-java-instrumentation }
+    source: relays/java
+  - id: otel-node
+    tool: otel
+    language: node
+    flavour: default
+    display_name: Node.js
+    setup_tier: zero-code
+    attach: "--require @opentelemetry/auto-instrumentations-node/register"
+    tracer: { name: "@opentelemetry/auto-instrumentations-node", registry: npm, package: "@opentelemetry/auto-instrumentations-node", github: open-telemetry/opentelemetry-js-contrib }
+    source: relays/node/tools/otel
+  - id: otel-python
+    tool: otel
+    language: python
+    flavour: default
+    display_name: Python
+    setup_tier: zero-code
+    attach: "opentelemetry-instrument python app.py"
+    tracer: { name: opentelemetry-distro, registry: pypi, package: opentelemetry-distro, github: open-telemetry/opentelemetry-python-contrib }
+    source: relays/python
+  - id: otel-go
+    tool: otel
+    language: go
+    flavour: default
+    display_name: Go
+    setup_tier: in-code
+    attach: "otelhttp / otelgrpc wrappers + hand-written Kafka and AMQP carriers"
+    tracer: { name: go.opentelemetry.io/otel, registry: goproxy, package: go.opentelemetry.io/otel, github: open-telemetry/opentelemetry-go }
+    source: relays/go
+  - id: otel-go-compiletime
+    tool: otel
+    language: go
+    flavour: compiletime
+    display_name: Go (otelc)
+    setup_tier: build-time
+    attach: "go tool otelc go build (source untouched)"
+    tracer: { name: go.opentelemetry.io/otelc, registry: goproxy, package: go.opentelemetry.io/otelc, github: open-telemetry/opentelemetry-go-compile-instrumentation }
+    source: relays/go-otelc
+  - id: otel-dotnet
+    tool: otel
+    language: dotnet
+    flavour: default
+    display_name: .NET
+    setup_tier: zero-code
+    attach: "CLR profiler env (OpenTelemetry.AutoInstrumentation)"
+    tracer: { name: OpenTelemetry.AutoInstrumentation, registry: github-releases, package: open-telemetry/opentelemetry-dotnet-instrumentation, github: open-telemetry/opentelemetry-dotnet-instrumentation }
+    source: relays/dotnet
+  - id: otel-ruby
+    tool: otel
+    language: ruby
+    flavour: default
+    display_name: Ruby
+    setup_tier: init-only
+    attach: "require 'opentelemetry/sdk'; OpenTelemetry::SDK.configure { use_all }"
+    tracer: { name: opentelemetry-sdk, registry: rubygems, package: opentelemetry-sdk, github: open-telemetry/opentelemetry-ruby }
+    source: relays/ruby/gemfiles/otel
+  - id: otel-php
+    tool: otel
+    language: php
+    flavour: default
+    display_name: PHP
+    setup_tier: zero-code
+    attach: "ext-opentelemetry + auto-* packages via php.ini"
+    tracer: { name: opentelemetry (ext), registry: pecl, package: opentelemetry, github: open-telemetry/opentelemetry-php-instrumentation }
+    source: relays/php
+  - id: otel-rust
+    tool: otel
+    language: rust
+    flavour: default
+    display_name: Rust
+    setup_tier: in-code
+    attach: "opentelemetry propagator API + hand-written carriers"
+    tracer: { name: opentelemetry, registry: crates, package: opentelemetry, github: open-telemetry/opentelemetry-rust }
+    source: relays/rust
+
+  # ---- Datadog ------------------------------------------------------------
+  - id: datadog-java
+    tool: datadog
+    language: java
+    flavour: default
+    display_name: Java
+    setup_tier: zero-code
+    attach: "-javaagent:dd-java-agent.jar, DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage"
+    tracer: { name: dd-java-agent, registry: maven, package: "com.datadoghq:dd-java-agent", github: DataDog/dd-trace-java }
+    source: relays/java
+  - id: datadog-java-defaults
+    tool: datadog
+    language: java
+    flavour: defaults
+    display_name: Java (defaults)
+    setup_tier: zero-code
+    attach: "-javaagent:dd-java-agent.jar, propagation style left at agent default"
+    tracer: { name: dd-java-agent, registry: maven, package: "com.datadoghq:dd-java-agent", github: DataDog/dd-trace-java }
+    source: relays/java
+  - id: datadog-node
+    tool: datadog
+    language: node
+    flavour: default
+    display_name: Node.js
+    setup_tier: zero-code
+    attach: "--require dd-trace/init"
+    tracer: { name: dd-trace, registry: npm, package: dd-trace, github: DataDog/dd-trace-js }
+    source: relays/node/tools/datadog
+  - id: datadog-node-defaults
+    tool: datadog
+    language: node
+    flavour: defaults
+    display_name: Node.js (defaults)
+    setup_tier: zero-code
+    attach: "--require dd-trace/init, propagation style left at default"
+    tracer: { name: dd-trace, registry: npm, package: dd-trace, github: DataDog/dd-trace-js }
+    source: relays/node/tools/datadog
+  - id: datadog-python
+    tool: datadog
+    language: python
+    flavour: default
+    display_name: Python
+    setup_tier: zero-code
+    attach: "ddtrace-run python app.py"
+    tracer: { name: ddtrace, registry: pypi, package: ddtrace, github: DataDog/dd-trace-py }
+    source: relays/python
+  - id: datadog-python-defaults
+    tool: datadog
+    language: python
+    flavour: defaults
+    display_name: Python (defaults)
+    setup_tier: zero-code
+    attach: "ddtrace-run, propagation style left at default"
+    tracer: { name: ddtrace, registry: pypi, package: ddtrace, github: DataDog/dd-trace-py }
+    source: relays/python
+  - id: datadog-python-kafkaprop
+    tool: datadog
+    language: python
+    flavour: kafkaprop
+    display_name: Python (DD_KAFKA_PROPAGATION_ENABLED)
+    setup_tier: zero-code
+    attach: "ddtrace-run, DD_KAFKA_PROPAGATION_ENABLED=true"
+    tracer: { name: ddtrace, registry: pypi, package: ddtrace, github: DataDog/dd-trace-py }
+    source: relays/python
+  - id: datadog-go
+    tool: datadog
+    language: go
+    flavour: default
+    display_name: Go
+    setup_tier: in-code
+    attach: "dd-trace-go contrib wrappers (net/http, grpc, sarama) + hand-written AMQP carrier"
+    tracer: { name: dd-trace-go, registry: goproxy, package: github.com/DataDog/dd-trace-go/v2, github: DataDog/dd-trace-go }
+    source: relays/go
+  - id: datadog-go-defaults
+    tool: datadog
+    language: go
+    flavour: defaults
+    display_name: Go (defaults)
+    setup_tier: in-code
+    attach: "dd-trace-go contribs, propagation style left at default"
+    tracer: { name: dd-trace-go, registry: goproxy, package: github.com/DataDog/dd-trace-go/v2, github: DataDog/dd-trace-go }
+    source: relays/go
+  - id: datadog-go-orchestrion
+    tool: datadog
+    language: go
+    flavour: orchestrion
+    display_name: Go (Orchestrion)
+    setup_tier: build-time
+    attach: "orchestrion go build (source untouched)"
+    tracer: { name: dd-trace-go, registry: goproxy, package: github.com/DataDog/dd-trace-go/v2, github: DataDog/dd-trace-go }
+    weaver: { name: orchestrion, registry: goproxy, package: github.com/DataDog/orchestrion, github: DataDog/orchestrion }
+    source: relays/go-orchestrion
+  - id: datadog-dotnet
+    tool: datadog
+    language: dotnet
+    flavour: default
+    display_name: .NET
+    setup_tier: zero-code
+    attach: "CLR profiler env (Datadog.Trace), DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage"
+    tracer: { name: dd-trace-dotnet, registry: github-releases, package: DataDog/dd-trace-dotnet, github: DataDog/dd-trace-dotnet }
+    source: relays/dotnet
+  - id: datadog-dotnet-defaults
+    tool: datadog
+    language: dotnet
+    flavour: defaults
+    display_name: .NET (defaults)
+    setup_tier: zero-code
+    attach: "CLR profiler env, propagation style left at default"
+    tracer: { name: dd-trace-dotnet, registry: github-releases, package: DataDog/dd-trace-dotnet, github: DataDog/dd-trace-dotnet }
+    source: relays/dotnet
+  - id: datadog-ruby
+    tool: datadog
+    language: ruby
+    flavour: default
+    display_name: Ruby
+    setup_tier: init-only
+    attach: "require 'datadog/auto_instrument'; Datadog.configure"
+    tracer: { name: datadog (gem), registry: rubygems, package: datadog, github: DataDog/dd-trace-rb }
+    source: relays/ruby/gemfiles/datadog
+  - id: datadog-ruby-defaults
+    tool: datadog
+    language: ruby
+    flavour: defaults
+    display_name: Ruby (defaults)
+    setup_tier: init-only
+    attach: "require 'datadog/auto_instrument', propagation style left at default"
+    tracer: { name: datadog (gem), registry: rubygems, package: datadog, github: DataDog/dd-trace-rb }
+    source: relays/ruby/gemfiles/datadog
+  - id: datadog-php
+    tool: datadog
+    language: php
+    flavour: default
+    display_name: PHP
+    setup_tier: zero-code
+    attach: "datadog-setup.php installer (ddtrace extension)"
+    tracer: { name: dd-trace-php, registry: github-releases, package: DataDog/dd-trace-php, github: DataDog/dd-trace-php }
+    source: relays/php
+  - id: datadog-rust
+    tool: datadog
+    language: rust
+    flavour: default
+    display_name: Rust
+    setup_tier: in-code
+    attach: "datadog-opentelemetry crate + opentelemetry propagator API"
+    tracer: { name: datadog-opentelemetry, registry: crates, package: datadog-opentelemetry, github: DataDog/libdatadog }
+    source: relays/rust
+
+  # ---- Elastic APM (classic agents) ---------------------------------------
+  - id: elastic-java
+    tool: elastic
+    language: java
+    flavour: default
+    display_name: Java
+    setup_tier: zero-code
+    attach: "-javaagent:elastic-apm-agent.jar"
+    tracer: { name: elastic-apm-agent, registry: maven, package: "co.elastic.apm:elastic-apm-agent", github: elastic/apm-agent-java }
+    source: relays/java
+  - id: elastic-node
+    tool: elastic
+    language: node
+    flavour: default
+    display_name: Node.js
+    setup_tier: zero-code
+    attach: "--require elastic-apm-node/start"
+    tracer: { name: elastic-apm-node, registry: npm, package: elastic-apm-node, github: elastic/apm-agent-nodejs }
+    source: relays/node/tools/elastic
+  - id: elastic-python
+    tool: elastic
+    language: python
+    flavour: default
+    display_name: Python
+    setup_tier: init-only
+    attach: "ElasticAPM(app) Flask middleware + instrument()"
+    tracer: { name: elastic-apm, registry: pypi, package: elastic-apm, github: elastic/apm-agent-python }
+    source: relays/python
+  - id: elastic-go
+    tool: elastic
+    language: go
+    flavour: default
+    display_name: Go
+    setup_tier: in-code
+    attach: "apmhttp / apmgrpc wrappers + hand-written carriers"
+    tracer: { name: go.elastic.co/apm, registry: goproxy, package: go.elastic.co/apm/v2, github: elastic/apm-agent-go }
+    source: relays/go
+  - id: elastic-dotnet
+    tool: elastic
+    language: dotnet
+    flavour: default
+    display_name: .NET
+    setup_tier: zero-code
+    attach: "CLR profiler env (Elastic.Apm.Profiler.Managed)"
+    tracer: { name: elastic-apm-dotnet, registry: github-releases, package: elastic/apm-agent-dotnet, github: elastic/apm-agent-dotnet }
+    source: relays/dotnet
+  - id: elastic-ruby
+    tool: elastic
+    language: ruby
+    flavour: default
+    display_name: Ruby
+    setup_tier: init-only
+    attach: "require 'elastic_apm'; ElasticAPM.start"
+    tracer: { name: elastic-apm (gem), registry: rubygems, package: elastic-apm, github: elastic/apm-agent-ruby }
+    source: relays/ruby/gemfiles/elastic
+  - id: elastic-php
+    tool: elastic
+    language: php
+    flavour: default
+    display_name: PHP
+    setup_tier: zero-code
+    attach: "apm-agent-php .deb (elastic_apm extension)"
+    tracer: { name: elastic-apm-php, registry: github-releases, package: elastic/apm-agent-php, github: elastic/apm-agent-php }
+    source: relays/php
+
+  # ---- New Relic ----------------------------------------------------------
+  - id: newrelic-java
+    tool: newrelic
+    language: java
+    flavour: default
+    display_name: Java
+    setup_tier: zero-code
+    attach: "-javaagent:newrelic.jar"
+    tracer: { name: newrelic-agent, registry: maven, package: "com.newrelic.agent.java:newrelic-agent", github: newrelic/newrelic-java-agent }
+    source: relays/java
+  - id: newrelic-node
+    tool: newrelic
+    language: node
+    flavour: default
+    display_name: Node.js
+    setup_tier: zero-code
+    attach: "--require newrelic"
+    tracer: { name: newrelic (npm), registry: npm, package: newrelic, github: newrelic/node-newrelic }
+    source: relays/node/tools/newrelic
+  - id: newrelic-python
+    tool: newrelic
+    language: python
+    flavour: default
+    display_name: Python
+    setup_tier: zero-code
+    attach: "newrelic-admin run-program python app.py"
+    tracer: { name: newrelic (pypi), registry: pypi, package: newrelic, github: newrelic/newrelic-python-agent }
+    source: relays/python
+  - id: newrelic-go
+    tool: newrelic
+    language: go
+    flavour: default
+    display_name: Go
+    setup_tier: in-code
+    attach: "go-agent WrapHandle + nrgrpc + nrsarama + nramqp"
+    tracer: { name: go-agent, registry: goproxy, package: github.com/newrelic/go-agent/v3, github: newrelic/go-agent }
+    source: relays/go
+  - id: newrelic-dotnet
+    tool: newrelic
+    language: dotnet
+    flavour: default
+    display_name: .NET
+    setup_tier: zero-code
+    attach: "CLR profiler env (New Relic .NET agent)"
+    tracer: { name: newrelic-dotnet-agent, registry: github-releases, package: newrelic/newrelic-dotnet-agent, github: newrelic/newrelic-dotnet-agent }
+    source: relays/dotnet
+  - id: newrelic-ruby
+    tool: newrelic
+    language: ruby
+    flavour: default
+    display_name: Ruby
+    setup_tier: init-only
+    attach: "require 'newrelic_rpm'"
+    tracer: { name: newrelic_rpm, registry: rubygems, package: newrelic_rpm, github: newrelic/newrelic-ruby-agent }
+    source: relays/ruby/gemfiles/newrelic
+  - id: newrelic-php
+    tool: newrelic
+    language: php
+    flavour: default
+    display_name: PHP
+    setup_tier: zero-code
+    attach: "newrelic-install (newrelic extension + daemon)"
+    tracer: { name: newrelic-php-agent, registry: newrelic-download, package: php_agent, github: newrelic/newrelic-php-agent }
+    source: relays/php
+
+  # ---- Baseline: no instrumentation --------------------------------------
+  - { id: none-java,   tool: none, language: java,   flavour: default, display_name: Java,    setup_tier: null, source: relays/java }
+  - { id: none-node,   tool: none, language: node,   flavour: default, display_name: Node.js, setup_tier: null, source: relays/node }
+  - { id: none-python, tool: none, language: python, flavour: default, display_name: Python,  setup_tier: null, source: relays/python }
+  - { id: none-go,     tool: none, language: go,     flavour: default, display_name: Go,      setup_tier: null, source: relays/go }
+  - { id: none-dotnet, tool: none, language: dotnet, flavour: default, display_name: .NET,    setup_tier: null, source: relays/dotnet }
+  - { id: none-ruby,   tool: none, language: ruby,   flavour: default, display_name: Ruby,    setup_tier: null, source: relays/ruby/gemfiles/none }
+  - { id: none-php,    tool: none, language: php,    flavour: default, display_name: PHP,     setup_tier: null, source: relays/php }
+  - { id: none-rust,   tool: none, language: rust,   flavour: default, display_name: Rust,    setup_tier: null, source: relays/rust }
