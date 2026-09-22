@@ -148,7 +148,7 @@ type Variant struct {
 	RanAt          time.Time         `json:"ran_at"`
 	Hops           []Hop             `json:"hops"`
 	Cells          []Cell            `json:"cells"`
-	Counts         map[string]*Count `json:"counts"` // by header id
+	Counts         map[string]*Count `json:"counts"`            // by header id
 	Missing        bool              `json:"missing,omitempty"` // registered but no raw result in this run
 }
 
