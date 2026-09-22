@@ -1,0 +1,86 @@
+# Dependabot keeps the context-propagation-matrix harness pinned to exact,
+# current versions: every manifest pins exact versions and Dependabot opens
+# PRs to bump them. After merging a bump that touches a tracer/agent, re-run
+# the affected variants and regenerate results/MATRIX.md (see DESIGN.md
+# "Version pinning").
+#
+# NOT covered by Dependabot (bump manually via the Dockerfile ARGs):
+#   - Java agent jars           (relays/java/Dockerfile ARGs)
+#   - .NET profiler tarballs    (relays/dotnet/Dockerfile ARGs)
+#   - PHP agents + OTel ext     (relays/php/Dockerfile ARGs / pinned requires)
+version: 2
+updates:
+  # Go: the root module (driver, sink, matrixgen) plus one module per Go
+  # relay flavour — hand-wired contribs (relays/go), Orchestrion build-time
+  # weaving (relays/go-orchestrion, which pins orchestrion + dd-trace-go), and
+  # otelc build-time weaving (relays/go-otelc, which pins otelc via the go.mod
+  # `tool` directive).
+  - package-ecosystem: gomod
+    directories:
+      - /
+      - /relays/go
+      - /relays/go-orchestrion
+      - /relays/go-otelc
+    schedule: { interval: weekly }
+
+  # Node: app deps + one single-dependency manifest per tool target.
+  - package-ecosystem: npm
+    directories:
+      - /relays/node
+      - /relays/node/tools/otel
+      - /relays/node/tools/datadog
+      - /relays/node/tools/newrelic
+      - /relays/node/tools/elastic
+    schedule: { interval: weekly }
+
+  # Python: requirements.txt (app) + requirements-<tool>.txt (agents),
+  # all picked up from the same directory.
+  - package-ecosystem: pip
+    directory: /relays/python
+    schedule: { interval: weekly }
+
+  # Ruby: one Gemfile per tool target.
+  - package-ecosystem: bundler
+    directories:
+      - /relays/ruby/gemfiles/none
+      - /relays/ruby/gemfiles/otel
+      - /relays/ruby/gemfiles/datadog
+      - /relays/ruby/gemfiles/newrelic
+      - /relays/ruby/gemfiles/elastic
+    schedule: { interval: weekly }
+
+  # PHP: app composer.json (agents are installed in the Dockerfile — manual).
+  - package-ecosystem: composer
+    directory: /relays/php
+    schedule: { interval: weekly }
+
+  # Java: pom.xml app deps (agent jars are Dockerfile ARGs — manual).
+  - package-ecosystem: maven
+    directory: /relays/java
+    schedule: { interval: weekly }
+
+  # .NET: csproj app deps (agents are Dockerfile ARGs — manual).
+  - package-ecosystem: nuget
+    directory: /relays/dotnet
+    schedule: { interval: weekly }
+
+  # Rust: Cargo.toml + committed Cargo.lock (includes both tracer crates).
+  - package-ecosystem: cargo
+    directory: /relays/rust
+    schedule: { interval: weekly }
+
+  # Base images in every Dockerfile.
+  - package-ecosystem: docker
+    directories:
+      - /docker
+      - /relays/go
+      - /relays/go-orchestrion
+      - /relays/go-otelc
+      - /relays/java
+      - /relays/node
+      - /relays/python
+      - /relays/dotnet
+      - /relays/ruby
+      - /relays/php
+      - /relays/rust
+    schedule: { interval: weekly }

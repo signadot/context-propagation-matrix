@@ -254,7 +254,7 @@ Three structural findings apply to every PHP variant:
   neither. The harness measures the documented Apache mod_php + CLI worker
   topology, so all grpc→* boundaries are undeliverable (🚫). A
   RoadRunner-based relay with manual instrumentation is a candidate
-  follow-up (tracked in the article followups).
+  follow-up (see the roadmap in DESIGN.md).
 - **No tool instruments the gRPC client** (`ext-grpc` + `grpc/grpc`): every
   `*→grpc` cell is header-free for otel, datadog, and elastic alike.
 - The relay runs Apache mod_php + two CLI workers — the documented supported

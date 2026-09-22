@@ -1,2 +1,5 @@
 .tools/
 relays/go-otelc/.otelc-build/
+
+.env
+.env.*

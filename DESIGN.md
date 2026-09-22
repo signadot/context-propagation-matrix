@@ -326,8 +326,9 @@ quadratically (n protocols → n² boundaries; 4 → 16 today, a fifth makes 25)
 
 ## Roadmap / contributions welcome
 
-Tool columns worth adding next (see the provider-landscape notes in
-`growth-team/content/infoq/context-propagation/followups.md`):
+Tool columns worth adding next (the 2026 provider landscape has largely
+converged on OpenTelemetry; proprietary propagation stacks are now the
+exception, which is what makes the remaining ones worth measuring):
 
 - **Sentry**: open-source SDKs, free tier; propagates `sentry-trace` plus
   `sentry-*` keys inside a W3C-syntax `baggage` header — the only non-APM

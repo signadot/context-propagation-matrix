@@ -57,3 +57,22 @@ relays/go-otelc/   naive Go app compiled with OTel compile-time instrumentation 
 results/raw/       machine-readable results per variant
 results/MATRIX.md  the generated support matrix
 ```
+
+## Results site
+
+The published, browsable results live at **https://contextpropagation.io**,
+which is rebuilt from this repository's GitHub Releases every time the matrix
+runs. Every cell there has a permalink and links back to the raw evidence here.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to add a language, a
+protocol boundary, a provider, or a variant flavour, and how to write an
+annotation explaining a non-success cell. Please read
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md); security concerns go to the
+address in [`SECURITY.md`](SECURITY.md).
+
+## License
+
+Apache License 2.0 — see [`LICENSE`](LICENSE). Built and maintained by
+[Signadot](https://www.signadot.com).

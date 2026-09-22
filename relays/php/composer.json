@@ -2,7 +2,7 @@
     "name": "cpmatrix/relay-php",
     "description": "Naive relay for the context propagation matrix (PHP). Never touches headers or tracing APIs.",
     "type": "project",
-    "license": "proprietary",
+    "license": "Apache-2.0",
     "require": {
         "php": ">=8.2",
         "ext-curl": "*",
