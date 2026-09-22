@@ -127,14 +127,14 @@ jobs:
         if: startsWith(matrix.variant, 'newrelic-')
         run: |
           sleep 5
-          docker compose run --rm --no-build driver -variant "${{ matrix.variant }}" >/dev/null 2>&1 || true
+          docker compose run --rm --pull never driver -variant "${{ matrix.variant }}" >/dev/null 2>&1 || true
           sleep 10
       - name: Measure (retry once on driver failure)
         run: |
-          docker compose run --rm --no-build driver -variant "${{ matrix.variant }}" || {
+          docker compose run --rm --pull never driver -variant "${{ matrix.variant }}" || {
             echo "::warning::driver failed once for ${{ matrix.variant }}; retrying"
             docker compose restart "relay-${{ matrix.variant }}"; sleep 5
-            docker compose run --rm --no-build driver -variant "${{ matrix.variant }}"
+            docker compose run --rm --pull never driver -variant "${{ matrix.variant }}"
           }
       - name: Relay + sink logs
         if: always()

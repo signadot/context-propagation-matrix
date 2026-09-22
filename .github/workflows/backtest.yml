@@ -114,8 +114,8 @@ jobs:
           docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
             --create --if-not-exists --topic sink-in --partitions 1 --replication-factor 1
           docker compose up -d --no-build "relay-$V"
-          if [[ "$V" == newrelic-* ]]; then sleep 5; docker compose run --rm --no-build driver -variant "$V" >/dev/null 2>&1 || true; sleep 10; fi
-          docker compose run --rm --no-build driver -variant "$V"
+          if [[ "$V" == newrelic-* ]]; then sleep 5; docker compose run --rm --pull never driver -variant "$V" >/dev/null 2>&1 || true; sleep 10; fi
+          docker compose run --rm --pull never driver -variant "$V"
       - name: Aggregate a single-variant results.json (kind=backtest)
         run: |
           set -euo pipefail
