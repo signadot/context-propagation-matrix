@@ -19,7 +19,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
 
 # ---- base runtime (uninstrumented) ----
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 COPY --from=build /out /app
 ENV TRACER_VERSION_FILE=/agent/version.txt
