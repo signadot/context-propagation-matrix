@@ -91,7 +91,7 @@ jobs:
           docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
             --create --if-not-exists --topic sink-in --partitions 1 --replication-factor 1
           docker compose up -d --no-build "relay-${{ matrix.variant }}"
-          docker compose run --rm --no-build driver -variant "${{ matrix.variant }}"
+          docker compose run --rm --pull never driver -variant "${{ matrix.variant }}"
       - name: Assert 16 hops recorded, canary clean
         run: |
           python3 - <<'EOF'
