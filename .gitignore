@@ -3,3 +3,4 @@ relays/go-otelc/.otelc-build/
 
 .env
 .env.*
+!.env.example
