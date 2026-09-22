@@ -161,7 +161,7 @@ type Annotation struct {
 	Explanation string   `json:"explanation,omitempty"`
 	Status      string   `json:"status"`
 	FixedIn     string   `json:"fixed_in,omitempty"`
-	Links       []Link   `json:"links,omitempty"`
+	Links       []Link   `json:"links"`
 	Cells       []string `json:"cells"`
 	Variants    []string `json:"variants"`
 }

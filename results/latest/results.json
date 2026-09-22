@@ -55773,6 +55773,7 @@
    "cause": "These relays run with no agent, wrapper or tracing library; no runtime in the matrix carries context on its own except .NET over HTTP/gRPC.",
    "explanation": "Control runs: every language's relay with no agent, wrapper or tracing gem\nattached (`none-*` variants, 128 hops). Java, Node, Python, Go, Ruby, Rust\nand PHP behave as expected — nothing propagates on any of the 16 boundaries\nfor any header — confirming that the instrumented results are attributable\nto the tool under test, not to the apps or the harness.\n\n.NET is the partial exception: with no agent, ASP.NET Core hosting creates an\n`Activity` per request and `HttpClient`'s DiagnosticsHandler injects it on the\nway out (gRPC inherits this because `Grpc.Net.Client` rides on HttpClient),\nso `traceparent` (same trace-id, fresh span-id) and `tracestate` (preserved\nverbatim) pass on all four `http/grpc -\u003e http/grpc` boundaries. There is no\nbuilt-in messaging propagation, so every Kafka and RabbitMQ leg is dark on\n.NET too, and `ot-baggage-*` is never handled. The built-in `baggage`\nbehaviour on the HTTP/gRPC legs is described separately\n(`baseline-dotnet-baggage-reemitted-as-correlation-context`).",
    "status": "by-design",
+   "links": [],
    "cells": [
     "none-dotnet/baggage/grpc-kafka",
     "none-dotnet/baggage/grpc-rabbitmq",
@@ -58074,6 +58075,7 @@
    "cause": "elastic_apm instruments neither rdkafka nor php-amqplib: nothing is injected on produce/publish and consumed messages start a fresh trace on the outbound leg.",
    "explanation": "On elastic_apm 1.17.0 (PHP 8.3, Apache mod_php + CLI workers) only\n`http-\u003ehttp` propagates `traceparent`/`tracestate`. Kafka and RabbitMQ are\nnot in the agent's supported-technologies list: `http-\u003ekafka` and\n`http-\u003erabbitmq` inject nothing, and the CLI consumers do not extract, so\n`kafka-\u003ehttp` and `rabbitmq-\u003ehttp` start a fresh trace (new trace-id, the\nforeign tracestate entry lost) while `kafka-\u003ekafka`, `kafka-\u003erabbitmq`,\n`rabbitmq-\u003ekafka` and `rabbitmq-\u003erabbitmq` carry nothing.\n\ngRPC-outbound legs are covered separately (`php-grpc-client-not-instrumented`)\nand gRPC-inbound is undeliverable in this topology (`php-no-grpc-server`).\nOur references cite no upstream issue for PHP messaging support in this\nagent.",
    "status": "open",
+   "links": [],
    "cells": [
     "elastic-php/traceparent/http-kafka",
     "elastic-php/traceparent/http-rabbitmq",
@@ -58436,6 +58438,7 @@
    "cause": "Confluent.Kafka instrumentation injects on produce but never accepts record headers into a transaction on consume, so outbound calls carry no headers.",
    "explanation": "All `*-\u003ekafka` legs inject on newrelic-dotnet-agent 10.54.0, but every\n`kafka-\u003e*` leg is dead: after a consume, outbound HTTP/gRPC/Kafka calls\ncarry no DT headers at all (no active transaction). FINDINGS records this as\n\"messaging-inbound all dead\" and classes it with the consume-side\ncontext-activation failures seen across vendors.\n\nOur references do not include a source-level citation for the .NET Kafka\nconsume path; confirming the mechanism (whether the consume wrapper starts\na transaction and whether it calls accept on the record headers) in the\nagent's Confluent.Kafka wrapper is the remaining investigation. No upstream\nissue is cited. Workaround: start a transaction in the consume loop and\naccept the record headers into it with the agent API.",
    "status": "open",
+   "links": [],
    "cells": [
     "newrelic-dotnet/traceparent/kafka-grpc",
     "newrelic-dotnet/traceparent/kafka-http",
@@ -58456,6 +58459,7 @@
    "cause": "newrelic_rpm's bunny publish instrumentation emits the vendor newrelic header only; traceparent and tracestate are absent on every *-\u003erabbitmq leg.",
    "explanation": "newrelic_rpm 10.7.1 is 12/16 on W3C headers but 16/16 on the vendor header:\neverything works, but bunny *publish* injects only the legacy `newrelic`\nheader. On all four `*-\u003erabbitmq` boundaries `traceparent`/`tracestate` are\nabsent, so a W3C-only consumer downstream (or another vendor's agent) sees\nnothing. Consume (`rabbitmq-\u003e*`) accepts and continues correctly.\n\nOur references cite no upstream issue for this asymmetry. Workaround: insert\nthe W3C headers into the message headers yourself with the agent's\ndistributed-tracing API before publishing.",
    "status": "open",
+   "links": [],
    "cells": [
     "newrelic-ruby/traceparent/grpc-rabbitmq",
     "newrelic-ruby/traceparent/http-rabbitmq",
@@ -58476,6 +58480,7 @@
    "cause": "The PHP agent's messaging support is php-amqplib publish only; rdkafka is unsupported, so no headers are injected into produced records.",
    "explanation": "newrelic-php-agent 12.10.0.39 is 2/16: `http-\u003ehttp` (curl) and\n`http-\u003erabbitmq` (php-amqplib \u003e= 3.7 publish instrumentation, agent \u003e= 11.6)\ncarry all three trace headers. rdkafka is unsupported, so `http-\u003ekafka`\ninjects nothing; `kafka-\u003ekafka` and `rabbitmq-\u003ekafka` additionally fail on\nthe consume side (see `newrelic-php-cli-consumers-never-accept`).\n\nDocker footgun worth knowing: `newrelic-install` symlinks the extension into\nthe extracted tarball directory by default — deleting the tarball leaves a\ndangling symlink and a silently uninstrumented app; build with\n`NR_INSTALL_USE_CP_NOT_LN=1`.",
    "status": "open",
+   "links": [],
    "cells": [
     "newrelic-php/traceparent/http-kafka",
     "newrelic-php/traceparent/kafka-kafka",
@@ -58494,6 +58499,7 @@
    "cause": "The PHP agent has no rdkafka consume or php-amqplib consume instrumentation, so the CLI worker processes never start a transaction from message headers.",
    "explanation": "On newrelic-php-agent 12.10.0.39 every `kafka-\u003e*` and `rabbitmq-\u003e*` leg is\ndead: the long-running CLI consumer workers never accept inbound context, so\noutbound calls after a consume carry no headers (no transaction is active).\nphp-amqplib coverage is publish-side only, and rdkafka is unsupported\nentirely.\n\nWorkaround: in the consumer loop, start a background transaction with the\nagent API and accept the message headers manually. Our references cite no\nupstream issue for consume-side support in the PHP agent.",
    "status": "open",
+   "links": [],
    "cells": [
     "newrelic-php/traceparent/kafka-grpc",
     "newrelic-php/traceparent/kafka-http",
