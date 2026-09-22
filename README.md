@@ -34,28 +34,40 @@ docker compose up -d kafka rabbitmq sink
 # run everything (New Relic variants need a license key)
 NEW_RELIC_LICENSE_KEY=... ./run.sh all
 
-# regenerate results/MATRIX.md from results/raw/*.json
-go run ./matrixgen
+# or: ./run.sh public | tool:datadog | language:python
+
+# re-aggregate results/raw/*.json -> results/latest/{results.json,MATRIX.md}
+go run ./cmd/cpm aggregate -matrix-md results/MATRIX.md
+
+# check variants.yaml, docker-compose.yml and annotations/ agree
+go run ./cmd/cpm validate
 ```
 
 Each variant writes `results/raw/{variant}.json` containing the seeded
 headers, the verbatim headers observed after the hop, and an evaluated status
 per header — every cell of the matrix is auditable down to raw header values.
+`cpm aggregate` folds those into `results/latest/results.json` (schema v2:
+the contract the website consumes; see DESIGN.md) and renders `MATRIX.md`.
 
 ## Layout
 
 ```
 DESIGN.md          the harness contract (read this first)
 FINDINGS.md        root causes and upstream references for notable cells
+variants.yaml      the registry: tools, languages, protocols, headers, variants
+annotations/       per-cell explanations as data (matched into results.json)
 proto/             relay/sink gRPC definitions
 sink/              uninstrumented Go recorder (HTTP + gRPC + Kafka + RabbitMQ)
 driver/            uninstrumented Go test driver (seeds headers, evaluates results)
-matrixgen/         results/raw/*.json -> results/MATRIX.md
+cmd/cpm/           CLI: list | validate | aggregate | diff | summary
+internal/          registry loader, results schema v2, annotations, renderer
+matrixgen/         compatibility wrapper around `cpm aggregate` (MATRIX.md only)
 relays/{lang}/     one naive relay app per language, one instrumentation variant per tool
 relays/go-orchestrion/  naive Go app compiled with Datadog Orchestrion (build-time weaving)
 relays/go-otelc/   naive Go app compiled with OTel compile-time instrumentation (otelc)
-results/raw/       machine-readable results per variant
-results/MATRIX.md  the generated support matrix
+results/raw/       machine-readable results per variant (internal format)
+results/latest/    results.json (schema v2) + MATRIX.md + changes.json from the last run
+results/MATRIX.md  mirror of results/latest/MATRIX.md
 ```
 
 ## Results site
