@@ -50,14 +50,14 @@ func (s *StringList) UnmarshalYAML(n *yaml.Node) error {
 }
 
 type Annotation struct {
-	ID          string          `yaml:"id"`
-	Title       string          `yaml:"title"`
-	Match       []Selector      `yaml:"match"`
-	Cause       string          `yaml:"cause"`
-	Explanation string          `yaml:"explanation"`
-	Status      string          `yaml:"status"` // open | by-design | fixed | wontfix | config
-	FixedIn     string          `yaml:"fixed_in"`
-	Links       []results.Link  `yaml:"links"`
+	ID          string         `yaml:"id"`
+	Title       string         `yaml:"title"`
+	Match       []Selector     `yaml:"match"`
+	Cause       string         `yaml:"cause"`
+	Explanation string         `yaml:"explanation"`
+	Status      string         `yaml:"status"` // open | by-design | fixed | wontfix | config
+	FixedIn     string         `yaml:"fixed_in"`
+	Links       []results.Link `yaml:"links"`
 	sourceFile  string
 }
 

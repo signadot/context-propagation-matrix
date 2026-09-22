@@ -81,14 +81,14 @@ type Variant struct {
 func (v Variant) ComposeService() string { return "relay-" + v.ID }
 
 type Registry struct {
-	SchemaVersion int                  `yaml:"schema_version"`
-	Tools         map[string]*Tool     `yaml:"tools"`
-	Languages     map[string]*Language `yaml:"languages"`
-	Protocols     map[string]*Protocol `yaml:"protocols"`
-	Boundaries    []string             `yaml:"boundaries"`
-	Headers       map[string]*Header   `yaml:"headers"`
+	SchemaVersion int                   `yaml:"schema_version"`
+	Tools         map[string]*Tool      `yaml:"tools"`
+	Languages     map[string]*Language  `yaml:"languages"`
+	Protocols     map[string]*Protocol  `yaml:"protocols"`
+	Boundaries    []string              `yaml:"boundaries"`
+	Headers       map[string]*Header    `yaml:"headers"`
 	SetupTiers    map[string]*SetupTier `yaml:"setup_tiers"`
-	Variants      []*Variant           `yaml:"variants"`
+	Variants      []*Variant            `yaml:"variants"`
 
 	// HeaderOrder preserves the document order of the headers map.
 	HeaderOrder []string `yaml:"-"`
