@@ -172,9 +172,13 @@ func Apply(res *results.Results, anns []*Annotation) []Problem {
 		}
 		cells := keys(cellSet)
 		vars := keys(varSet)
+		links := a.Links
+		if links == nil {
+			links = []results.Link{}
+		}
 		res.Annotations = append(res.Annotations, results.Annotation{
 			ID: a.ID, Title: a.Title, Cause: a.Cause, Explanation: strings.TrimSpace(a.Explanation),
-			Status: a.Status, FixedIn: a.FixedIn, Links: a.Links, Cells: cells, Variants: vars,
+			Status: a.Status, FixedIn: a.FixedIn, Links: links, Cells: cells, Variants: vars,
 		})
 	}
 	return problems
