@@ -144,6 +144,7 @@
    {
     "id": "rabbitmq",
     "display_name": "RabbitMQ",
+    "short_name": "rmq",
     "carrier": "AMQP 0-9-1 message headers",
     "async": true
    }
