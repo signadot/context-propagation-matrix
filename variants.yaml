@@ -66,11 +66,14 @@ languages:
   php:    { display_name: PHP,     order: 6 }
   rust:   { display_name: Rust,    order: 7 }
 
+# short_name is optional: the label used on tight grid axes on the site (the
+# id is used when absent). Adding a protocol here plus one boundary list entry
+# per pair is all the site needs to grow its grids, OG images and copy.
 protocols:
   http:     { display_name: HTTP,     carrier: "HTTP request headers" }
   grpc:     { display_name: gRPC,     carrier: "gRPC metadata" }
   kafka:    { display_name: Kafka,    carrier: "Kafka record headers", async: true }
-  rabbitmq: { display_name: RabbitMQ, carrier: "AMQP 0-9-1 message headers", async: true }
+  rabbitmq: { display_name: RabbitMQ, short_name: rmq, carrier: "AMQP 0-9-1 message headers", async: true }
 
 # Boundaries are every inbound × outbound protocol pair through one relay.
 # Order here is the column order in every table.

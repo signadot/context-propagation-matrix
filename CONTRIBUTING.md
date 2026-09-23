@@ -101,9 +101,12 @@ per variant). Open an issue first so we can agree the carrier semantics.
    `forward_via` branch, using the language's idiomatic client. Each relay's
    `/info` should report the new client's version under `libs`.
 5. `variants.yaml` — add the protocol under `protocols:` (with its
-   `carrier` description and `async: true` if it is a queue) and every new
-   boundary under `boundaries:` in the column order you want. The registry
-   refuses to load unless the boundary count is exactly protocols².
+   `carrier` description, `async: true` if it is a queue, and an optional
+   `short_name` for tight grid axes) and every new boundary under
+   `boundaries:` in the column order you want. The registry refuses to load
+   unless the boundary count is exactly protocols². contextpropagation.io
+   derives its grids, heatmaps, OG images and copy from these `dimensions`,
+   so no site change is needed for a new column.
 6. `docker-compose.yml` — a broker service (with a healthcheck) if needed,
    and any new endpoints in `x-relay-common-env`.
 7. Run everything (`./run.sh all`); the new column will be mostly red at

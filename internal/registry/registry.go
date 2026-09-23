@@ -33,8 +33,11 @@ type Language struct {
 type Protocol struct {
 	ID          string `yaml:"-" json:"id"`
 	DisplayName string `yaml:"display_name" json:"display_name"`
-	Carrier     string `yaml:"carrier" json:"carrier"`
-	Async       bool   `yaml:"async,omitempty" json:"async,omitempty"`
+	// ShortName is the label for tight grid axes (e.g. "rmq"); the id is used
+	// when it is empty.
+	ShortName string `yaml:"short_name,omitempty" json:"short_name,omitempty"`
+	Carrier   string `yaml:"carrier" json:"carrier"`
+	Async     bool   `yaml:"async,omitempty" json:"async,omitempty"`
 }
 
 type Header struct {
