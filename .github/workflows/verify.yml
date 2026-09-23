@@ -42,8 +42,12 @@ jobs:
         run: test -z "$(gofmt -l ./cmd ./internal ./driver ./sink ./matrixgen)" || { gofmt -l ./cmd ./internal ./driver ./sink ./matrixgen; exit 1; }
       - name: go vet
         run: go vet ./...
+      # Pull requests are strict: an annotation whose cells all pass (or whose
+      # explicit outcome no longer occurs) must be marked fixed in the same
+      # review. The scheduled matrix run stays non-strict so an upstream fix
+      # can never stop results from being published.
       - name: registry, compose and annotations agree
-        run: go run ./cmd/cpm validate -results results/latest/results.json
+        run: go run ./cmd/cpm validate -results results/latest/results.json ${{ github.event_name == 'pull_request' && '-strict' || '' }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22

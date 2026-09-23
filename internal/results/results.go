@@ -155,15 +155,21 @@ type Variant struct {
 // Annotation is an explanation attached to a set of cells (see
 // internal/annotations); it is embedded verbatim so the site has one input.
 type Annotation struct {
-	ID          string   `json:"id"`
-	Title       string   `json:"title"`
-	Cause       string   `json:"cause"`
-	Explanation string   `json:"explanation,omitempty"`
-	Status      string   `json:"status"`
-	FixedIn     string   `json:"fixed_in,omitempty"`
-	Links       []Link   `json:"links"`
-	Cells       []string `json:"cells"`
-	Variants    []string `json:"variants"`
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Cause       string `json:"cause"`
+	Explanation string `json:"explanation,omitempty"`
+	Status      string `json:"status"`
+	FixedIn     string `json:"fixed_in,omitempty"`
+	// Resolved is set by the aggregator when every cell the annotation's
+	// selectors describe now passes: the explanation is kept, attached to the
+	// passing cells, so readers can see what used to fail and since when.
+	// FixedIn is filled from the variant's reported tracer version when the
+	// annotation itself does not state one.
+	Resolved bool     `json:"resolved,omitempty"`
+	Links    []Link   `json:"links"`
+	Cells    []string `json:"cells"`
+	Variants []string `json:"variants"`
 }
 
 type Link struct {
