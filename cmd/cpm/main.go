@@ -6,6 +6,8 @@
 //	cpm aggregate [-raw results/raw] [-out results/latest] [-run-id id] [-prev results.json]
 //	cpm diff <from.json> <to.json> [-out changes.json]
 //	cpm summary <results.json> [-changes changes.json]
+//	cpm annotations mark-fixed <id> -fixed-in <version>
+//	cpm annotations resolved <results.json>
 package main
 
 import (
@@ -47,6 +49,8 @@ func main() {
 		err = cmdSummary(os.Args[2:])
 	case "coords":
 		err = cmdCoords(os.Args[2:])
+	case "annotations":
+		err = cmdAnnotations(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -67,8 +71,67 @@ func usage() {
   aggregate  results/raw/*.json -> results.json + MATRIX.md (+ changes.json)
   diff       compare two results.json files into changes.json
   summary    markdown summary of a results.json for CI/Slack
-  coords     tracer package coordinates per variant as JSON (for version discovery)`)
+  coords     tracer package coordinates per variant as JSON (for version discovery)
+  annotations mark-fixed <id> -fixed-in <version>   record an upstream fix in annotations/
+  annotations resolved <results.json>              list resolved-but-unmarked annotations (id<TAB>version)`)
 	os.Exit(2)
+}
+
+// ---------------------------------------------------------------------------
+
+func cmdAnnotations(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("usage: cpm annotations <mark-fixed|resolved> ...")
+	}
+	switch args[0] {
+	case "mark-fixed":
+		fs := flag.NewFlagSet("annotations mark-fixed", flag.ExitOnError)
+		dir := fs.String("annotations", "annotations", "annotations directory")
+		ver := fs.String("fixed-in", "", "tracer version the fix shipped in (required)")
+		// Allow `mark-fixed <id> -fixed-in v` as well as flags-first: the id
+		// is the single positional argument wherever it appears.
+		id, rest := "", []string{}
+		for i := 1; i < len(args); i++ {
+			if !strings.HasPrefix(args[i], "-") && id == "" {
+				id = args[i]
+				continue
+			}
+			rest = append(rest, args[i])
+			if (args[i] == "-fixed-in" || args[i] == "--fixed-in" || args[i] == "-annotations" || args[i] == "--annotations") && i+1 < len(args) {
+				i++
+				rest = append(rest, args[i])
+			}
+		}
+		fs.Parse(rest)
+		if id == "" || fs.NArg() != 0 || *ver == "" {
+			return fmt.Errorf("usage: cpm annotations mark-fixed <id> -fixed-in <version>")
+		}
+		file, err := annotations.MarkFixed(*dir, id, *ver)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s: %s -> status: fixed, fixed_in: %s\n", file, id, *ver)
+		return nil
+	case "resolved":
+		// For automation: annotations the aggregator marked resolved whose
+		// YAML does not yet say fixed. One "id<TAB>fixed_in" per line.
+		fs := flag.NewFlagSet("annotations resolved", flag.ExitOnError)
+		fs.Parse(args[1:])
+		if fs.NArg() != 1 {
+			return fmt.Errorf("usage: cpm annotations resolved <results.json>")
+		}
+		res, err := results.Load(fs.Arg(0))
+		if err != nil {
+			return err
+		}
+		for _, a := range res.Annotations {
+			if a.Resolved && a.Status != "fixed" {
+				fmt.Printf("%s\t%s\n", a.ID, a.FixedIn)
+			}
+		}
+		return nil
+	}
+	return fmt.Errorf("unknown annotations subcommand %q", args[0])
 }
 
 func regFlag(fs *flag.FlagSet) *string {
@@ -245,6 +308,26 @@ func cmdValidate(args []string) error {
 			}
 		}
 		fmt.Printf("annotations: matched against %s (%d problems)\n", *resPath, len(problems))
+		resolved := 0
+		for _, a := range res.Annotations {
+			if a.Resolved {
+				resolved++
+			}
+		}
+		if resolved > 0 {
+			fmt.Printf("annotations: %d resolved (every described cell now passes)\n", resolved)
+		}
+		// Coverage: failing cells nobody has explained yet. Informational —
+		// a new variant legitimately arrives unexplained — but surfaced here
+		// and in the Slack summary so an explanation gets written.
+		if un := annotations.Unexplained(res); len(un) > 0 {
+			fmt.Printf("annotations: %d non-pass cell(s) have no annotation:\n", len(un))
+			for _, line := range unexplainedLines(un, 20) {
+				fmt.Println("  " + line)
+			}
+		} else {
+			fmt.Println("annotations: every non-pass cell is explained")
+		}
 	} else if !os.IsNotExist(err) {
 		return err
 	} else {
@@ -434,6 +517,52 @@ func cmdSummary(args []string) error {
 			}
 		}
 	}
+	var resolved []string
+	for _, a := range res.Annotations {
+		if a.Resolved {
+			resolved = append(resolved, fmt.Sprintf("%s (fixed in %s, status still `%s`)", a.ID, a.FixedIn, a.Status))
+		}
+	}
+	if len(resolved) > 0 {
+		sb.WriteString("\n### Annotations whose cells now all pass\n\n")
+		for _, r := range resolved {
+			fmt.Fprintf(&sb, "- ✅ %s\n", r)
+		}
+		sb.WriteString("\nRecord `status: fixed` / `fixed_in` in `annotations/` (`cpm annotations mark-fixed <id> -fixed-in <version>`).\n")
+	}
+	if un := annotations.Unexplained(res); len(un) > 0 {
+		fmt.Fprintf(&sb, "\n### %d failing cell(s) without an explanation\n\n", len(un))
+		for _, line := range unexplainedLines(un, 12) {
+			fmt.Fprintf(&sb, "- %s\n", line)
+		}
+		sb.WriteString("\nAdd an annotation under `annotations/` so the site can explain them.\n")
+	}
 	fmt.Print(sb.String())
 	return nil
+}
+
+// unexplainedLines groups cell ids ("variant/header/in-out") by variant into
+// at most max lines: "variant: header/in-out, header/in-out …".
+func unexplainedLines(cells []string, max int) []string {
+	byVariant := map[string][]string{}
+	var order []string
+	for _, id := range cells {
+		v, rest, ok := strings.Cut(id, "/")
+		if !ok {
+			v, rest = id, ""
+		}
+		if _, seen := byVariant[v]; !seen {
+			order = append(order, v)
+		}
+		byVariant[v] = append(byVariant[v], rest)
+	}
+	var out []string
+	for i, v := range order {
+		if i == max {
+			out = append(out, fmt.Sprintf("… and %d more variant(s)", len(order)-max))
+			break
+		}
+		out = append(out, fmt.Sprintf("%s: %s", v, strings.Join(byVariant[v], ", ")))
+	}
+	return out
 }

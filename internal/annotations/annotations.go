@@ -135,53 +135,301 @@ func (p Problem) String() string {
 }
 
 // Apply evaluates selectors against res, appends matched annotations to
-// res.Annotations, and returns validation problems. A selector that matches
-// no cell at all is fatal (it is stale or mistyped); one that matches only
-// passing cells is a warning (the problem may have been fixed upstream).
+// res.Annotations, and returns validation problems.
+//
+// Each selector is evaluated in two passes so that an upstream fix can never
+// break a run:
+//
+//   - structural: tool/language/variant/flavour/header/boundary, ignoring
+//     outcome. Zero structural matches is fatal — the selector names a cell
+//     that does not exist (stale after a variant/protocol removal, or a typo).
+//   - outcome: the structural cells further filtered by the selector's
+//     outcome list (default: every non-pass, non-not_run outcome). These are
+//     the cells the annotation is attached to.
+//
+// When an annotation has structural matches but no outcome matches anywhere,
+// every cell it describes now passes. It is then marked Resolved, attached to
+// those passing cells (so the page can still say what used to fail), FixedIn
+// is filled from the variants' reported tracer version if the YAML does not
+// state one, and a warning asks the maintainer to record `status: fixed` /
+// `fixed_in`. Warnings never fail aggregation; `cpm validate --strict` turns
+// them into errors on pull requests so the YAML is kept honest.
 func Apply(res *results.Results, anns []*Annotation) []Problem {
 	var problems []Problem
 	res.Annotations = res.Annotations[:0]
 	for _, a := range anns {
-		cellSet := map[string]bool{}
-		varSet := map[string]bool{}
-		anyNonPass := false
+		active := map[string]bool{}     // cells matched including outcome
+		structural := map[string]bool{} // cells matched ignoring outcome
+		activeVars := map[string]bool{}
+		structVars := map[string]bool{}
+		anyNonPassStructural := false
 		for _, sel := range a.Match {
-			matched := 0
+			nStruct, nActive := 0, 0
 			for _, v := range res.Variants {
 				if v.Missing || !sel.matchesVariant(v) {
 					continue
 				}
-				for _, c := range v.Cells {
-					if !sel.matchesCell(&c) {
+				for i := range v.Cells {
+					c := &v.Cells[i]
+					if !sel.matchesShape(c) {
 						continue
 					}
-					matched++
-					cellSet[c.CellID] = true
-					varSet[v.ID] = true
-					if c.Outcome != results.OutcomePass {
-						anyNonPass = true
+					nStruct++
+					if c.Outcome == results.OutcomePass || c.Outcome == results.OutcomeNotRun {
+						// Only remember passing cells for the resolved case.
+						structural[c.CellID] = c.Outcome == results.OutcomePass
+					} else {
+						structural[c.CellID] = false
+						anyNonPassStructural = true
+					}
+					structVars[v.ID] = true
+					if sel.matchesOutcome(c) {
+						nActive++
+						active[c.CellID] = true
+						activeVars[v.ID] = true
 					}
 				}
 			}
-			if matched == 0 {
-				problems = append(problems, Problem{a.ID, a.sourceFile, true, fmt.Sprintf("selector %s matches no cell", sel)})
+			switch {
+			case nStruct == 0:
+				problems = append(problems, Problem{a.ID, a.sourceFile, true, fmt.Sprintf("selector %s matches no cell (variant, header or boundary no longer exists)", sel)})
+			case nActive == 0 && len(sel.Outcome) > 0:
+				problems = append(problems, Problem{a.ID, a.sourceFile, false, fmt.Sprintf("selector %s matches cells but none currently has outcome %s", sel, strings.Join(sel.Outcome, "|"))})
 			}
 		}
-		if len(cellSet) > 0 && !anyNonPass && a.Status != "fixed" {
-			problems = append(problems, Problem{a.ID, a.sourceFile, false, "every matched cell now passes; set status: fixed and fixed_in"})
-		}
-		cells := keys(cellSet)
-		vars := keys(varSet)
-		links := a.Links
-		if links == nil {
-			links = []results.Link{}
-		}
-		res.Annotations = append(res.Annotations, results.Annotation{
+
+		ann := results.Annotation{
 			ID: a.ID, Title: a.Title, Cause: a.Cause, Explanation: strings.TrimSpace(a.Explanation),
-			Status: a.Status, FixedIn: a.FixedIn, Links: links, Cells: cells, Variants: vars,
-		})
+			Status: a.Status, FixedIn: a.FixedIn, Links: a.Links,
+		}
+		if ann.Links == nil {
+			ann.Links = []results.Link{}
+		}
+
+		switch {
+		case len(active) > 0:
+			// Still describes at least one failing cell.
+			ann.Cells = keys(active)
+			ann.Variants = keys(activeVars)
+			if a.Status == "fixed" {
+				problems = append(problems, Problem{a.ID, a.sourceFile, false, fmt.Sprintf("status is fixed but %d matched cell(s) do not pass — regression?", len(active))})
+			}
+		case len(structural) > 0 && !anyNonPassStructural:
+			// Everything it describes passes: keep it, attached to the green cells.
+			passing := map[string]bool{}
+			for id, pass := range structural {
+				if pass {
+					passing[id] = true
+				}
+			}
+			ann.Resolved = true
+			ann.Cells = keys(passing)
+			ann.Variants = keys(structVars)
+			if ann.FixedIn == "" {
+				ann.FixedIn = tracerVersions(res, ann.Variants)
+			}
+			if a.Status != "fixed" {
+				problems = append(problems, Problem{a.ID, a.sourceFile, false, fmt.Sprintf("every matched cell now passes; set status: fixed and fixed_in: %q", ann.FixedIn)})
+			}
+		default:
+			// Structural matches exist but only with outcomes the selector
+			// excludes (explicit outcome lists). Nothing to attach.
+			ann.Cells = []string{}
+			ann.Variants = keys(structVars)
+		}
+		res.Annotations = append(res.Annotations, ann)
 	}
 	return problems
+}
+
+// tracerVersions returns the tracer (or weaver) version reported by the given
+// variants: a single version when they agree, otherwise "variant@version"
+// pairs joined with ", ".
+func tracerVersions(res *results.Results, variantIDs []string) string {
+	byVariant := map[string]string{}
+	distinct := map[string]bool{}
+	for _, id := range variantIDs {
+		for _, v := range res.Variants {
+			if v.ID != id {
+				continue
+			}
+			ver := ""
+			if v.Tracer != nil && v.Tracer.Version != "" {
+				ver = v.Tracer.Version
+			} else if v.Weaver != nil && v.Weaver.Version != "" {
+				ver = v.Weaver.Version
+			}
+			if ver != "" {
+				byVariant[id] = ver
+				distinct[ver] = true
+			}
+		}
+	}
+	if len(distinct) == 1 {
+		return keys(distinct)[0]
+	}
+	var parts []string
+	for _, id := range variantIDs {
+		if ver, ok := byVariant[id]; ok {
+			parts = append(parts, id+"@"+ver)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// MarkFixed rewrites the annotation with the given id in place, under dir, to
+// `status: fixed` with `fixed_in: version`. It edits lines rather than
+// re-marshalling so comments, quoting and ordering in the file survive; the
+// result is re-parsed to make sure the file is still valid. It returns the
+// file that was changed.
+func MarkFixed(dir, id, version string) (string, error) {
+	if strings.TrimSpace(version) == "" {
+		return "", fmt.Errorf("a version is required")
+	}
+	anns, err := LoadDir(dir)
+	if err != nil {
+		return "", err
+	}
+	var target *Annotation
+	for _, a := range anns {
+		if a.ID == id {
+			target = a
+		}
+	}
+	if target == nil {
+		return "", fmt.Errorf("no annotation with id %q under %s", id, dir)
+	}
+	b, err := os.ReadFile(target.sourceFile)
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Split(string(b), "\n")
+
+	// Locate the list item: the line whose stripped form is "- id: <id>", then
+	// its extent up to the next list item at the same indent.
+	start := -1
+	for i, l := range lines {
+		if k, v, ok := strings.Cut(strings.TrimLeft(l, " "), ":"); ok && strings.TrimSpace(k) == "- id" && unquote(strings.TrimSpace(v)) == id {
+			start = i
+			break
+		}
+	}
+	if start < 0 {
+		return "", fmt.Errorf("%s: cannot find `- id: %s` (is the id on its own line?)", target.sourceFile, id)
+	}
+	indent := len(lines[start]) - len(strings.TrimLeft(lines[start], " "))
+	end := len(lines)
+	for i := start + 1; i < len(lines); i++ {
+		l := lines[i]
+		if strings.TrimSpace(l) == "" || strings.HasPrefix(strings.TrimSpace(l), "#") {
+			continue
+		}
+		if len(l)-len(strings.TrimLeft(l, " ")) <= indent && strings.HasPrefix(strings.TrimLeft(l, " "), "- ") {
+			end = i
+			break
+		}
+	}
+	fieldIndent := strings.Repeat(" ", indent+2)
+	statusLine, fixedInLine := -1, -1
+	for i := start + 1; i < end; i++ {
+		t := strings.TrimLeft(lines[i], " ")
+		if len(lines[i])-len(t) != indent+2 {
+			continue // nested (match:, links:) content
+		}
+		switch {
+		case strings.HasPrefix(t, "status:"):
+			statusLine = i
+		case strings.HasPrefix(t, "fixed_in:"):
+			fixedInLine = i
+		}
+	}
+	newFixedIn := fieldIndent + "fixed_in: " + quote(version)
+	switch {
+	case statusLine >= 0:
+		// Keep any trailing comment on the status line.
+		rest := strings.TrimPrefix(strings.TrimLeft(lines[statusLine], " "), "status:")
+		comment := ""
+		if i := strings.Index(rest, "#"); i >= 0 {
+			comment = "  " + strings.TrimSpace(rest[i:])
+		}
+		lines[statusLine] = fieldIndent + "status: fixed" + comment
+		if fixedInLine >= 0 {
+			lines[fixedInLine] = newFixedIn
+		} else {
+			lines = append(lines[:statusLine+1], append([]string{newFixedIn}, lines[statusLine+1:]...)...)
+		}
+	default:
+		// No explicit status (defaulted to open): append both after `cause:`
+		// or, failing that, at the end of the item.
+		at := end
+		for i := start + 1; i < end; i++ {
+			t := strings.TrimLeft(lines[i], " ")
+			if len(lines[i])-len(t) == indent+2 && strings.HasPrefix(t, "cause:") {
+				at = i + 1
+				break
+			}
+		}
+		ins := []string{fieldIndent + "status: fixed", newFixedIn}
+		if fixedInLine >= 0 {
+			lines[fixedInLine] = newFixedIn
+			ins = ins[:1]
+		}
+		lines = append(lines[:at], append(ins, lines[at:]...)...)
+	}
+	out := strings.Join(lines, "\n")
+	var check []*Annotation
+	if err := yaml.Unmarshal([]byte(out), &check); err != nil {
+		return "", fmt.Errorf("%s: rewrite produced invalid YAML: %w", target.sourceFile, err)
+	}
+	for _, a := range check {
+		if a.ID == id && (a.Status != "fixed" || a.FixedIn != version) {
+			return "", fmt.Errorf("%s: rewrite did not take effect (status=%q fixed_in=%q)", target.sourceFile, a.Status, a.FixedIn)
+		}
+	}
+	if err := os.WriteFile(target.sourceFile, []byte(out), 0o644); err != nil {
+		return "", err
+	}
+	return target.sourceFile, nil
+}
+
+func unquote(s string) string {
+	if len(s) >= 2 && (s[0] == '"' && s[len(s)-1] == '"' || s[0] == '\'' && s[len(s)-1] == '\'') {
+		return s[1 : len(s)-1]
+	}
+	return s
+}
+
+func quote(s string) string {
+	return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
+}
+
+// Unexplained lists cells whose outcome is a failure the site should be able
+// to explain but that no annotation is attached to. undelivered and not_run
+// are excluded: they are harness topology limits, not propagation results.
+func Unexplained(res *results.Results) []string {
+	covered := map[string]bool{}
+	for _, a := range res.Annotations {
+		for _, c := range a.Cells {
+			covered[c] = true
+		}
+	}
+	var out []string
+	for _, v := range res.Variants {
+		if v.Missing {
+			continue
+		}
+		for _, c := range v.Cells {
+			switch c.Outcome {
+			case results.OutcomePass, results.OutcomeNotRun, results.OutcomeUndelivered:
+				continue
+			}
+			if !covered[c.CellID] {
+				out = append(out, c.CellID)
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 func keys(m map[string]bool) []string {
@@ -229,7 +477,9 @@ func (s Selector) matchesVariant(v *results.Variant) bool {
 	return true
 }
 
-func (s Selector) matchesCell(c *results.Cell) bool {
+// matchesShape is the structural half of a cell match: header and boundary,
+// ignoring outcome.
+func (s Selector) matchesShape(c *results.Cell) bool {
 	if !inList(s.Header, c.Header) {
 		return false
 	}
@@ -245,10 +495,21 @@ func (s Selector) matchesCell(c *results.Cell) bool {
 			return false
 		}
 	}
+	return true
+}
+
+// matchesOutcome is the outcome half: the selector's explicit outcome list,
+// or by default every outcome that is a real, delivered non-pass.
+func (s Selector) matchesOutcome(c *results.Cell) bool {
 	if len(s.Outcome) == 0 {
 		return c.Outcome != results.OutcomePass && c.Outcome != results.OutcomeNotRun
 	}
 	return inList(s.Outcome, string(c.Outcome))
+}
+
+// matchesCell is the full match (shape and outcome).
+func (s Selector) matchesCell(c *results.Cell) bool {
+	return s.matchesShape(c) && s.matchesOutcome(c)
 }
 
 func inList(l StringList, v string) bool {

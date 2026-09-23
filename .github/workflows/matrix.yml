@@ -42,6 +42,7 @@ concurrency:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 env:
   CACHE_IMAGE: ghcr.io/${{ github.repository }}/cache
@@ -231,6 +232,38 @@ jobs:
           git commit -m "results: ${{ steps.ids.outputs.run_id }} [skip ci]"
           git pull --rebase origin main
           git push origin HEAD:main
+      # When an upstream fix lands, the affected annotation's cells all pass and
+      # the aggregator marks it resolved (never an error). Open a PR that records
+      # `status: fixed` / `fixed_in` so PR CI (`cpm validate -strict`) is green
+      # again and the site shows the fix as history. Requires the repository
+      # setting "Allow GitHub Actions to create and approve pull requests"; if
+      # it is off, the step only warns and the Slack summary still names the ids.
+      - name: Open PR marking resolved annotations fixed
+        if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main' && steps.agg.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          resolved=$(go run ./cmd/cpm annotations resolved results/latest/results.json)
+          [[ -z "$resolved" ]] && { echo "no newly resolved annotations"; exit 0; }
+          branch="annotations/resolved-${{ steps.ids.outputs.run_id }}"
+          git checkout -B "$branch"
+          body="The following annotations matched only passing cells in [${{ steps.ids.outputs.run_id }}](https://github.com/${{ github.repository }}/releases/tag/${{ steps.ids.outputs.run_id }}), so the upstream problem they describe appears fixed. This PR records that in \`annotations/\`."$'\n\n'
+          while IFS=$'\t' read -r id ver; do
+            [[ -z "$id" ]] && continue
+            go run ./cmd/cpm annotations mark-fixed "$id" -fixed-in "${ver:-unknown}"
+            body+="- \`$id\` → fixed in \`${ver:-unknown}\`"$'\n'
+          done <<< "$resolved"
+          git add annotations
+          if git diff --cached --quiet; then echo "annotations already marked"; exit 0; fi
+          git commit -m "annotations: mark resolved in ${{ steps.ids.outputs.run_id }} as fixed"
+          git push -f origin "$branch"
+          if ! gh pr create --base main --head "$branch" \
+               --title "annotations: mark fixed after ${{ steps.ids.outputs.run_id }}" \
+               --body "$body"$'\n'"Check the linked upstream release notes before merging; adjust \`fixed_in\` if the fix shipped earlier than the version we happened to test."; then
+            echo "::warning::could not open PR (enable 'Allow GitHub Actions to create and approve pull requests' in Settings → Actions); branch $branch is pushed"
+          fi
+          git checkout -q -
       - name: Publish release ${{ steps.ids.outputs.run_id }}
         if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main'
         env:
