@@ -4,6 +4,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY gen ./gen
+COPY internal ./internal
 COPY sink ./sink
 COPY driver ./driver
 RUN CGO_ENABLED=0 go build -o /out/sink ./sink \

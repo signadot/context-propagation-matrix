@@ -318,8 +318,7 @@
        "Java/17.0.20"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -358,8 +357,7 @@
        "grpc-java-netty/1.66.0"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -386,8 +384,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -414,8 +411,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -454,8 +450,7 @@
        "Java/17.0.20"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -494,8 +489,7 @@
        "grpc-java-netty/1.66.0"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -522,8 +516,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -550,8 +543,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -590,8 +582,7 @@
        "Java/17.0.20"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -630,8 +621,7 @@
        "grpc-java-netty/1.66.0"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -658,8 +648,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -686,8 +675,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -726,8 +714,7 @@
        "Java/17.0.20"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -766,8 +753,7 @@
        "grpc-java-netty/1.66.0"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -794,8 +780,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -822,8 +807,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -1516,8 +1500,7 @@
        "axios/1.20.0"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -1559,8 +1542,7 @@
        "grpc-node-js/1.14.4"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -1587,8 +1569,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -1615,8 +1596,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -1661,8 +1641,7 @@
        "axios/1.20.0"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -1704,8 +1683,7 @@
        "grpc-node-js/1.14.4"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -1732,8 +1710,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -1760,8 +1737,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -1806,8 +1782,7 @@
        "axios/1.20.0"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -1849,8 +1824,7 @@
        "grpc-node-js/1.14.4"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -1877,8 +1851,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -1905,8 +1878,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -1951,8 +1923,7 @@
        "axios/1.20.0"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -1994,8 +1965,7 @@
        "grpc-node-js/1.14.4"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -2022,8 +1992,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -2050,8 +2019,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -2744,8 +2712,7 @@
        "python-requests/2.34.2"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -2784,8 +2751,7 @@
        "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -2812,8 +2778,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -2840,8 +2805,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -2886,8 +2850,7 @@
        "python-requests/2.34.2"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -2926,8 +2889,7 @@
        "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -2954,8 +2916,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -2982,8 +2943,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -3022,8 +2982,7 @@
        "python-requests/2.34.2"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -3056,8 +3015,7 @@
        "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -3078,8 +3036,7 @@
        "00-56e3c7ab730034dc9c3e928c25305490-0310561e3f953352-03"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -3100,8 +3057,7 @@
        "00-5178115ff4a299c719fb0958f6a95e5c-b8d71255ce30950a-03"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -3146,8 +3102,7 @@
        "python-requests/2.34.2"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -3186,8 +3141,7 @@
        "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -3214,8 +3168,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -3242,8 +3195,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -3929,8 +3881,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -3966,8 +3917,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -3994,8 +3944,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -4022,8 +3971,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -4062,8 +4010,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -4099,8 +4046,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -4127,8 +4073,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -4155,8 +4100,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -4195,8 +4139,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -4232,8 +4175,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -4260,8 +4202,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -4288,8 +4229,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -4328,8 +4268,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -4365,8 +4304,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -4393,8 +4331,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -4421,8 +4358,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -5109,8 +5045,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -5149,8 +5084,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -5177,8 +5111,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -5194,8 +5127,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-go-compiletime--http-rabbitmq--7f07ddb0"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -5234,8 +5166,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -5274,8 +5205,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -5302,8 +5232,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -5319,8 +5248,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-go-compiletime--grpc-rabbitmq--ab991556"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -5350,8 +5278,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -5381,8 +5308,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -5398,8 +5324,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-go-compiletime--kafka-kafka--2062045c"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -5415,8 +5340,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-go-compiletime--kafka-rabbitmq--0c9fac8f"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -5446,8 +5370,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -5477,8 +5400,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -5494,8 +5416,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-go-compiletime--rabbitmq-kafka--5aa0c84c"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -5511,8 +5432,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-go-compiletime--rabbitmq-rabbitmq--b371168a"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -6190,8 +6110,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -6230,8 +6149,7 @@
        "grpc-dotnet/2.83.0 (.NET 8.0.30; CLR 8.0.30; net8.0; linux; arm64)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -6258,8 +6176,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -6286,8 +6203,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -6317,8 +6233,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -6357,8 +6272,7 @@
        "grpc-dotnet/2.83.0 (.NET 8.0.30; CLR 8.0.30; net8.0; linux; arm64)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -6385,8 +6299,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -6413,8 +6326,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -6438,8 +6350,7 @@
        "00-633f07d7b75da09377fe4b409644fb22-40a4dc7a6d3cf9eb-01"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -6472,8 +6383,7 @@
        "grpc-dotnet/2.83.0 (.NET 8.0.30; CLR 8.0.30; net8.0; linux; arm64)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -6494,8 +6404,7 @@
        "00-16e68fdcc1419dbe14e9df5d53956a3b-d27af4e6778a7538-01"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -6516,8 +6425,7 @@
        "00-e378a5b91a3b214e0cc8021c58b95b9f-8637e3278204409f-01"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -6544,8 +6452,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -6581,8 +6488,7 @@
        "grpc-dotnet/2.83.0 (.NET 8.0.30; CLR 8.0.30; net8.0; linux; arm64)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -6606,8 +6512,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -6631,8 +6536,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -7322,8 +7226,7 @@
        "Ruby"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -7362,8 +7265,7 @@
        "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -7390,8 +7292,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -7418,8 +7319,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -7455,8 +7355,7 @@
        "Ruby"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -7489,8 +7388,7 @@
        "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -7511,8 +7409,7 @@
        "00-af1f927df95b4a09474392b1d957dd8c-d36e3ca2e3a72fe3-01"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -7533,8 +7430,7 @@
        "00-fcc153b2e8fc29f8847e957ee2709a04-b3ff577e5babde8e-01"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -7576,8 +7472,7 @@
        "Ruby"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -7616,8 +7511,7 @@
        "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -7644,8 +7538,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -7672,8 +7565,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -7709,8 +7601,7 @@
        "Ruby"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -7743,8 +7634,7 @@
        "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -7765,8 +7655,7 @@
        "00-a61bff6343d5eddfc8fa5d278b9ddba6-cf0953b7600b538e-01"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -7787,8 +7676,7 @@
        "00-11f515992bdbebd3a1066ad81f6769c5-bd8e46a6db4b2172-01"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -8476,8 +8364,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -8507,8 +8394,7 @@
        "grpc-php/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -8524,8 +8410,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-php--http-kafka--cf23ad97"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -8541,8 +8426,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-php--http-rabbitmq--e08139c4"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -8642,8 +8526,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -8673,8 +8556,7 @@
        "grpc-php/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -8690,8 +8572,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-php--kafka-kafka--f81955f5"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -8707,8 +8588,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-php--kafka-rabbitmq--4c92b14b"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -8738,8 +8618,7 @@
        "00-8e86de5108ade3de9f7ab93ba207565f-56463814587b3802-01"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -8769,8 +8648,7 @@
        "grpc-php/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -8786,8 +8664,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-php--rabbitmq-kafka--e69bb495"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -8803,8 +8680,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "otel-php--rabbitmq-rabbitmq--57e516f1"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -9473,8 +9349,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -9510,8 +9385,7 @@
        "tonic/0.14.6"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -9538,8 +9412,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -9566,8 +9439,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -9603,8 +9475,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -9640,8 +9511,7 @@
        "tonic/0.14.6"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -9668,8 +9538,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -9696,8 +9565,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -9733,8 +9601,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -9770,8 +9637,7 @@
        "tonic/0.14.6"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -9798,8 +9664,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -9826,8 +9691,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -9863,8 +9727,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -9900,8 +9763,7 @@
        "tonic/0.14.6"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -9928,8 +9790,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -9956,8 +9817,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -32157,7 +32017,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -32200,7 +32060,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -32262,7 +32122,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -32305,7 +32165,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -32348,7 +32208,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -32410,7 +32270,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -32453,7 +32313,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -32496,7 +32356,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -32558,7 +32418,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -32601,7 +32461,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -32644,7 +32504,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -32706,7 +32566,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     }
    ],
    "cells": [
@@ -34520,7 +34380,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -34637,7 +34497,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -35595,7 +35455,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -35632,7 +35492,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -35660,7 +35520,7 @@
       ]
      },
      "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -35688,7 +35548,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -35728,7 +35588,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -35765,7 +35625,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -35793,7 +35653,7 @@
       ]
      },
      "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -35821,7 +35681,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -35861,7 +35721,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -35898,7 +35758,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -35926,7 +35786,7 @@
       ]
      },
      "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -35954,7 +35814,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -35994,7 +35854,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -36031,7 +35891,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -36059,7 +35919,7 @@
       ]
      },
      "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -36087,7 +35947,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     }
    ],
    "cells": [
@@ -36768,7 +36628,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -36814,7 +36674,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -36896,7 +36756,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -36942,7 +36802,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -37119,7 +36979,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -37159,7 +37019,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -37888,7 +37748,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -39932,7 +39792,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -39972,7 +39832,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -40017,7 +39877,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -40057,7 +39917,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -40097,7 +39957,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -40142,7 +40002,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -43317,7 +43177,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -43354,7 +43214,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -43399,7 +43259,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -43439,7 +43299,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -43476,7 +43336,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -43521,7 +43381,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -43561,7 +43421,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -43598,7 +43458,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -43643,7 +43503,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -43683,7 +43543,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -43720,7 +43580,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -43765,7 +43625,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     }
    ],
    "cells": [
@@ -44447,7 +44307,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -44490,7 +44350,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -44518,7 +44378,7 @@
       ]
      },
      "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -44569,7 +44429,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -44612,7 +44472,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -44640,7 +44500,7 @@
       ]
      },
      "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -45522,7 +45382,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -45562,7 +45422,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -45590,7 +45450,7 @@
       ]
      },
      "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -45612,7 +45472,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -45655,7 +45515,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -45695,7 +45555,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -45723,7 +45583,7 @@
       ]
      },
      "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -45745,7 +45605,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -45788,7 +45648,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -45828,7 +45688,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -45856,7 +45716,7 @@
       ]
      },
      "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -45878,7 +45738,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -45921,7 +45781,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -45961,7 +45821,7 @@
       ]
      },
      "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -45989,7 +45849,7 @@
       ]
      },
      "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -46011,7 +45871,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     }
    ],
    "cells": [
@@ -46697,7 +46557,7 @@
       ]
      },
      "observed_transport": "http",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -46773,7 +46633,7 @@
       ]
      },
      "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "vendor_native": "present_same_trace"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -47674,8 +47534,7 @@
        "Java/17.0.20"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -47705,8 +47564,7 @@
        "grpc-java-netty/1.66.0"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -47722,8 +47580,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-java--http-kafka--c7539288"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -47739,8 +47596,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-java--http-rabbitmq--0ce94c75"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -47770,8 +47626,7 @@
        "Java/17.0.20"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -47801,8 +47656,7 @@
        "grpc-java-netty/1.66.0"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -47818,8 +47672,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-java--grpc-kafka--62bb333e"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -47835,8 +47688,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-java--grpc-rabbitmq--21cea795"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -47866,8 +47718,7 @@
        "Java/17.0.20"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -47897,8 +47748,7 @@
        "grpc-java-netty/1.66.0"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -47914,8 +47764,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-java--kafka-kafka--db354f82"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -47931,8 +47780,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-java--kafka-rabbitmq--5debef69"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -47962,8 +47810,7 @@
        "Java/17.0.20"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -47993,8 +47840,7 @@
        "grpc-java-netty/1.66.0"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -48010,8 +47856,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-java--rabbitmq-kafka--8ec5a7b0"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -48027,8 +47872,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-java--rabbitmq-rabbitmq--99e2611a"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -48700,8 +48544,7 @@
        "axios/1.20.0"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -48734,8 +48577,7 @@
        "grpc-node-js/1.14.4"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -48751,8 +48593,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-node--http-kafka--02097fdb"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -48768,8 +48609,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-node--http-rabbitmq--68b75c73"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -48805,8 +48645,7 @@
        "axios/1.20.0"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -48839,8 +48678,7 @@
        "grpc-node-js/1.14.4"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -48856,8 +48694,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-node--grpc-kafka--8ae403f5"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -48873,8 +48710,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-node--grpc-rabbitmq--ce124573"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -48910,8 +48746,7 @@
        "axios/1.20.0"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -48944,8 +48779,7 @@
        "grpc-node-js/1.14.4"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -48961,8 +48795,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-node--kafka-kafka--15959976"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -48978,8 +48811,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-node--kafka-rabbitmq--5d15d838"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -49015,8 +48847,7 @@
        "axios/1.20.0"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -49049,8 +48880,7 @@
        "grpc-node-js/1.14.4"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -49066,8 +48896,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-node--rabbitmq-kafka--66012bd1"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -49083,8 +48912,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-node--rabbitmq-rabbitmq--16e0a457"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -49756,8 +49584,7 @@
        "python-requests/2.34.2"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -49787,8 +49614,7 @@
        "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -49804,8 +49630,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-python--http-kafka--3555dc58"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -49821,8 +49646,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-python--http-rabbitmq--4ad9c44b"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -49858,8 +49682,7 @@
        "python-requests/2.34.2"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -49889,8 +49712,7 @@
        "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -49906,8 +49728,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-python--grpc-kafka--4fdc4dbd"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -49923,8 +49744,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-python--grpc-rabbitmq--3a795939"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -49960,8 +49780,7 @@
        "python-requests/2.34.2"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -49991,8 +49810,7 @@
        "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -50008,8 +49826,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-python--kafka-kafka--da9a59cd"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -50025,8 +49842,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-python--kafka-rabbitmq--09a00539"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -50062,8 +49878,7 @@
        "python-requests/2.34.2"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -50093,8 +49908,7 @@
        "grpc-python/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -50110,8 +49924,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-python--rabbitmq-kafka--9dc126ea"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -50127,8 +49940,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-python--rabbitmq-rabbitmq--9737d80e"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -50793,8 +50605,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -50821,8 +50632,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -50838,8 +50648,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-go--http-kafka--eab64b85"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -50855,8 +50664,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-go--http-rabbitmq--0d793e64"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -50886,8 +50694,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -50914,8 +50721,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -50931,8 +50737,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-go--grpc-kafka--29f79d57"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -50948,8 +50753,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-go--grpc-rabbitmq--467370fb"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -50979,8 +50783,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -51007,8 +50810,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -51024,8 +50826,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-go--kafka-kafka--56264ed5"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -51041,8 +50842,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-go--kafka-rabbitmq--010c3b6f"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -51072,8 +50872,7 @@
        "Go-http-client/1.1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -51100,8 +50899,7 @@
        "grpc-go/1.83.2"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -51117,8 +50915,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-go--rabbitmq-kafka--27678c00"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -51134,8 +50931,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-go--rabbitmq-rabbitmq--2671e9b8"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -51800,8 +51596,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -51840,8 +51635,7 @@
        "grpc-dotnet/2.83.0 (.NET 8.0.30; CLR 8.0.30; net8.0; linux; arm64)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -51857,8 +51651,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-dotnet--http-kafka--ef634bec"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -51874,8 +51667,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-dotnet--http-rabbitmq--dfaefdf7"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -51905,8 +51697,7 @@
        "sdtest=v1"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -51945,8 +51736,7 @@
        "grpc-dotnet/2.83.0 (.NET 8.0.30; CLR 8.0.30; net8.0; linux; arm64)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -51962,8 +51752,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-dotnet--grpc-kafka--85d46b56"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -51979,8 +51768,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-dotnet--grpc-rabbitmq--dc802266"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -52001,8 +51789,7 @@
        "application/json; charset=utf-8"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -52032,8 +51819,7 @@
        "grpc-dotnet/2.83.0 (.NET 8.0.30; CLR 8.0.30; net8.0; linux; arm64)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -52049,8 +51835,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-dotnet--kafka-kafka--84b65262"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -52066,8 +51851,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-dotnet--kafka-rabbitmq--f82f5229"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -52088,8 +51872,7 @@
        "application/json; charset=utf-8"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -52119,8 +51902,7 @@
        "grpc-dotnet/2.83.0 (.NET 8.0.30; CLR 8.0.30; net8.0; linux; arm64)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -52136,8 +51918,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-dotnet--rabbitmq-kafka--17a0a35a"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -52153,8 +51934,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-dotnet--rabbitmq-rabbitmq--0749d8dd"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -52823,8 +52603,7 @@
        "Ruby"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -52854,8 +52633,7 @@
        "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -52871,8 +52649,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-ruby--http-kafka--5017f2fd"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -52888,8 +52665,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-ruby--http-rabbitmq--c6d55e9b"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -52922,8 +52698,7 @@
        "Ruby"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -52953,8 +52728,7 @@
        "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -52970,8 +52744,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-ruby--grpc-kafka--51f69ffd"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -52987,8 +52760,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-ruby--grpc-rabbitmq--3ff4d981"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -53021,8 +52793,7 @@
        "Ruby"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -53052,8 +52823,7 @@
        "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -53069,8 +52839,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-ruby--kafka-kafka--be9513d4"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -53086,8 +52855,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-ruby--kafka-rabbitmq--4d668993"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -53120,8 +52888,7 @@
        "Ruby"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -53151,8 +52918,7 @@
        "grpc-ruby/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -53168,8 +52934,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-ruby--rabbitmq-kafka--fd0be5a0"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -53185,8 +52950,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-ruby--rabbitmq-rabbitmq--382c7ac6"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -53849,8 +53613,7 @@
        "application/json"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -53880,8 +53643,7 @@
        "grpc-php/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -53897,8 +53659,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-php--http-kafka--72202601"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -53914,8 +53675,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-php--http-rabbitmq--ceb18264"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -54006,8 +53766,7 @@
        "application/json"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -54037,8 +53796,7 @@
        "grpc-php/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -54054,8 +53812,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-php--kafka-kafka--3837ad12"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -54071,8 +53828,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-php--kafka-rabbitmq--05168278"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -54099,8 +53855,7 @@
        "application/json"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -54130,8 +53885,7 @@
        "grpc-php/1.83.1 grpc-c/56.0.0 (linux; chttp2)"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -54147,8 +53901,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-php--rabbitmq-kafka--e74f28b0"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -54164,8 +53917,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-php--rabbitmq-rabbitmq--5ef1e14f"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [
@@ -54813,8 +54565,7 @@
        "application/json"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "http-\u003egrpc",
@@ -54841,8 +54592,7 @@
        "tonic/0.14.6"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "http-\u003ekafka",
@@ -54858,8 +54608,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-rust--http-kafka--ddc6d8d4"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "http-\u003erabbitmq",
@@ -54875,8 +54624,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-rust--http-rabbitmq--d063c02d"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "grpc-\u003ehttp",
@@ -54903,8 +54651,7 @@
        "application/json"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "grpc-\u003egrpc",
@@ -54931,8 +54678,7 @@
        "tonic/0.14.6"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "grpc-\u003ekafka",
@@ -54948,8 +54694,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-rust--grpc-kafka--e17c353d"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "grpc-\u003erabbitmq",
@@ -54965,8 +54710,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-rust--grpc-rabbitmq--6ec6f11c"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "kafka-\u003ehttp",
@@ -54993,8 +54737,7 @@
        "application/json"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "kafka-\u003egrpc",
@@ -55021,8 +54764,7 @@
        "tonic/0.14.6"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "kafka-\u003ekafka",
@@ -55038,8 +54780,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-rust--kafka-kafka--31f7ca48"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "kafka-\u003erabbitmq",
@@ -55055,8 +54796,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-rust--kafka-rabbitmq--6c7ad813"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     },
     {
      "boundary": "rabbitmq-\u003ehttp",
@@ -55083,8 +54823,7 @@
        "application/json"
       ]
      },
-     "observed_transport": "http",
-     "vendor_native": "absent"
+     "observed_transport": "http"
     },
     {
      "boundary": "rabbitmq-\u003egrpc",
@@ -55111,8 +54850,7 @@
        "tonic/0.14.6"
       ]
      },
-     "observed_transport": "grpc",
-     "vendor_native": "absent"
+     "observed_transport": "grpc"
     },
     {
      "boundary": "rabbitmq-\u003ekafka",
@@ -55128,8 +54866,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-rust--rabbitmq-kafka--9b32d3ac"
      },
-     "observed_transport": "kafka",
-     "vendor_native": "absent"
+     "observed_transport": "kafka"
     },
     {
      "boundary": "rabbitmq-\u003erabbitmq",
@@ -55145,8 +54882,7 @@
       "tracestate": "sdtest=v1",
       "x-sd-canary": "none-rust--rabbitmq-rabbitmq--cf205281"
      },
-     "observed_transport": "rabbitmq",
-     "vendor_native": "absent"
+     "observed_transport": "rabbitmq"
     }
    ],
    "cells": [

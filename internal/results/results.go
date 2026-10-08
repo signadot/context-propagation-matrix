@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/signadot/context-propagation-matrix/internal/eval"
 	"github.com/signadot/context-propagation-matrix/internal/raw"
 	"github.com/signadot/context-propagation-matrix/internal/registry"
 )
@@ -87,8 +88,9 @@ type Hop struct {
 	Seeded     map[string]string   `json:"seeded_headers,omitempty"`
 	Observed   map[string][]string `json:"observed_headers,omitempty"`
 	Transport  string              `json:"observed_transport,omitempty"`
-	// VendorNative records the tool's own header continuity where the driver
-	// evaluates one (currently Datadog's x-datadog-* set).
+	// VendorNative records the tool's own (non-W3C) header continuity,
+	// evaluated against the tool's native_headers in variants.yaml (see
+	// eval.Native); omitted for tools without native headers.
 	VendorNative string `json:"vendor_native,omitempty"`
 }
 
@@ -261,6 +263,7 @@ func Build(reg *registry.Registry, raws []*raw.VariantResult, run Run) (*Results
 			v.Weaver = &Package{Package: *rv.Weaver, Version: r.InfoString("weaver_version")}
 		}
 
+		tool := reg.Tools[rv.Tool]
 		tests := map[string]raw.TestResult{}
 		for _, t := range r.Tests {
 			tests[t.Boundary] = t
@@ -279,10 +282,12 @@ func Build(reg *registry.Registry, raws []*raw.VariantResult, run Run) (*Results
 				if t.Observed != nil {
 					hop.Observed = t.Observed.Headers
 					hop.Transport = t.Observed.Transport
+					if t.Seeded != nil && tool != nil {
+						hop.VendorNative = eval.Native(t.Observed.Headers, *t.Seeded, tool.NativeHeaders)
+					}
 				}
 				if t.Status != nil {
 					hop.CanaryLeak = t.Status.CanaryLeak
-					hop.VendorNative = t.Status.DatadogNative
 					if t.Status.CanaryLeak {
 						res.Summary.CanaryLeaks = append(res.Summary.CanaryLeaks, rv.ID+" "+b)
 					}

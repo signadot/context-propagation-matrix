@@ -42,6 +42,8 @@ jobs:
         run: test -z "$(gofmt -l ./cmd ./internal ./driver ./sink ./matrixgen)" || { gofmt -l ./cmd ./internal ./driver ./sink ./matrixgen; exit 1; }
       - name: go vet
         run: go vet ./...
+      - name: go test
+        run: go test ./...
       # Pull requests are strict: an annotation whose cells all pass (or whose
       # explicit outcome no longer occurs) must be marked fixed in the same
       # review. The scheduled matrix run stays non-strict so an upstream fix

@@ -148,6 +148,11 @@ consumes; topics are auto-created; every message is self-describing via
 
 ## Per-header status semantics
 
+The evaluation lives in `internal/eval` (unit-tested, and re-checked against
+every committed hop in `results/raw`). `baggage` and `tracestate` are list
+headers: when a carrier holds several fields of the same name their values
+are joined with `,` before evaluating, as both W3C specs require.
+
 - `traceparent`: `same_trace` (arrived with seeded trace-id; span-id will and
   should differ) | `new_trace` (present, different trace-id) | `absent`
 - `tracestate`: `preserved` (our foreign entry `sdtest=v1` still listed —
@@ -155,14 +160,25 @@ consumes; topics are auto-created; every message is self-describing via
   (header present, our entry gone) | `absent`
 - `baggage`: `propagated` (`sd-routing-key={rk}` parseable from the W3C list)
   | `partial` (header present, our key missing) | `absent`
-- `ot_baggage`: `propagated` (`ot-baggage-sd-routing-key == {rk}`) | `absent`
+- `ot_baggage`: `propagated` (`ot-baggage-sd-routing-key == {rk}`) |
+  `partial` (header present, different value) | `absent`
 - `datadog_native`: informational; `present_same_trace` if
   `x-datadog-trace-id` equals the low 64 bits of the seeded trace-id (decimal)
-  | `present_new_trace` | `absent`
+  | `present_new_trace` | `absent`. Kept in the raw files for compatibility;
+  the published `vendor_native` field generalises it (below)
 - `canary_leak`: boolean, must be `false`
 - `delivered`: boolean; `false` means the relay never forwarded anything —
   itself a reportable finding (e.g. instrumentation broke the app or the
   library isn't supported)
+
+`cpm aggregate` also records **`vendor_native`** per hop from the observed
+headers and the tool's `native_headers` in `variants.yaml`:
+`present_same_trace` / `present_new_trace` for the headers it can decode
+(`x-datadog-trace-id`, `elastic-apm-traceparent`, the base64 JSON
+`newrelic` header), `present` for any other listed native header, `absent`
+when none arrived, and nothing for tools without native headers. A new
+provider gets `present`/`absent` for free by listing its headers; add a
+decoder in `internal/eval` to get trace continuity.
 
 ## Tool configuration (kept deliberately bounded)
 
