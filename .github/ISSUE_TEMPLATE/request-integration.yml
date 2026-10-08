@@ -1,0 +1,69 @@
+name: Request a new integration
+description: Ask for a provider, language, protocol or variant to be added to the matrix
+title: "[integration] <provider | language | protocol>: <name>"
+labels: ["enhancement", "integration-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping grow the matrix. Every request is triaged against
+        what can run reproducibly in CI. Results are generated, never
+        transcribed from docs, so we need a way to actually run it.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of integration?
+      options:
+        - Instrumentation provider (APM / tracing vendor)
+        - Language or runtime
+        - Protocol boundary (broker, RPC, transport)
+        - Variant of an existing provider (config flag, attach mode)
+        - Header / propagation format
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: name
+    attributes:
+      label: Name and version(s)
+      description: The exact thing to add, with the version(s) you run in production.
+      placeholder: "e.g. Honeycomb Beelines 2.x, Elixir 1.17, AWS SQS, OTel Java with otel.propagators=b3multi"
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does it matter?
+      description: Who runs this in production, and what propagation question would the new cells answer?
+    validations:
+      required: true
+
+  - type: textarea
+    id: feasibility
+    attributes:
+      label: How could the harness run it?
+      description: |
+        Provider: is there a zero-code, init-only, build-time or in-code attach path, and a free way to get credentials?
+        Language: which idiomatic HTTP, gRPC, Kafka and AMQP clients would the relay use?
+        Protocol: which carrier holds the headers, and is there a broker container we can run in CI?
+      placeholder: Links to docs, SDKs, container images…
+
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you help build it?
+      options:
+        - "Yes, I can open a PR"
+        - "I can test or review"
+        - "No, just requesting"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+      description: Related issues, upstream bugs, or a page on contextpropagation.io that prompted this.
