@@ -44,7 +44,7 @@ http = "1"
 # Instrumentation. Both tools speak the same OpenTelemetry API surface;
 # datadog-opentelemetry 0.5.x pins opentelemetry 0.32, so all carriers and
 # global propagator calls resolve to a single copy of the API crate.
-opentelemetry = "0.32"
+opentelemetry = "0.33"
 opentelemetry_sdk = "0.32"
 opentelemetry-http = "0.32"
 datadog-opentelemetry = "0.5"
