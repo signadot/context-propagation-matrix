@@ -42,6 +42,13 @@ jobs:
         run: test -z "$(gofmt -l ./cmd ./internal ./driver ./sink ./matrixgen)" || { gofmt -l ./cmd ./internal ./driver ./sink ./matrixgen; exit 1; }
       - name: go vet
         run: go vet ./...
+      # Results are not in the tree: pull the latest published run so the
+      # annotation selectors are checked against real cells. Before the first
+      # release this is a no-op and validate skips that check.
+      - name: Fetch results.json from the latest run-* release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/fetch-latest.sh
       # Pull requests are strict: an annotation whose cells all pass (or whose
       # explicit outcome no longer occurs) must be marked fixed in the same
       # review. The scheduled matrix run stays non-strict so an upstream fix
@@ -54,7 +61,7 @@ jobs:
       - name: bump-agents manifest matches the Dockerfiles (offline)
         run: node versions/bump-agents.mjs --check
       - name: shell syntax
-        run: bash -n run.sh
+        run: for f in run.sh scripts/*.sh; do bash -n "$f" || exit 1; done
 
   smoke:
     runs-on: ubuntu-latest
@@ -76,19 +83,29 @@ jobs:
       - name: Build sink, driver and relay-${{ matrix.variant }} (GHCR layer cache)
         env:
           CAN_PUSH_CACHE: ${{ github.event.pull_request.head.repo.fork != true }}
+          V: ${{ matrix.variant }}
         run: |
           set -euo pipefail
+          # Same cache refs as matrix.yml: per variant plus per relay Dockerfile
+          # (relays/node/Dockerfile → relays-node) so a language's app build is shared.
+          df=$(docker buildx bake -f docker-compose.yml --print "relay-$V" | jq -r ".target[\"relay-$V\"].dockerfile")
+          lang_ref="$CACHE_IMAGE:$(dirname "$df" | tr / -)"
           args=(--load)
-          for t in sink driver "relay-${{ matrix.variant }}"; do
+          for t in sink driver "relay-$V"; do
             args+=(--set "$t.tags=cpmatrix-$t" --set "$t.cache-from=type=registry,ref=$CACHE_IMAGE:$t")
             if [[ "$CAN_PUSH_CACHE" == "true" ]]; then
               args+=(--set "$t.cache-to=type=registry,ref=$CACHE_IMAGE:$t,mode=max")
             fi
           done
-          docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-${{ matrix.variant }}"
+          args+=(--set "relay-$V.cache-from=type=registry,ref=$lang_ref")
+          if [[ "$CAN_PUSH_CACHE" == "true" ]]; then
+            args+=(--set "relay-$V.cache-to=type=registry,ref=$lang_ref,mode=max")
+          fi
+          docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-$V"
       - name: Run the variant
         run: |
           set -euo pipefail
+          mkdir -p results/raw results/data
           docker compose up -d --no-build kafka rabbitmq sink
           docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
             --create --if-not-exists --topic "relay-in-${{ matrix.variant }}" --partitions 1 --replication-factor 1

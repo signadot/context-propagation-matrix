@@ -1,7 +1,9 @@
 # Findings — root causes and upstream references
 
-Empirical results are in [`results/MATRIX.md`](results/MATRIX.md) (raw header
-dumps per test in `results/raw/*.json`). This file documents *why* the notable
+Empirical results are published per run as GitHub Releases — `MATRIX.md` and
+`results.json` on the [latest release](https://github.com/signadot/context-propagation-matrix/releases/latest),
+raw header dumps per test in its `raw.tar.gz` — and browsable at
+https://contextpropagation.io. This file documents *why* the notable
 cells look the way they do, with upstream citations. Runs dated 2026-09-05
 (Go build-time weaving variants: 2026-09-07); 39 tracer variants plus 8
 no-instrumentation baselines × 16 boundaries ({http, grpc, kafka,
