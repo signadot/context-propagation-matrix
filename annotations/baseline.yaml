@@ -1,0 +1,69 @@
+# Baseline (tool "none") — the eight no-instrumentation control relays.
+#
+# Seven of eight languages propagate nothing on any boundary, which is the
+# expected control result: everything in the instrumented tables is
+# attributable to the tool under test. .NET is the exception — the runtime
+# itself propagates trace context over HTTP/gRPC with no agent attached.
+# none-php's grpc->* cells are undelivered for the same reason as every other
+# PHP variant (cross-cutting.yaml: php-no-grpc-server).
+#
+# Sources: FINDINGS.md §12.
+
+- id: baseline-no-instrumentation
+  title: "Baseline: with no agent attached, nothing propagates"
+  match:
+    - tool: none
+      language: [java, node, python, go, ruby, rust]
+    - tool: none
+      language: php
+      outcome: fail
+    - tool: none
+      language: dotnet
+      header: [tracestate, traceparent, ot-baggage]
+    - tool: none
+      language: dotnet
+      header: baggage
+      boundary: ["*->kafka", "*->rabbitmq", "kafka->*", "rabbitmq->*"]
+  cause: "These relays run with no agent, wrapper or tracing library; no runtime in the matrix carries context on its own except .NET over HTTP/gRPC."
+  explanation: |
+    Control runs: every language's relay with no agent, wrapper or tracing gem
+    attached (`none-*` variants, 128 hops). Java, Node, Python, Go, Ruby, Rust
+    and PHP behave as expected — nothing propagates on any of the 16 boundaries
+    for any header — confirming that the instrumented results are attributable
+    to the tool under test, not to the apps or the harness.
+
+    .NET is the partial exception: with no agent, ASP.NET Core hosting creates an
+    `Activity` per request and `HttpClient`'s DiagnosticsHandler injects it on the
+    way out (gRPC inherits this because `Grpc.Net.Client` rides on HttpClient),
+    so `traceparent` (same trace-id, fresh span-id) and `tracestate` (preserved
+    verbatim) pass on all four `http/grpc -> http/grpc` boundaries. There is no
+    built-in messaging propagation, so every Kafka and RabbitMQ leg is dark on
+    .NET too, and `ot-baggage-*` is never handled. The built-in `baggage`
+    behaviour on the HTTP/gRPC legs is described separately
+    (`baseline-dotnet-baggage-reemitted-as-correlation-context`).
+  status: by-design
+
+- id: baseline-dotnet-baggage-reemitted-as-correlation-context
+  title: "Baseline .NET 8: the runtime reads W3C baggage but re-emits it as Correlation-Context"
+  match:
+    - tool: none
+      language: dotnet
+      header: baggage
+      boundary: ["http->http", "http->grpc", "grpc->http", "grpc->grpc"]
+  cause: "On .NET 8/9 the default DistributedContextPropagator is the pre-W3C legacy one: it reads `baggage` but re-emits it as the obsolete Correlation-Context header."
+  explanation: |
+    With no agent attached, .NET 8 propagates `traceparent` and `tracestate`
+    across `http/grpc -> http/grpc`, and it *does* read the incoming W3C
+    `baggage` header into `Activity.Baggage` — but the default
+    `DistributedContextPropagator` on .NET 8/9 is the pre-W3C "legacy"
+    propagator, which re-emits baggage under the obsolete draft name
+    `Correlation-Context`. Values survive one hop and are then invisible to any
+    W3C-only reader downstream, so the harness scores `baggage` absent.
+
+    Version dependence: .NET 10 switches the default to a strict W3C propagator
+    (`baggage` header out, strict encoding, `CreatePreW3CPropagator()` to opt
+    back) — an uninstrumented .NET service changes its propagation behaviour on
+    a runtime upgrade. Harness runs used .NET 8.
+  status: by-design
+  links:
+    - { title: ".NET 10 breaking change: default trace context propagator", url: "https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/10.0/default-trace-context-propagator" }

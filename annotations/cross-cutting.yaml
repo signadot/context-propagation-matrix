@@ -1,0 +1,184 @@
+# Cross-cutting — one root cause explaining cells across several tools.
+#
+#   php-no-grpc-server                       grpc->* undelivered for every PHP variant
+#   php-grpc-client-not-instrumented         *->grpc header-free for otel/datadog/elastic/newrelic PHP
+#   go-weavers-kafka-consume-no-activation   otelc + Orchestrion kafka->* (different mechanisms, same class)
+#   go-weavers-no-amqp-instrumentation       otelc + Orchestrion rabbitmq legs (no AMQP client on either allowlist)
+#   ot-baggage-not-implemented               OTel, Elastic and New Relic never emitted OpenTracing-era headers
+#
+# Sources: FINDINGS.md §7, §9, §11, §14; REFERENCES.md "PHP", "Go compile-time
+# weaving", "Go Orchestrion", "No baggage, anywhere".
+
+- id: php-no-grpc-server
+  title: "PHP: no gRPC server exists in any tracer-supported topology, so gRPC-inbound is undeliverable"
+  match:
+    - tool: [otel, datadog, elastic, newrelic, none]
+      language: php
+      boundary: "grpc->*"
+      outcome: undelivered
+  cause: "The official gRPC PHP implementation is client-only; the harness's Apache mod_php + CLI worker topology cannot accept gRPC calls, so grpc->* hops never run."
+  explanation: |
+    grpc.io's PHP quickstart: "You can only create gRPC clients in PHP. Use
+    another language to create a gRPC server." (Restated in grpc/grpc #38481,
+    open, filed by a Google engineer.) PHP *can* serve gRPC through a separate
+    application server — RoadRunner's gRPC plugin (Go proxy → PHP workers) or
+    Swoole-based frameworks such as Hyperf — but none of the tracers'
+    zero-code instrumentation covers those paths: dd-trace-php's RoadRunner
+    integration hooks the HTTP `PSR7Worker` only (Datadog's guidance for
+    RoadRunner gRPC is manual `dd_trace_method` hooks, dd-trace-php #805); OTel
+    has no roadrunner-grpc PHP instrumentation (RoadRunner's `otel` plugin
+    traces in the Go proxy layer, not the PHP worker); Elastic and New Relic
+    support neither.
+
+    The harness measures the documented Apache mod_php + two CLI workers
+    topology, the supported deployment for all three tracers (dd-trace-php does
+    not support `php -S`), so every `grpc->*` boundary is undelivered for every
+    PHP variant including the baseline. A RoadRunner-based relay with manual
+    instrumentation is a candidate follow-up (see the roadmap in DESIGN.md).
+  status: app-limitation
+  links:
+    - { title: "grpc.io PHP quickstart (clients only)", url: "https://grpc.io/docs/languages/php/quickstart/" }
+    - { title: "grpc/grpc #38481", url: "https://github.com/grpc/grpc/issues/38481" }
+    - { title: "RoadRunner gRPC plugin", url: "https://docs.roadrunner.dev/docs/grpc/grpc" }
+    - { title: "dd-trace-php #805 (RoadRunner gRPC guidance)", url: "https://github.com/DataDog/dd-trace-php/issues/805" }
+
+- id: php-grpc-client-not-instrumented
+  title: "PHP: no tool instruments the ext-grpc client, so every *->grpc leg is header-free"
+  match:
+    - tool: [otel, datadog]
+      language: php
+      header: [baggage, tracestate, traceparent]
+      boundary: "*->grpc"
+      outcome: fail
+    - tool: [elastic, newrelic]
+      language: php
+      header: [tracestate, traceparent]
+      boundary: "*->grpc"
+      outcome: fail
+  cause: "Neither OTel PHP, dd-trace-php, Elastic PHP nor New Relic PHP hooks ext-grpc + grpc/grpc client calls; no metadata is injected on any *->grpc boundary."
+  explanation: |
+    Every `*->grpc` cell is header-free for otel, datadog, elastic and newrelic
+    alike: the outbound gRPC client (`ext-grpc` + `grpc/grpc`) is not on any
+    tool's instrumentation list, so nothing is injected into call metadata.
+
+    Datadog: dd-trace-php #916 is the canonical gRPC request, open since 2020
+    and marked "up-for-grabs" ("We do not have enough bandwidth to work on this
+    integration during this quarter"); gRPC is absent from Datadog's PHP
+    compatibility tables. OpenTelemetry: the opentelemetry-php-contrib
+    instrumentation tree (30 auto-instrumentations) contains no gRPC entry —
+    gRPC exists in the OTel PHP ecosystem only as the OTLP *export* transport;
+    no issue proposes instrumenting `ext-grpc` client calls (filing candidate).
+    Elastic and New Relic list ext-grpc as unsupported.
+
+    Workaround: add the propagation headers to the call's metadata array
+    yourself at every gRPC call site, using the tool's propagator/inject API.
+  status: open
+  links:
+    - { title: "dd-trace-php #916 (gRPC request, open since 2020)", url: "https://github.com/DataDog/dd-trace-php/issues/916" }
+    - { title: "Datadog PHP compatibility docs", url: "https://docs.datadoghq.com/tracing/trace_collection/compatibility/php/" }
+    - { title: "opentelemetry-php-contrib instrumentation tree (no gRPC)", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/tree/main/src/Instrumentation" }
+    - { title: "grpc.io PHP quickstart", url: "https://grpc.io/docs/languages/php/quickstart/" }
+
+- id: go-weavers-kafka-consume-no-context-activation
+  title: "Go build-time weavers: Kafka consumers never hand the extracted context back to application code"
+  match:
+    - variant: otel-go-compiletime
+      header: [baggage, tracestate, traceparent]
+      boundary: "kafka->*"
+    - variant: datadog-go-orchestrion
+      header: [baggage, tracestate, traceparent, ot-baggage]
+      boundary: "kafka->*"
+  cause: "otelc's kafka-go Reader has no callback to hand back the context; Orchestrion's sarama consumer weave does not continue the trace seeded in record headers."
+  explanation: |
+    Both compile-time weavers break at the same place runtime agents do: the
+    consume side of an async hop. Both compile deliberately naive apps (single
+    `main.go`, zero tracing imports); only the build command differs from an
+    uninstrumented build.
+
+    **otel-go-compiletime** (otelc v1.1.0): kafka-go's `Reader` is a pull-style
+    API (`ReadMessage(ctx)` in an app-owned loop) with no callback boundary, so
+    the woven consumer instrumentation has nowhere to hand the extracted context
+    back to application code. The app's loop context is `context.Background()`
+    and outbound calls carry nothing — not even a new trace (with no valid span
+    context the W3C propagator injects nothing). PR #1076 confirms a consume
+    span is created per `FetchMessage`; the missing half is activation, not
+    extraction. Issue #695 (open) is the maintainer-acknowledged messaging
+    semconv workstream naming this gap ("a process-span story for the zero-code
+    gap") and planning IBM/sarama next. By contrast, the same variant carries
+    baggage *into* Kafka with zero source changes, because kafka-go's
+    `Writer.WriteMessages(ctx, …)` takes a context.
+
+    **datadog-go-orchestrion** (v1.13.0, dd-trace-go v2.10.1, IBM/sarama
+    v1.60.2): the woven consumer-group instrumentation does not continue the
+    trace seeded in the record headers, so outbound calls after a consume carry
+    `x-datadog-*`/`traceparent` with a fresh trace-id; baggage, `ot-baggage-*`
+    and the foreign tracestate entry are gone. The hand-wired `datadog-go` relay
+    passes the same legs with the same library versions by following the
+    dd-trace-go contrib README (extract-and-activate in the handler). No issue
+    reports the Orchestrion sarama consume gap — filing candidate.
+
+    What a user can do: extract from the record headers and set the context in
+    the consume loop/handler yourself — the one step neither weaver can see.
+  status: open
+  links:
+    - { title: "opentelemetry-go-compile-instrumentation", url: "https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation" }
+    - { title: "opentelemetry-go-compile-instrumentation #695 (messaging semconv workstream)", url: "https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/issues/695" }
+    - { title: "opentelemetry-go-compile-instrumentation PR #1076 (kafka.Reader.FetchMessage)", url: "https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/pull/1076" }
+    - { title: "Orchestrion", url: "https://github.com/DataDog/orchestrion" }
+    - { title: "dd-trace-go contrib IBM/sarama (manual pattern)", url: "https://pkg.go.dev/github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2" }
+
+- id: go-weavers-no-amqp-instrumentation
+  title: "Go build-time weavers: neither otelc nor dd-trace-go has an AMQP client integration to weave"
+  match:
+    - variant: otel-go-compiletime
+      header: [baggage, tracestate, traceparent]
+      boundary: ["*->rabbitmq", "rabbitmq->*"]
+    - variant: datadog-go-orchestrion
+      header: [baggage, tracestate, traceparent, ot-baggage]
+      boundary: ["*->rabbitmq", "rabbitmq->*"]
+  cause: "otelc's supported-libraries list has no AMQP client and dd-trace-go has no amqp091 contrib, so RabbitMQ publish injects nothing and consume extracts nothing."
+  explanation: |
+    Coverage is an allowlist, and neither weaver's allowlist includes the
+    amqp091 client. otelc's getting-started supported-libraries table lists
+    `segmentio/kafka-go` as its only messaging client — no sarama, no franz-go,
+    no AMQP. dd-trace-go has no amqp091/RabbitMQ contrib, so Orchestrion has
+    nothing to enable on RabbitMQ legs.
+
+    Nothing is injected on `*->rabbitmq`. On `rabbitmq->*` the consumer runs
+    with no incoming context; where the outbound client *is* woven (HTTP, gRPC,
+    Kafka on Orchestrion) it emits a fresh root trace, and otherwise nothing.
+    The hand-wired `otel-go` and `datadog-go` relays pass all RabbitMQ legs with
+    hand-written AMQP carriers — the same manual step a weaver cannot supply for
+    a library it does not know.
+  status: open
+  links:
+    - { title: "otelc getting-started (supported libraries)", url: "https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/blob/main/docs/getting-started.md" }
+    - { title: "Orchestrion", url: "https://github.com/DataDog/orchestrion" }
+    - { title: "Datadog Go compile-time instrumentation docs", url: "https://docs.datadoghq.com/tracing/trace_collection/automatic_instrumentation/dd_libraries/go/?tab=compiletimeinstrumentation" }
+
+- id: ot-baggage-not-implemented
+  title: "OpenTelemetry, Elastic APM and New Relic never implemented the OpenTracing-era ot-baggage-* headers"
+  match:
+    - tool: [otel, elastic, newrelic]
+      header: ot-baggage
+      outcome: fail
+  cause: "ot-baggage-* is a legacy OpenTracing convention; OpenTelemetry, Elastic APM and New Relic each define their propagation header set without it."
+  explanation: |
+    The seeded `ot-baggage-sd-routing-key` header is ignored — neither extracted
+    nor re-emitted — by every OpenTelemetry, Elastic and New Relic variant on
+    every delivered boundary. None of these tools ever emitted the OpenTracing
+    header format: OpenTelemetry standardised on W3C `baggage`; Elastic's agent
+    spec defines `traceparent`, `tracestate`, `baggage` and the binary
+    `elasticapmtraceparent`; New Relic's distributed-tracing model is
+    `traceparent`, `tracestate` and the vendor `newrelic` header.
+
+    The header outlives its deprecation only in Datadog's Java, Node and Go
+    tracers, where it crosses all 16 boundaries as legacy behaviour of the
+    `datadog` style (see `datadog-ot-baggage-not-implemented` for the Datadog
+    tracers that do not carry it). Where a tool propagates W3C `baggage`, the
+    same values travel there instead.
+  status: by-design
+  links:
+    - { title: "OpenTracing trace identifiers RFC (ot-baggage-*)", url: "https://github.com/opentracing/specification/blob/master/rfc/trace_identifiers.md" }
+    - { title: "Elastic agent spec — distributed tracing", url: "https://github.com/elastic/apm/blob/main/specs/agents/tracing-distributed-tracing.md" }
+    - { title: "How New Relic distributed tracing works", url: "https://docs.newrelic.com/docs/distributed-tracing/concepts/how-new-relic-distributed-tracing-works/" }
