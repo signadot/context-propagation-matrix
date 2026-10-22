@@ -3,7 +3,10 @@
 # mirroring relays/java/Dockerfile). Select the relay binary with
 # --build-arg TOOL=otel|datadog|newrelic|elastic.
 
-FROM golang:1.25 AS build
+# go.mod is the source of truth for the Go version; the image is a bootstrap
+# (see docker/go.Dockerfile and scripts/check-toolchains.sh).
+FROM golang:1.26 AS build
+ENV GOTOOLCHAIN=auto
 WORKDIR /src
 # Both modules' manifests first, for layer-cached dependency downloads. The
 # relays/go module has a `replace github.com/signadot/context-propagation-matrix
