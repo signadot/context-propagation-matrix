@@ -217,9 +217,54 @@ consumes; topics are auto-created; every message is self-describing via
 }
 ```
 
-`matrixgen` renders `results/MATRIX.md` (per-tool tables: language × boundary,
-one glyph per primary header) directly from these files. Raw observations stay
-in the JSON so any cell can be audited down to the exact header values.
+These per-variant files are the harness's *internal* format. The published
+contract is **results schema v2**, produced by `go run ./cmd/cpm aggregate`
+from `results/raw/*.json` plus the registry (`variants.yaml`):
+
+- `results/latest/results.json` — one document per run: a run manifest
+  (`run_id`, `harness_commit`, broker images, timestamps), the dimensions
+  (tools, languages, protocols, boundaries, headers, setup tiers, verbatim
+  from the registry so consumers never need the YAML), and one entry per
+  variant with tracer coordinates + observed version, runtime, client
+  library versions, config, 16 `hops` (evidence: seeded and observed headers,
+  delivery, canary) and 64 `cells`. Each cell has a stable id
+  `{variant}/{header}/{inbound}-{outbound}` and a normalised `outcome`
+  (`pass` · `partial` · `new_trace` · `fail` · `undelivered` · `not_run`)
+  next to the driver's raw status. Annotations (below) are embedded, and a
+  `summary` carries per-header totals and a tool × language scorecard.
+- `results/latest/MATRIX.md` (mirrored to `results/MATRIX.md`) — the
+  human-readable tables, rendered from the same document.
+- `results/latest/changes.json` — when a previous run is given
+  (`-prev`), every cell whose outcome differed, tracer version bumps, and
+  added/removed variants. CI uses it to decide whether to post a summary.
+
+contextpropagation.io consumes only `results.json` (from GitHub Releases), so
+the schema is versioned (`schema_version: 2`) and changes to it are breaking
+changes for the site.
+
+## The registry: `variants.yaml`
+
+Everything that used to be hardcoded across `run.sh`, `docker-compose.yml`
+profiles and `matrixgen` now lives in one file. Each variant entry names its
+tool, language, flavour (`default`, `defaults`, `kafkaprop`, `orchestrion`,
+`compiletime`, …), display name, setup tier, one-line attach mechanism,
+tracer package coordinates (registry + package + GitHub repo — what version
+discovery reads) and the relay source directory. `go run ./cmd/cpm validate`
+enforces that docker-compose.yml has exactly one `relay-<id>` service with
+`profiles: [<id>]` per registered variant and no unregistered relays, and
+that every annotation selector matches at least one real cell.
+
+## Annotations: `annotations/*.yaml`
+
+Root causes live as data next to the cells they explain, not as prose that
+drifts. Each annotation has a `match` list of selectors (tool, language,
+variant glob, flavour, header list, boundary glob such as `*->kafka`), a
+one-line `cause`, a markdown `explanation`, upstream `links`, and a `status`
+(`open`, `by-design`, `config`, `app-limitation`, `wontfix`, `fixed` +
+`fixed_in`). The aggregator resolves selectors against the run's cells and
+embeds the matched cell ids in `results.json`; a selector that matches
+nothing fails CI, and one whose cells all pass is flagged so it can be
+marked fixed. FINDINGS.md and REFERENCES.md remain the long-form narrative.
 
 ## Library choices per relay
 
@@ -263,10 +308,16 @@ manual ARG bumps:
 - `relays/php/Dockerfile` — the OTel extension + composer requires, the
   Datadog setup script release, the New Relic tarball, and the Elastic .deb.
 
-After merging any bump that touches a tracer or instrumentation library,
-re-run the affected variants (`./run.sh <variants>`), regenerate
-`results/MATRIX.md` (`go run ./matrixgen`), and update FINDINGS/REFERENCES
-if a cell changed.
+The Dockerfile-only versions are bumped automatically by
+`.github/workflows/bump-agents.yml`, which queries Maven Central, GitHub
+Releases, PECL and New Relic's download index daily and opens a PR per
+newer version (same shape as a Dependabot PR).
+
+After merging any bump that touches a tracer or instrumentation library, CI
+re-runs the full matrix (`matrix.yml`), publishes a Release with the new
+`results.json`, and diffs it against the previous release into
+`changes.json`. Locally: `./run.sh <variants>` re-runs and re-aggregates;
+update `annotations/` (and FINDINGS/REFERENCES) if a cell changed.
 
 ## Extending the matrix
 
@@ -294,14 +345,15 @@ PHP and Rust relays and the RabbitMQ column were built that way).
    `x-relay-common-env` anchor, `profiles: [{variant}]`,
    `restart: on-failure`, `depends_on: *relay-depends`, plus the tool's env
    (copy an existing language's entries).
-4. `run.sh` — add the new variants to `ALL_VARIANTS`.
-5. `matrixgen/main.go` — add the language to `langOrder` and its
-   attachment tier per tool to `setupModes` (`zero-code` / `init-only` /
-   `in-code`); variants with a different mechanism (e.g. build-time weaving)
-   get an entry in `setupModeOverrides` instead.
-6. `./run.sh <the new variants>` then regenerate `results/MATRIX.md` with
-   `go run ./matrixgen`; record root causes for any non-green cell in
-   `FINDINGS.md`/`REFERENCES.md`.
+4. `variants.yaml` — add the language under `languages:` (with its display
+   name and order) and one entry per variant under `variants:` — tool,
+   language, flavour, display name, setup tier, attach mechanism, tracer
+   coordinates, source directory. `run.sh` and the aggregator pick them up
+   from there; there is nothing to edit in Go.
+5. `go run ./cmd/cpm validate` — confirms compose and registry agree.
+6. `./run.sh <the new variants>` (which re-aggregates `results/latest/`);
+   record root causes for any non-green cell as `annotations/*.yaml`
+   entries, and expand on them in `FINDINGS.md`/`REFERENCES.md`.
 
 `driver/`, `sink/`, and the evaluation logic do not change.
 
@@ -320,7 +372,9 @@ quadratically (n protocols → n² boundaries; 4 → 16 today, a fifth makes 25)
    headers/metadata verbatim, with the same base64 rules for non-UTF-8.
 4. Every relay in `relays/*` — one inbound listener plus one `forward_via`
    branch, using the language's idiomatic client.
-5. `matrixgen/main.go` — extend `boundaries`.
+5. `variants.yaml` — add the protocol under `protocols:` and the new
+   `boundaries:` (the registry requires exactly protocols² of them, in the
+   column order you want).
 6. `docker-compose.yml` — a broker/infra service (with healthcheck) if the
    protocol needs one, plus any new endpoints in `x-relay-common-env`.
 
