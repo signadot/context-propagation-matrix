@@ -1,44 +1,58 @@
 #!/usr/bin/env bash
-# Run one or more variants end to end.
+# Run one or more variants end to end, then aggregate results.
 #
-#   ./run.sh otel-java datadog-node
-#   ./run.sh all
+#   ./run.sh otel-java datadog-node      # explicit variants
+#   ./run.sh all                         # everything in variants.yaml
+#   ./run.sh public                      # everything that needs no secret
+#   ./run.sh tool:datadog                # every variant of one tool
+#   ./run.sh language:python             # every variant of one language
 #   NEW_RELIC_LICENSE_KEY=... ./run.sh newrelic-java
+#
+# Variants come from variants.yaml (the registry); docker-compose.yml must
+# define relay-<id> with profile <id> for each (checked by `cpm validate`).
+# Requires Docker + docker compose, and Go (for the registry-driven CLI).
 set -uo pipefail
 cd "$(dirname "$0")"
 
-ALL_VARIANTS=(
-  otel-java otel-node otel-python otel-go otel-go-compiletime otel-dotnet otel-ruby
-  otel-php otel-rust
-  datadog-java datadog-node datadog-python datadog-go datadog-go-orchestrion
-  datadog-dotnet datadog-ruby datadog-php datadog-rust
-  datadog-java-defaults datadog-node-defaults datadog-python-defaults
-  datadog-go-defaults datadog-dotnet-defaults datadog-ruby-defaults
-  datadog-python-kafkaprop
-  elastic-java elastic-node elastic-python elastic-go elastic-dotnet elastic-ruby
-  elastic-php
-  newrelic-java newrelic-node newrelic-python newrelic-go newrelic-dotnet newrelic-ruby
-  newrelic-php
-  none-java none-node none-python none-go none-dotnet none-ruby none-php none-rust
-)
+cpm() { go run ./cmd/cpm "$@"; }
 
-# Load .env (gitignored) so the newrelic skip check below sees the license
-# key; docker compose reads the same file for ${NEW_RELIC_LICENSE_KEY}.
+# Load .env (gitignored) so the secret check below sees the license key;
+# docker compose reads the same file for ${NEW_RELIC_LICENSE_KEY}.
 if [[ -f .env ]]; then
   set -a; source .env; set +a
 fi
 
 if [[ $# -eq 0 ]]; then
-  echo "usage: $0 <variant>...|all" >&2
-  echo "variants: ${ALL_VARIANTS[*]}" >&2
+  echo "usage: $0 <variant>...|all|public|tool:<tool>|language:<lang>" >&2
+  echo "variants:" >&2
+  cpm list | sed 's/^/  /' >&2
   exit 2
 fi
 
-if [[ "$1" == "all" ]]; then
-  variants=("${ALL_VARIANTS[@]}")
-else
-  variants=("$@")
-fi
+variants=()
+for arg in "$@"; do
+  case "$arg" in
+    all)         variants+=($(cpm list)) ;;
+    public)      variants+=($(cpm list -no-secret)) ;;
+    tool:*)      variants+=($(cpm list -tool "${arg#tool:}")) ;;
+    language:*)  variants+=($(cpm list -language "${arg#language:}")) ;;
+    *)
+      if ! cpm list | grep -qx "$arg"; then
+        echo "unknown variant: $arg (see: $0 with no args)" >&2
+        exit 2
+      fi
+      variants+=("$arg") ;;
+  esac
+done
+
+# Variants whose tool needs a secret (currently New Relic): skipped when the
+# secret is absent, and primed before measuring because their agents only
+# emit propagation headers after an async backend handshake.
+secret_variants=" $(cpm list -secret | tr '\n' ' ') "
+needs_secret() { [[ "$secret_variants" == *" $1 "* ]]; }
+
+echo "==> validating registry against docker-compose.yml"
+cpm validate >/dev/null || exit 1
 
 echo "==> starting infra (kafka, rabbitmq, sink)"
 docker compose up -d --build kafka rabbitmq sink || exit 1
@@ -46,7 +60,7 @@ docker compose build driver || exit 1
 
 failures=()
 for v in "${variants[@]}"; do
-  if [[ "$v" == newrelic-* && -z "${NEW_RELIC_LICENSE_KEY:-}" ]]; then
+  if needs_secret "$v" && [[ -z "${NEW_RELIC_LICENSE_KEY:-}" ]]; then
     echo "==> SKIP $v (NEW_RELIC_LICENSE_KEY not set)"
     continue
   fi
@@ -62,12 +76,8 @@ for v in "${variants[@]}"; do
     failures+=("$v")
     continue
   fi
-  # New Relic agents create DT headers only after their async collector
-  # handshake (connect) completes, and some (python, php) only *start*
-  # connecting on first traffic. Prime with a full discarded driver pass,
-  # then let the handshake settle, so the recorded run measures steady state.
-  if [[ "$v" == newrelic-* ]]; then
-    echo "==> priming $v (NR agents connect lazily; first pass discarded)"
+  if needs_secret "$v"; then
+    echo "==> priming $v (agent connects lazily; first pass discarded)"
     sleep 5
     docker compose run --rm driver -variant "$v" >/dev/null 2>&1 || true
     sleep "${NEWRELIC_SETTLE_SECONDS:-10}"
@@ -81,8 +91,11 @@ for v in "${variants[@]}"; do
 done
 
 echo
+echo "==> aggregating results/raw -> results/latest (results.json, MATRIX.md)"
+cpm aggregate -kind local -matrix-md results/MATRIX.md || failures+=("aggregate")
+
 if [[ ${#failures[@]} -gt 0 ]]; then
-  echo "failed variants: ${failures[*]}"
+  echo "failed: ${failures[*]}"
   exit 1
 fi
-echo "all requested variants completed; see results/raw/"
+echo "all requested variants completed; see results/latest/"
