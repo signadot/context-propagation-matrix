@@ -1,5 +1,7 @@
 # Builds the uninstrumented Go components (sink recorder + test driver).
-FROM golang:1.25 AS build
+# Keep the image's Go at or above the `go` directive in go.mod (Dependabot
+# bumps raise it; the image has GOTOOLCHAIN=local and cannot download newer).
+FROM golang:1.26 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
