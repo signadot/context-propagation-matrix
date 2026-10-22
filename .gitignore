@@ -3,3 +3,7 @@ relays/go-otelc/.otelc-build/
 
 .env
 .env.*
+
+# The sink's append-only observation log (a local debugging aid; every
+# observation the results depend on is already in results/raw/*.json).
+results/data/
