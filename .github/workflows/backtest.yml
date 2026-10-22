@@ -52,6 +52,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # discover.mjs excludes the version the matrix currently measures; that
+      # comes from the latest published results.json (`cpm coords`), which is
+      # a release asset, not a tracked file.
+      - name: Fetch results.json from the latest run-* release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/fetch-latest.sh
       - id: plan
         env:
           GITHUB_TOKEN: ${{ github.token }}

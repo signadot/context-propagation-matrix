@@ -7,14 +7,25 @@
 #   ./run.sh tool:datadog                # every variant of one tool
 #   ./run.sh language:python             # every variant of one language
 #   NEW_RELIC_LICENSE_KEY=... ./run.sh newrelic-java
+#   ./run.sh fetch [-raw] [tag]          # results/latest (+ results/raw) from the latest release
 #
 # Variants come from variants.yaml (the registry); docker-compose.yml must
 # define relay-<id> with profile <id> for each (checked by `cpm validate`).
 # Requires Docker + docker compose, and Go (for the registry-driven CLI).
+#
+# Outputs (results/raw, results/latest, results/MATRIX.md) are gitignored:
+# the published copy of every run is a GitHub Release. To work from the
+# latest published raw evidence instead of measuring:
+#   ./run.sh fetch -raw && go run ./cmd/cpm aggregate
 set -uo pipefail
 cd "$(dirname "$0")"
 
 cpm() { go run ./cmd/cpm "$@"; }
+
+if [[ "${1:-}" == "fetch" ]]; then
+  shift
+  exec scripts/fetch-latest.sh "$@"
+fi
 
 # Load .env (gitignored) so the secret check below sees the license key;
 # docker compose reads the same file for ${NEW_RELIC_LICENSE_KEY}.
@@ -24,10 +35,14 @@ fi
 
 if [[ $# -eq 0 ]]; then
   echo "usage: $0 <variant>...|all|public|tool:<tool>|language:<lang>" >&2
+  echo "       $0 fetch [-raw] [tag]" >&2
   echo "variants:" >&2
   cpm list | sed 's/^/  /' >&2
   exit 2
 fi
+
+# Bind-mount targets for the driver (raw results) and sink (observation log).
+mkdir -p results/raw results/data
 
 variants=()
 for arg in "$@"; do

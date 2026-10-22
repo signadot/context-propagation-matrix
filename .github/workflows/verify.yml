@@ -42,6 +42,13 @@ jobs:
         run: test -z "$(gofmt -l ./cmd ./internal ./driver ./sink ./matrixgen)" || { gofmt -l ./cmd ./internal ./driver ./sink ./matrixgen; exit 1; }
       - name: go vet
         run: go vet ./...
+      # Results are not in the tree: pull the latest published run so the
+      # annotation selectors are checked against real cells. Before the first
+      # release this is a no-op and validate skips that check.
+      - name: Fetch results.json from the latest run-* release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/fetch-latest.sh
       # Pull requests are strict: an annotation whose cells all pass (or whose
       # explicit outcome no longer occurs) must be marked fixed in the same
       # review. The scheduled matrix run stays non-strict so an upstream fix
@@ -54,7 +61,7 @@ jobs:
       - name: bump-agents manifest matches the Dockerfiles (offline)
         run: node versions/bump-agents.mjs --check
       - name: shell syntax
-        run: bash -n run.sh
+        run: for f in run.sh scripts/*.sh; do bash -n "$f" || exit 1; done
 
   smoke:
     runs-on: ubuntu-latest
