@@ -1,0 +1,150 @@
+# backtest.yml — measure older tracer releases so the site can show when a
+# cell changed (and auto-fill `fixed_in` on annotations).
+#
+# For each (variant, older version) pair from versions/discover.mjs, build the
+# relay with `TRACER_VERSION=<version>` (every relay Dockerfile honours it),
+# run the 16 hops, aggregate a single-variant results.json with
+# kind=backtest, and publish it as Release `backtest-<variant>-<version>`.
+# Pairs that already have a release are skipped, so re-runs only fill gaps.
+name: backtest
+
+on:
+  schedule:
+    - cron: '23 3 1 * *' # monthly, 1st at 03:23 UTC
+  workflow_dispatch:
+    inputs:
+      variants:
+        description: 'Comma-separated variant ids (default: every public variant)'
+        required: false
+        default: ''
+      depth:
+        description: 'How many older versions per variant'
+        required: false
+        default: '5'
+      include_secret:
+        description: 'Include variants that need a secret (New Relic)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: backtest
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  CACHE_IMAGE: ghcr.io/${{ github.repository }}/cache
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      pairs: ${{ steps.plan.outputs.pairs }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # discover.mjs excludes the version the matrix currently measures; that
+      # comes from the latest published results.json (`cpm coords`), which is
+      # a release asset, not a tracked file.
+      - name: Fetch results.json from the latest run-* release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/fetch-latest.sh
+      - id: plan
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          args=(--depth "${{ github.event.inputs.depth || '5' }}" --skip-published)
+          [[ -n "${{ github.event.inputs.variants }}" ]] && args+=(--variants "${{ github.event.inputs.variants }}")
+          [[ "${{ github.event.inputs.include_secret }}" == "true" ]] && args+=(--include-secret)
+          node versions/discover.mjs "${args[@]}" > pairs.json
+          echo "pairs=$(jq -c . pairs.json)" >> "$GITHUB_OUTPUT"
+          echo "count=$(jq length pairs.json)" >> "$GITHUB_OUTPUT"
+          echo "### Back-test plan: $(jq length pairs.json) builds" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '.[] | "- \(.variant) @ \(.version) (current \(.current))"' pairs.json >> "$GITHUB_STEP_SUMMARY"
+
+  run:
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        pair: ${{ fromJson(needs.plan.outputs.pairs) }}
+    env:
+      V: ${{ matrix.pair.variant }}
+      VER: ${{ matrix.pair.version }}
+      NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build relay-${{ env.V }} at TRACER_VERSION=${{ env.VER }}
+        run: |
+          set -euo pipefail
+          args=(--load)
+          for t in sink driver; do
+            args+=(--set "$t.tags=cpmatrix-$t" --set "$t.cache-from=type=registry,ref=$CACHE_IMAGE:$t")
+          done
+          # Cache reads from the current-version layers help (base image, app
+          # deps; the per-Dockerfile ref has the language's shared stages); we
+          # do not write back so the main cache stays for HEAD.
+          df=$(docker buildx bake -f docker-compose.yml --print "relay-$V" | jq -r ".target[\"relay-$V\"].dockerfile")
+          args+=(--set "relay-$V.tags=cpmatrix-relay-$V"
+                 --set "relay-$V.args.TRACER_VERSION=$VER"
+                 --set "relay-$V.cache-from=type=registry,ref=$CACHE_IMAGE:relay-$V"
+                 --set "relay-$V.cache-from=type=registry,ref=$CACHE_IMAGE:$(dirname "$df" | tr / -)")
+          docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-$V"
+      - name: Run the 16 hops
+        run: |
+          set -euo pipefail
+          mkdir -p results/raw results/data
+          docker compose up -d --no-build kafka rabbitmq sink
+          docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic "relay-in-$V" --partitions 1 --replication-factor 1
+          docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic sink-in --partitions 1 --replication-factor 1
+          docker compose up -d --no-build "relay-$V"
+          if [[ "$V" == newrelic-* ]]; then sleep 5; docker compose run --rm --pull never driver -variant "$V" >/dev/null 2>&1 || true; sleep 10; fi
+          docker compose run --rm --pull never driver -variant "$V"
+      - name: Aggregate a single-variant results.json (kind=backtest)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/raw && cp "results/raw/$V.json" /tmp/raw/
+          go run ./cmd/cpm aggregate -raw /tmp/raw -out /tmp/out -kind backtest -commit "$GITHUB_SHA" \
+            -run-id "backtest-$V-$VER" -notes "TRACER_VERSION=$VER"
+          reported=$(jq -r --arg v "$V" '.variants[] | select(.id==$v) | .tracer.version' /tmp/out/results.json)
+          echo "relay reported tracer version: $reported (requested $VER)"
+          if [[ "$reported" != "$VER" && "$reported" != "v$VER" && "$reported" != "unknown" ]]; then
+            echo "::warning::relay reported $reported, requested $VER — check the Dockerfile override for $V"
+          fi
+      - name: Publish release backtest-${{ env.V }}-${{ env.VER }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "backtest-$V-$VER" --title "backtest: $V @ $VER" \
+            --notes "Back-test of \`$V\` with tracer version \`$VER\` (kind=backtest). See the run's results.json for cells." \
+            /tmp/out/results.json /tmp/out/MATRIX.md "results/raw/$V.json#raw-$V.json"
+      - name: Relay logs (on failure)
+        if: failure()
+        run: docker compose logs --no-color "relay-$V" sink | tail -200
