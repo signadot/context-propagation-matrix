@@ -1,7 +1,13 @@
 # Builds the uninstrumented Go components (sink recorder + test driver).
-# Keep the image's Go at or above the `go` directive in go.mod (Dependabot
-# bumps raise it; the image has GOTOOLCHAIN=local and cannot download newer).
+#
+# go.mod's `go` directive is the single source of truth for the Go version.
+# The image is only a bootstrap: it ships with GOTOOLCHAIN=local, so when a
+# Dependabot bump raises the directive past the image, `go mod download`
+# refuses. `auto` lets `go` fetch the toolchain go.mod asks for instead.
+# scripts/check-toolchains.sh still requires the image tag to be at or above
+# the directive, so the download is a safety net, not the steady state.
 FROM golang:1.26 AS build
+ENV GOTOOLCHAIN=auto
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
