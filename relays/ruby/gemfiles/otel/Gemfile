@@ -2,7 +2,7 @@
 # Versions pinned exactly for repeatability (Dependabot bumps them).
 source 'https://rubygems.org'
 
-gem 'bunny', '3.3.0'
+gem 'bunny', '3.4.0'
 gem 'grpc', '1.83.1'
 gem 'puma', '8.0.2'
 gem 'rackup', '2.3.1'
