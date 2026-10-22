@@ -1,0 +1,278 @@
+# versions/pins.yaml — where every tracer/agent version is pinned, and how to
+# move it. The pins themselves stay in the manifests next to each relay
+# (go.mod, package.json, requirements-*.txt, Gemfile, Cargo.toml, Dockerfile
+# ARGs); this file only says where they are. Read by versions/pin.mjs:
+#
+#   pin.mjs --latest             bump-agents.yml: for the `kind: arg` entries
+#                                (the ones Dependabot cannot see) look up the
+#                                newest stable version in `source` and rewrite
+#                                the pin; one PR per entry.
+#   pin.mjs --variant V --version X
+#                                backtest.yml: set the pin behind variant V to
+#                                X in a scratch checkout, then build the
+#                                unchanged Dockerfiles. Same edit a Dependabot
+#                                PR would make, pointed backwards.
+#   pin.mjs --check              verify.yml: every entry resolves to a current
+#                                version in its file, and every instrumented
+#                                variant in variants.yaml has exactly one entry
+#                                whose `source` is its tracer coordinate.
+#
+# Fields
+#   id        stable name (bump branch names, PR titles)
+#   kind      how the pin is written — arg | gomod | npm | pip | bundler | cargo
+#   source    registry + package, the same coordinates as variants.yaml `tracer`
+#             (that equality is how a variant finds its pin)
+#   variants  registry variants built from this pin (PR bodies; cross-checked)
+#   kind: arg      file + arg (`ARG NAME=<version>`) or pattern (regex with a
+#                  named group `version`; the first match is rewritten)
+#   kind: gomod    dir + modules: the vendor's version-locked family, `go get`
+#                  together then `go mod tidy`. Modules with their own version
+#                  line (otelhttp/otelgrpc, New Relic integrations, OTel Ruby
+#                  instrumentation gems) are deliberately not listed.
+#   kind: npm      file (package.json) + packages
+#   kind: pip      file (requirements-*.txt) + packages (globs; every `pkg==`)
+#   kind: bundler  file (Gemfile) + packages (gem names)
+#   kind: cargo    dir + packages (crates): Cargo.toml requirement rewritten and
+#                  Cargo.lock moved with `cargo update --precise`, so the
+#                  Dockerfile's `--locked` build still applies.
+
+pins:
+  # ---- Java agent jars (Dockerfile ARGs) ---------------------------------
+  - id: otel-java-agent
+    kind: arg
+    file: relays/java/Dockerfile
+    arg: OTEL_JAVA_AGENT_VERSION
+    source: { registry: maven, package: "io.opentelemetry.javaagent:opentelemetry-javaagent" }
+    variants: [otel-java]
+  - id: dd-java-agent
+    kind: arg
+    file: relays/java/Dockerfile
+    arg: DD_JAVA_AGENT_VERSION
+    source: { registry: maven, package: "com.datadoghq:dd-java-agent" }
+    variants: [datadog-java, datadog-java-defaults]
+  - id: newrelic-java-agent
+    kind: arg
+    file: relays/java/Dockerfile
+    arg: NEWRELIC_JAVA_AGENT_VERSION
+    source: { registry: maven, package: "com.newrelic.agent.java:newrelic-agent" }
+    variants: [newrelic-java]
+  - id: elastic-java-agent
+    kind: arg
+    file: relays/java/Dockerfile
+    arg: ELASTIC_APM_JAVA_AGENT_VERSION
+    source: { registry: maven, package: "co.elastic.apm:elastic-apm-agent" }
+    variants: [elastic-java]
+
+  # ---- .NET profilers (Dockerfile ARGs) ----------------------------------
+  - id: otel-dotnet-auto
+    kind: arg
+    file: relays/dotnet/Dockerfile
+    arg: OTEL_DOTNET_AUTO_VERSION
+    source: { registry: github-releases, package: open-telemetry/opentelemetry-dotnet-instrumentation, tagPrefix: v }
+    variants: [otel-dotnet]
+  - id: dd-dotnet-tracer
+    kind: arg
+    file: relays/dotnet/Dockerfile
+    arg: DD_DOTNET_TRACER_VERSION
+    source: { registry: github-releases, package: DataDog/dd-trace-dotnet, tagPrefix: v }
+    variants: [datadog-dotnet, datadog-dotnet-defaults]
+  - id: newrelic-dotnet-agent
+    kind: arg
+    file: relays/dotnet/Dockerfile
+    arg: NEWRELIC_DOTNET_AGENT_VERSION
+    source: { registry: github-releases, package: newrelic/newrelic-dotnet-agent, tagPrefix: v }
+    variants: [newrelic-dotnet]
+  - id: elastic-dotnet-agent
+    kind: arg
+    file: relays/dotnet/Dockerfile
+    arg: ELASTIC_APM_DOTNET_VERSION
+    source: { registry: github-releases, package: elastic/apm-agent-dotnet, tagPrefix: v }
+    variants: [elastic-dotnet]
+
+  # ---- PHP (Dockerfile RUN lines) -----------------------------------------
+  # otel-php's tracer coordinate is the extension; the composer packages are
+  # companions that bump-agents moves on their own cadence.
+  - id: otel-php-ext
+    kind: arg
+    file: relays/php/Dockerfile
+    pattern: 'install-php-extensions opentelemetry-(?<version>[\d.]+)'
+    source: { registry: pecl, package: opentelemetry }
+    variants: [otel-php]
+  - id: otel-php-auto-slim
+    kind: arg
+    file: relays/php/Dockerfile
+    pattern: 'open-telemetry/opentelemetry-auto-slim:(?<version>[\d.]+)'
+    source: { registry: packagist, package: open-telemetry/opentelemetry-auto-slim }
+    variants: [otel-php]
+  - id: otel-php-auto-curl
+    kind: arg
+    file: relays/php/Dockerfile
+    pattern: 'open-telemetry/opentelemetry-auto-curl:(?<version>[\d.]+)'
+    source: { registry: packagist, package: open-telemetry/opentelemetry-auto-curl }
+    variants: [otel-php]
+  - id: otel-php-auto-rdkafka
+    kind: arg
+    file: relays/php/Dockerfile
+    pattern: 'open-telemetry/opentelemetry-auto-ext-rdkafka:(?<version>[\d.]+)'
+    source: { registry: packagist, package: open-telemetry/opentelemetry-auto-ext-rdkafka }
+    variants: [otel-php]
+  - id: dd-php-tracer
+    kind: arg
+    file: relays/php/Dockerfile
+    arg: DD_PHP_TRACER_VERSION
+    source: { registry: github-releases, package: DataDog/dd-trace-php }
+    variants: [datadog-php]
+  - id: newrelic-php-agent
+    kind: arg
+    file: relays/php/Dockerfile
+    arg: NEWRELIC_PHP_AGENT_VERSION
+    source: { registry: newrelic-download, package: php_agent }
+    variants: [newrelic-php]
+  - id: elastic-php-agent
+    kind: arg
+    file: relays/php/Dockerfile
+    arg: ELASTIC_APM_PHP_VERSION
+    source: { registry: github-releases, package: elastic/apm-agent-php, tagPrefix: v }
+    variants: [elastic-php]
+
+  # ---- Go (go.mod; Dependabot bumps forward) -----------------------------
+  - id: otel-go
+    kind: gomod
+    dir: relays/go
+    modules:
+      - go.opentelemetry.io/otel
+      - go.opentelemetry.io/otel/sdk
+      - go.opentelemetry.io/otel/trace
+    source: { registry: goproxy, package: go.opentelemetry.io/otel }
+    variants: [otel-go]
+  - id: otelc
+    kind: gomod
+    dir: relays/go-otelc
+    modules: [go.opentelemetry.io/otelc]
+    source: { registry: goproxy, package: go.opentelemetry.io/otelc }
+    variants: [otel-go-compiletime]
+  - id: dd-trace-go
+    kind: gomod
+    dir: relays/go
+    modules:
+      - github.com/DataDog/dd-trace-go/v2
+      - github.com/DataDog/dd-trace-go/contrib/net/http/v2
+      - github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2
+      - github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2
+    source: { registry: goproxy, package: github.com/DataDog/dd-trace-go/v2 }
+    variants: [datadog-go, datadog-go-defaults]
+  - id: dd-trace-go-orchestrion
+    kind: gomod
+    dir: relays/go-orchestrion
+    modules:
+      - github.com/DataDog/dd-trace-go/orchestrion/all/v2
+      - github.com/DataDog/dd-trace-go/v2
+    source: { registry: goproxy, package: github.com/DataDog/dd-trace-go/v2 }
+    variants: [datadog-go-orchestrion]
+  - id: newrelic-go-agent
+    kind: gomod
+    dir: relays/go
+    modules: [github.com/newrelic/go-agent/v3]
+    source: { registry: goproxy, package: github.com/newrelic/go-agent/v3 }
+    variants: [newrelic-go]
+  - id: elastic-apm-go
+    kind: gomod
+    dir: relays/go
+    modules:
+      - go.elastic.co/apm/v2
+      - go.elastic.co/apm/module/apmgrpc/v2
+      - go.elastic.co/apm/module/apmhttp/v2
+    source: { registry: goproxy, package: go.elastic.co/apm/v2 }
+    variants: [elastic-go]
+
+  # ---- Node (one single-dependency manifest per tool) --------------------
+  - id: otel-node
+    kind: npm
+    file: relays/node/tools/otel/package.json
+    packages: ["@opentelemetry/auto-instrumentations-node"]
+    source: { registry: npm, package: "@opentelemetry/auto-instrumentations-node" }
+    variants: [otel-node]
+  - id: dd-trace-node
+    kind: npm
+    file: relays/node/tools/datadog/package.json
+    packages: [dd-trace]
+    source: { registry: npm, package: dd-trace }
+    variants: [datadog-node, datadog-node-defaults]
+  - id: newrelic-node
+    kind: npm
+    file: relays/node/tools/newrelic/package.json
+    packages: [newrelic]
+    source: { registry: npm, package: newrelic }
+    variants: [newrelic-node]
+  - id: elastic-apm-node
+    kind: npm
+    file: relays/node/tools/elastic/package.json
+    packages: [elastic-apm-node]
+    source: { registry: npm, package: elastic-apm-node }
+    variants: [elastic-node]
+
+  # ---- Python (one requirements file per tool) ---------------------------
+  - id: otel-python
+    kind: pip
+    file: relays/python/requirements-otel.txt
+    packages: ["opentelemetry-*"]      # distro + instrumentation-* share a version line
+    source: { registry: pypi, package: opentelemetry-distro }
+    variants: [otel-python]
+  - id: ddtrace
+    kind: pip
+    file: relays/python/requirements-datadog.txt
+    packages: [ddtrace]
+    source: { registry: pypi, package: ddtrace }
+    variants: [datadog-python, datadog-python-defaults, datadog-python-kafkaprop]
+  - id: newrelic-python
+    kind: pip
+    file: relays/python/requirements-newrelic.txt
+    packages: [newrelic]
+    source: { registry: pypi, package: newrelic }
+    variants: [newrelic-python]
+  - id: elastic-apm-python
+    kind: pip
+    file: relays/python/requirements-elastic.txt
+    packages: [elastic-apm]
+    source: { registry: pypi, package: elastic-apm }
+    variants: [elastic-python]
+
+  # ---- Ruby (one Gemfile per tool) ----------------------------------------
+  - id: otel-ruby
+    kind: bundler
+    file: relays/ruby/gemfiles/otel/Gemfile
+    packages: [opentelemetry-sdk]
+    source: { registry: rubygems, package: opentelemetry-sdk }
+    variants: [otel-ruby]
+  - id: datadog-ruby
+    kind: bundler
+    file: relays/ruby/gemfiles/datadog/Gemfile
+    packages: [datadog]
+    source: { registry: rubygems, package: datadog }
+    variants: [datadog-ruby, datadog-ruby-defaults]
+  - id: newrelic-ruby
+    kind: bundler
+    file: relays/ruby/gemfiles/newrelic/Gemfile
+    packages: [newrelic_rpm]
+    source: { registry: rubygems, package: newrelic_rpm }
+    variants: [newrelic-ruby]
+  - id: elastic-apm-ruby
+    kind: bundler
+    file: relays/ruby/gemfiles/elastic/Gemfile
+    packages: [elastic-apm]
+    source: { registry: rubygems, package: elastic-apm }
+    variants: [elastic-ruby]
+
+  # ---- Rust (Cargo.toml + Cargo.lock) ------------------------------------
+  - id: otel-rust
+    kind: cargo
+    dir: relays/rust
+    packages: [opentelemetry, opentelemetry_sdk, opentelemetry-http]
+    source: { registry: crates, package: opentelemetry }
+    variants: [otel-rust]
+  - id: datadog-rust
+    kind: cargo
+    dir: relays/rust
+    packages: [datadog-opentelemetry]
+    source: { registry: crates, package: datadog-opentelemetry }
+    variants: [datadog-rust]

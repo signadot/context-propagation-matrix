@@ -12,8 +12,9 @@
 #   - the contextpropagation.io site (via results.json, never directly)
 #
 # Versions are deliberately NOT here. Exact pins live in the manifests and
-# Dockerfile ARGs next to each relay (Dependabot / bump-agents.yml bump them);
-# the aggregator records the version the relay actually reported at run time.
+# Dockerfile ARGs next to each relay (Dependabot / bump-agents.yml bump them;
+# versions/pins.yaml says where each one is); the aggregator records the
+# version the relay actually reported at run time.
 
 schema_version: 1
 

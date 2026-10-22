@@ -1,11 +1,15 @@
 # backtest.yml — measure older tracer releases so the site can show when a
 # cell changed (and auto-fill `fixed_in` on annotations).
 #
-# For each (variant, older version) pair from versions/discover.mjs, build the
-# relay with `TRACER_VERSION=<version>` (every relay Dockerfile honours it),
+# For each (variant, older version) pair from versions/discover.mjs: in the
+# job's checkout, move the pin behind that variant to the older version
+# (`versions/pin.mjs` — the same edit to go.mod / package.json /
+# requirements / Gemfile / Cargo.toml / Dockerfile ARG that a Dependabot PR
+# makes, pointed backwards), build the relay with the unchanged Dockerfile,
 # run the 16 hops, aggregate a single-variant results.json with
 # kind=backtest, and publish it as Release `backtest-<variant>-<version>`.
 # Pairs that already have a release are skipped, so re-runs only fill gaps.
+# Nothing is committed; the matrix measures whatever main pins.
 name: backtest
 
 on:
@@ -93,13 +97,26 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # pin.mjs moves Cargo.lock with `cargo update` for the Rust relays.
+      - uses: dtolnay/rust-toolchain@stable
+        if: endsWith(env.V, '-rust')
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build relay-${{ env.V }} at TRACER_VERSION=${{ env.VER }}
+      - name: Pin ${{ env.V }}'s tracer to ${{ env.VER }} in this checkout
+        run: |
+          set -euo pipefail
+          node versions/pin.mjs --variant "$V" --version "$VER" > /tmp/pin.json
+          echo "### Pinned" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '"`\(.id)` (\(.kind)) \(.from) → \(.to) in " + (.files | map("`" + . + "`") | join(", "))' /tmp/pin.json >> "$GITHUB_STEP_SUMMARY"
+          git --no-pager diff --stat
+      - name: Build relay-${{ env.V }} from the pinned checkout
         run: |
           set -euo pipefail
           args=(--load)
@@ -111,7 +128,6 @@ jobs:
           # do not write back so the main cache stays for HEAD.
           df=$(docker buildx bake -f docker-compose.yml --print "relay-$V" | jq -r ".target[\"relay-$V\"].dockerfile")
           args+=(--set "relay-$V.tags=cpmatrix-relay-$V"
-                 --set "relay-$V.args.TRACER_VERSION=$VER"
                  --set "relay-$V.cache-from=type=registry,ref=$CACHE_IMAGE:relay-$V"
                  --set "relay-$V.cache-from=type=registry,ref=$CACHE_IMAGE:$(dirname "$df" | tr / -)")
           docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-$V"
@@ -132,11 +148,11 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/raw && cp "results/raw/$V.json" /tmp/raw/
           go run ./cmd/cpm aggregate -raw /tmp/raw -out /tmp/out -kind backtest -commit "$GITHUB_SHA" \
-            -run-id "backtest-$V-$VER" -notes "TRACER_VERSION=$VER"
+            -run-id "backtest-$V-$VER" -notes "pinned $(jq -r .id /tmp/pin.json) to $VER via versions/pin.mjs"
           reported=$(jq -r --arg v "$V" '.variants[] | select(.id==$v) | .tracer.version' /tmp/out/results.json)
           echo "relay reported tracer version: $reported (requested $VER)"
           if [[ "$reported" != "$VER" && "$reported" != "v$VER" && "$reported" != "unknown" ]]; then
-            echo "::warning::relay reported $reported, requested $VER — check the Dockerfile override for $V"
+            echo "::warning::relay reported $reported, requested $VER — check the versions/pins.yaml entry for $V"
           fi
       - name: Publish release backtest-${{ env.V }}-${{ env.VER }}
         env:

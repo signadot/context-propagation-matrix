@@ -58,8 +58,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: bump-agents manifest matches the Dockerfiles (offline)
-        run: node versions/bump-agents.mjs --check
+      # Every tracer pin listed in versions/pins.yaml resolves in its file, and
+      # every instrumented variant has exactly one pin (what backtest.yml and
+      # bump-agents.yml move). Offline apart from `cpm coords`.
+      - name: versions/pins.yaml matches the manifests and the registry
+        run: node versions/pin.mjs --check >/dev/null
       - name: shell syntax
         run: for f in run.sh scripts/*.sh; do bash -n "$f" || exit 1; done
 

@@ -68,9 +68,12 @@ would make every cell green and every cell meaningless.
    (`otel`, `datadog`, `elastic`, `newrelic`, `none`). Targets differ only in
    which agent they install and how the entrypoint attaches it; app source is
    identical across targets. Pin every version exactly (no ranges, no
-   `latest`). If an agent is fetched by URL, make the version a Dockerfile
-   `ARG` and add it to `versions/agents.yaml` so `bump-agents.yml` can bump
-   it.
+   `latest`). Add the tracer's pin to `versions/pins.yaml` (which file holds
+   it and how it is written); `verify.yml` fails until every instrumented
+   variant has one. If an agent is fetched by URL, make the version a
+   Dockerfile `ARG` (`kind: arg`) so `bump-agents.yml` can bump it; the
+   other kinds are Dependabot's, and `backtest.yml` moves any of them
+   backwards through the same entry.
 3. **`docker-compose.yml`** — one `relay-{tool}-{lang}` service per target:
    `<<: *relay-common-env`, `profiles: [{variant}]`, `restart: on-failure`,
    `depends_on: *relay-depends`, plus the tool's environment (copy another

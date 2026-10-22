@@ -1,4 +1,4 @@
-// Package-registry clients shared by bump-agents.mjs (latest version of the
+// Package-registry clients shared by pin.mjs --latest (newest version of the
 // Dockerfile-pinned agents) and discover.mjs (last N versions of every tracer
 // in variants.yaml, for back-testing).
 //
