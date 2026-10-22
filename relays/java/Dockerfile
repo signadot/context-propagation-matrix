@@ -4,10 +4,14 @@
 # Agent versions are pinned for repeatability. Dependabot does not cover
 # curl-fetched jars, so bumps are manual (or via the refresh checklist in
 # DESIGN.md "Version pinning"): update the ARG, rebuild, re-run the variant.
-ARG OTEL_JAVA_AGENT_VERSION=2.31.1
-ARG DD_JAVA_AGENT_VERSION=1.65.1
-ARG NEWRELIC_JAVA_AGENT_VERSION=9.4.0
-ARG ELASTIC_APM_JAVA_AGENT_VERSION=1.56.0
+# TRACER_VERSION (build-arg) overrides the pinned tracer/agent version for the
+# target being built; empty means "use the pin". Used by backtest.yml to
+# measure older releases without editing this file.
+ARG TRACER_VERSION=
+ARG OTEL_JAVA_AGENT_VERSION=${TRACER_VERSION:-2.31.1}
+ARG DD_JAVA_AGENT_VERSION=${TRACER_VERSION:-1.65.1}
+ARG NEWRELIC_JAVA_AGENT_VERSION=${TRACER_VERSION:-9.4.0}
+ARG ELASTIC_APM_JAVA_AGENT_VERSION=${TRACER_VERSION:-1.56.0}
 
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app

@@ -22,8 +22,15 @@ RUN --mount=type=cache,target=/go/pkg/mod cd relays/go-orchestrion && go mod dow
 COPY gen ./gen
 COPY relays/go-orchestrion ./relays/go-orchestrion
 # CGO_ENABLED=0 matches the hand-wired Go relays; dd-trace-go v2 supports it.
+ARG TRACER_VERSION
+ARG WEAVER_VERSION
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     cd relays/go-orchestrion && \
+    # Backtest overrides: dd-trace-go (the woven tracer) and/or orchestrion.
+    if [ -n "$TRACER_VERSION" ]; then \
+      go get github.com/DataDog/dd-trace-go/v2@v"${TRACER_VERSION#v}" \
+             github.com/DataDog/dd-trace-go/orchestrion/all/v2@v"${TRACER_VERSION#v}" && go mod tidy; fi && \
+    if [ -n "$WEAVER_VERSION" ]; then go get github.com/DataDog/orchestrion@v"${WEAVER_VERSION#v}" && go mod tidy; fi && \
     # Stamp the tracer version into the binary: the woven dd-trace-go is
     # invisible to debug.ReadBuildInfo, so /info reports it via this ldflag.
     DDVER=$(go list -m -f '{{.Version}}' github.com/DataDog/dd-trace-go/v2) && \

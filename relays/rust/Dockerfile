@@ -20,10 +20,21 @@ COPY proto ./proto
 COPY relays/rust/Cargo.toml relays/rust/Cargo.lock relays/rust/build.rs ./relays/rust/
 COPY relays/rust/src ./relays/rust/src
 ARG TOOL=otel
+ARG TRACER_VERSION
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/relays/rust/target \
     cd relays/rust \
- && cargo build --release --locked --bin "relay-${TOOL}" \
+ && locked=--locked \
+ && if [ -n "$TRACER_VERSION" ]; then \
+      case "$TOOL" in \
+        otel)    crates="opentelemetry opentelemetry_sdk opentelemetry-http" ;; \
+        datadog) crates="datadog-opentelemetry" ;; \
+        *)       crates="" ;; \
+      esac; \
+      for c in $crates; do sed -i -E "s/^($c = )\"[^\"]*\"/\\1\"$TRACER_VERSION\"/" Cargo.toml; done; \
+      cargo update; locked=""; \
+    fi \
+ && cargo build --release $locked --bin "relay-${TOOL}" \
  && cp "target/release/relay-${TOOL}" /relay
 
 FROM debian:bookworm-slim AS runtime
