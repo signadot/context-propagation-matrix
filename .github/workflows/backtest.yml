@@ -107,14 +107,18 @@ jobs:
             args+=(--set "$t.tags=cpmatrix-$t" --set "$t.cache-from=type=registry,ref=$CACHE_IMAGE:$t")
           done
           # Cache reads from the current-version layers help (base image, app
-          # deps); we do not write back so the main cache stays for HEAD.
+          # deps; the per-Dockerfile ref has the language's shared stages); we
+          # do not write back so the main cache stays for HEAD.
+          df=$(docker buildx bake -f docker-compose.yml --print "relay-$V" | jq -r ".target[\"relay-$V\"].dockerfile")
           args+=(--set "relay-$V.tags=cpmatrix-relay-$V"
                  --set "relay-$V.args.TRACER_VERSION=$VER"
-                 --set "relay-$V.cache-from=type=registry,ref=$CACHE_IMAGE:relay-$V")
+                 --set "relay-$V.cache-from=type=registry,ref=$CACHE_IMAGE:relay-$V"
+                 --set "relay-$V.cache-from=type=registry,ref=$CACHE_IMAGE:$(dirname "$df" | tr / -)")
           docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-$V"
       - name: Run the 16 hops
         run: |
           set -euo pipefail
+          mkdir -p results/raw results/data
           docker compose up -d --no-build kafka rabbitmq sink
           docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
             --create --if-not-exists --topic "relay-in-$V" --partitions 1 --replication-factor 1

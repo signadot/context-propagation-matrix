@@ -57,6 +57,12 @@ type Run struct {
 	BrokerVersions map[string]string `json:"broker_versions,omitempty"`
 	Generator      string            `json:"generator"`
 	Notes          string            `json:"notes,omitempty"`
+	// Partial is set when only some variants were measured in this run and
+	// the rest were carried over from the previous release (a push to main
+	// re-runs just the variants it affects). Reran lists the measured ids;
+	// each variant's ran_at says when its own cells were last measured.
+	Partial bool     `json:"partial,omitempty"`
+	Reran   []string `json:"reran,omitempty"`
 }
 
 type Dimensions struct {

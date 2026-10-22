@@ -112,9 +112,15 @@ func Load(path string) (*Registry, error) {
 	if err != nil {
 		return nil, err
 	}
+	return Parse(b, path)
+}
+
+// Parse decodes and validates registry YAML; name is used in error messages
+// (a path, or e.g. "abc123:variants.yaml" for a historical revision).
+func Parse(b []byte, name string) (*Registry, error) {
 	var r Registry
 	if err := yaml.Unmarshal(b, &r); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", name, err)
 	}
 	// Recover map key order from the raw document (yaml.v3 maps are unordered).
 	var doc yaml.Node
@@ -142,7 +148,7 @@ func Load(path string) (*Registry, error) {
 		s.ID = id
 	}
 	if err := r.Validate(); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", name, err)
 	}
 	return &r, nil
 }

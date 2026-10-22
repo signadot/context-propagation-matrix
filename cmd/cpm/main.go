@@ -2,8 +2,9 @@
 // output into the published results contract.
 //
 //	cpm list [-tool otel] [-secret|-no-secret] [-json]
+//	cpm affected -base <rev> [-head HEAD] [-json]
 //	cpm validate [-results results/latest/results.json]
-//	cpm aggregate [-raw results/raw] [-out results/latest] [-run-id id] [-prev results.json]
+//	cpm aggregate [-raw results/raw] [-out results/latest] [-run-id id] [-prev results.json] [-reran ids]
 //	cpm diff <from.json> <to.json> [-out changes.json]
 //	cpm summary <results.json> [-changes changes.json]
 //	cpm annotations mark-fixed <id> -fixed-in <version>
@@ -15,6 +16,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -22,6 +24,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/signadot/context-propagation-matrix/internal/affected"
 	"github.com/signadot/context-propagation-matrix/internal/annotations"
 	"github.com/signadot/context-propagation-matrix/internal/raw"
 	"github.com/signadot/context-propagation-matrix/internal/registry"
@@ -39,6 +42,8 @@ func main() {
 	switch os.Args[1] {
 	case "list":
 		err = cmdList(os.Args[2:])
+	case "affected":
+		err = cmdAffected(os.Args[2:])
 	case "validate":
 		err = cmdValidate(os.Args[2:])
 	case "aggregate":
@@ -64,9 +69,10 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `usage: cpm <list|validate|aggregate|diff|summary> [flags]
+	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|diff|summary|coords|annotations> [flags]
 
   list       print variant ids from variants.yaml (one per line, or -json)
+  affected   variant ids whose measurement a change could alter: -base <rev> [-head HEAD]
   validate   check variants.yaml, docker-compose.yml and annotations/ agree
   aggregate  results/raw/*.json -> results.json + MATRIX.md (+ changes.json)
   diff       compare two results.json files into changes.json
@@ -175,6 +181,102 @@ func cmdList(args []string) error {
 		fmt.Println(id)
 	}
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+
+// cmdAffected prints the variants a change between two git revisions could
+// re-measure differently (see internal/affected). matrix.yml runs it for
+// pushes to main so a tracer bump re-runs its own variants and carries the
+// rest over from the previous release. Reasons go to stderr; the id list to
+// stdout, every id when a shared component changed. Anything that stops the
+// diff from being computed (unknown base after a force-push, shallow clone)
+// selects every variant rather than guessing.
+func cmdAffected(args []string) error {
+	fs := flag.NewFlagSet("affected", flag.ExitOnError)
+	regPath := regFlag(fs)
+	composePath := fs.String("compose", "docker-compose.yml", "compose file")
+	base := fs.String("base", "", "revision before the change (required)")
+	head := fs.String("head", "HEAD", "revision after the change")
+	asJSON := fs.Bool("json", false, "emit a JSON array")
+	fs.Parse(args)
+	if *base == "" {
+		return fmt.Errorf("usage: cpm affected -base <rev> [-head HEAD]")
+	}
+
+	reg, err := registry.Load(*regPath)
+	if err != nil {
+		return err
+	}
+	in := affected.Inputs{Head: reg}
+	var res affected.Result
+
+	if strings.Trim(*base, "0") == "" {
+		// A branch's first push has no "before" commit.
+		res = affected.Result{All: true, Reasons: []string{"no base revision, every variant"}}
+	} else if out, err := git("diff", "--name-only", *base, *head); err != nil {
+		res = affected.Result{All: true, Reasons: []string{fmt.Sprintf("git diff %s..%s failed (%v), every variant", *base, *head, err)}}
+	} else {
+		in.Paths = strings.Fields(out)
+		for _, p := range in.Paths {
+			switch p {
+			case filepath.ToSlash(*regPath):
+				if b, err := git("show", *base+":"+p); err == nil {
+					in.Base, _ = registry.Parse([]byte(b), *base+":"+p)
+				}
+			case filepath.ToSlash(*composePath):
+				// A revision that fails to parse stays nil, which Compute
+				// treats as "re-run everything".
+				if b, err := git("show", *base+":"+p); err == nil {
+					_ = yaml.Unmarshal([]byte(b), &in.BaseCompose)
+				}
+				if b, err := git("show", *head+":"+p); err == nil {
+					_ = yaml.Unmarshal([]byte(b), &in.HeadCompose)
+				}
+			}
+		}
+		res = affected.Compute(in)
+	}
+	if res.All {
+		for _, v := range reg.SortedVariants() {
+			res.Variants = appendUnique(res.Variants, v.ID)
+		}
+	}
+
+	for _, r := range res.Reasons {
+		fmt.Fprintln(os.Stderr, "affected:", r)
+	}
+	fmt.Fprintf(os.Stderr, "affected: %d of %d variants\n", len(res.Variants), len(reg.Variants))
+	if *asJSON {
+		if res.Variants == nil {
+			res.Variants = []string{}
+		}
+		return json.NewEncoder(os.Stdout).Encode(res.Variants)
+	}
+	for _, id := range res.Variants {
+		fmt.Println(id)
+	}
+	return nil
+}
+
+func git(args ...string) (string, error) {
+	out, err := exec.Command("git", args...).Output()
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
+			return "", fmt.Errorf("%s", strings.TrimSpace(string(ee.Stderr)))
+		}
+		return "", err
+	}
+	return string(out), nil
+}
+
+func appendUnique(ids []string, id string) []string {
+	for _, x := range ids {
+		if x == id {
+			return ids
+		}
+	}
+	return append(ids, id)
 }
 
 // ---------------------------------------------------------------------------
@@ -356,6 +458,8 @@ func cmdAggregate(args []string) error {
 	annDir := fs.String("annotations", "annotations", "annotations directory")
 	prev := fs.String("prev", "", "previous results.json to diff against (writes changes.json)")
 	legacyMD := fs.String("matrix-md", "", "also write MATRIX.md to this path (legacy location)")
+	reran := fs.String("reran", "", "variant ids measured in this run (space/comma separated); the rest are carried over and run.partial is set")
+	ignoreUnknown := fs.Bool("ignore-unknown", false, "skip raw results for variants no longer in variants.yaml (carried over from an older release) instead of failing")
 	fs.Parse(args)
 
 	reg, err := registry.Load(*regPath)
@@ -365,6 +469,17 @@ func cmdAggregate(args []string) error {
 	raws, err := raw.LoadDir(*rawDir)
 	if err != nil {
 		return err
+	}
+	if *ignoreUnknown {
+		kept := raws[:0]
+		for _, r := range raws {
+			if reg.Variant(r.Variant) == nil {
+				fmt.Fprintf(os.Stderr, "aggregate: dropping %s: not in variants.yaml\n", r.Variant)
+				continue
+			}
+			kept = append(kept, r)
+		}
+		raws = kept
 	}
 	run := results.Run{Kind: *kind, HarnessRepo: harnessRepo, HarnessCommit: *commit, Notes: *notes,
 		Generator: "cpm aggregate (schema v" + fmt.Sprint(results.SchemaVersion) + ")"}
@@ -379,6 +494,20 @@ func cmdAggregate(args []string) error {
 		*runID = "run-" + res.Run.FinishedAt.UTC().Format("2006-01-02")
 	}
 	res.Run.RunID = *runID
+	if ids := strings.FieldsFunc(*reran, func(r rune) bool { return r == ' ' || r == ',' || r == '\n' }); len(ids) > 0 {
+		sort.Strings(ids)
+		res.Run.Reran = ids
+		measured := map[string]bool{}
+		for _, id := range ids {
+			measured[id] = true
+		}
+		for _, v := range res.Variants {
+			if !v.Missing && !measured[v.ID] {
+				res.Run.Partial = true
+				break
+			}
+		}
+	}
 
 	if anns, err := annotations.LoadDir(*annDir); err != nil {
 		return err
@@ -466,6 +595,17 @@ func cmdSummary(args []string) error {
 	fmt.Fprintf(&sb, "## Context propagation matrix — %s\n\n", res.Run.RunID)
 	fmt.Fprintf(&sb, "%d variants · %d hops · %d cells · finished %s\n\n",
 		res.Summary.VariantCount, res.Summary.HopCount, res.Summary.CellCount, res.Run.FinishedAt.UTC().Format(time.RFC3339))
+	if res.Run.Partial {
+		carried := 0
+		for _, v := range res.Variants {
+			if !v.Missing {
+				carried++
+			}
+		}
+		carried -= len(res.Run.Reran)
+		fmt.Fprintf(&sb, "Re-measured %d variant(s): %s. The other %d carried over from the previous release (see each variant's `ran_at`).\n\n",
+			len(res.Run.Reran), strings.Join(res.Run.Reran, ", "), carried)
+	}
 	if len(res.Summary.CanaryLeaks) > 0 {
 		fmt.Fprintf(&sb, "**CANARY LEAK — results invalid:** %s\n\n", strings.Join(res.Summary.CanaryLeaks, ", "))
 	}

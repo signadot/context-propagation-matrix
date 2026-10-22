@@ -83,19 +83,29 @@ jobs:
       - name: Build sink, driver and relay-${{ matrix.variant }} (GHCR layer cache)
         env:
           CAN_PUSH_CACHE: ${{ github.event.pull_request.head.repo.fork != true }}
+          V: ${{ matrix.variant }}
         run: |
           set -euo pipefail
+          # Same cache refs as matrix.yml: per variant plus per relay Dockerfile
+          # (relays/node/Dockerfile → relays-node) so a language's app build is shared.
+          df=$(docker buildx bake -f docker-compose.yml --print "relay-$V" | jq -r ".target[\"relay-$V\"].dockerfile")
+          lang_ref="$CACHE_IMAGE:$(dirname "$df" | tr / -)"
           args=(--load)
-          for t in sink driver "relay-${{ matrix.variant }}"; do
+          for t in sink driver "relay-$V"; do
             args+=(--set "$t.tags=cpmatrix-$t" --set "$t.cache-from=type=registry,ref=$CACHE_IMAGE:$t")
             if [[ "$CAN_PUSH_CACHE" == "true" ]]; then
               args+=(--set "$t.cache-to=type=registry,ref=$CACHE_IMAGE:$t,mode=max")
             fi
           done
-          docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-${{ matrix.variant }}"
+          args+=(--set "relay-$V.cache-from=type=registry,ref=$lang_ref")
+          if [[ "$CAN_PUSH_CACHE" == "true" ]]; then
+            args+=(--set "relay-$V.cache-to=type=registry,ref=$lang_ref,mode=max")
+          fi
+          docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-$V"
       - name: Run the variant
         run: |
           set -euo pipefail
+          mkdir -p results/raw results/data
           docker compose up -d --no-build kafka rabbitmq sink
           docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
             --create --if-not-exists --topic "relay-in-${{ matrix.variant }}" --partitions 1 --replication-factor 1
