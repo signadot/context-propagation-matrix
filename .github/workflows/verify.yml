@@ -1,0 +1,113 @@
+# verify.yml — pull-request gate. No secrets, so PRs from forks work.
+#
+#  1. static: Go build/vet/gofmt, registry ↔ compose ↔ annotations consistency
+#  2. smoke: build and run two cheap variants end to end (one zero-code, one
+#     in-code) against real brokers, and check the driver produced 16 hops.
+#
+# Relay images are cached in GHCR (read-only for forks) so a smoke run is
+# minutes, not the ~10 min cold build of the Java relay.
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'results/**'
+      - '**.md'
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # write: the smoke job pushes the GHCR layer cache for same-repo branches.
+  # Fork PRs get a read-only token regardless, and CAN_PUSH_CACHE skips cache-to.
+  packages: write
+
+env:
+  CACHE_IMAGE: ghcr.io/${{ github.repository }}/cache
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: gofmt
+        run: test -z "$(gofmt -l ./cmd ./internal ./driver ./sink ./matrixgen)" || { gofmt -l ./cmd ./internal ./driver ./sink ./matrixgen; exit 1; }
+      - name: go vet
+        run: go vet ./...
+      # Pull requests are strict: an annotation whose cells all pass (or whose
+      # explicit outcome no longer occurs) must be marked fixed in the same
+      # review. The scheduled matrix run stays non-strict so an upstream fix
+      # can never stop results from being published.
+      - name: registry, compose and annotations agree
+        run: go run ./cmd/cpm validate -results results/latest/results.json ${{ github.event_name == 'pull_request' && '-strict' || '' }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: bump-agents manifest matches the Dockerfiles (offline)
+        run: node versions/bump-agents.mjs --check
+      - name: shell syntax
+        run: bash -n run.sh
+
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [otel-node, datadog-python]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR (cache read/write; skipped for forks)
+        if: github.event.pull_request.head.repo.fork != true
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build sink, driver and relay-${{ matrix.variant }} (GHCR layer cache)
+        env:
+          CAN_PUSH_CACHE: ${{ github.event.pull_request.head.repo.fork != true }}
+        run: |
+          set -euo pipefail
+          args=(--load)
+          for t in sink driver "relay-${{ matrix.variant }}"; do
+            args+=(--set "$t.tags=cpmatrix-$t" --set "$t.cache-from=type=registry,ref=$CACHE_IMAGE:$t")
+            if [[ "$CAN_PUSH_CACHE" == "true" ]]; then
+              args+=(--set "$t.cache-to=type=registry,ref=$CACHE_IMAGE:$t,mode=max")
+            fi
+          done
+          docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-${{ matrix.variant }}"
+      - name: Run the variant
+        run: |
+          set -euo pipefail
+          docker compose up -d --no-build kafka rabbitmq sink
+          docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic "relay-in-${{ matrix.variant }}" --partitions 1 --replication-factor 1
+          docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic sink-in --partitions 1 --replication-factor 1
+          docker compose up -d --no-build "relay-${{ matrix.variant }}"
+          docker compose run --rm --pull never driver -variant "${{ matrix.variant }}"
+      - name: Assert 16 hops recorded, canary clean
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          d = json.load(open("results/raw/${{ matrix.variant }}.json"))
+          hops = d["tests"]
+          assert len(hops) == 16, f"expected 16 hops, got {len(hops)}"
+          leaks = [t["boundary"] for t in hops if t.get("status") and t["status"]["canary_leak"]]
+          assert not leaks, f"canary leaked on {leaks}"
+          delivered = sum(1 for t in hops if t["delivered"])
+          print(f"ok: {delivered}/16 hops delivered")
+          EOF
+      - name: Relay logs (on failure)
+        if: failure()
+        run: docker compose logs --no-color "relay-${{ matrix.variant }}" sink | tail -200
