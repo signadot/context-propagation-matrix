@@ -11,25 +11,33 @@ the PHP and Rust relays and the RabbitMQ column were built that way.
 
 ## Running locally
 
-Requirements: Docker with `docker compose`, Go 1.25+ (for the `cpm` CLI).
+Requirements: Docker with `docker compose`, Go 1.26+ (for the `cpm` CLI), and
+the GitHub CLI (`gh`) if you want to pull published results.
 
 ```sh
 git clone https://github.com/signadot/context-propagation-matrix
 cd context-propagation-matrix
 
+./run.sh fetch -raw                # latest published run -> results/latest + results/raw
 ./run.sh otel-node                 # one variant (~2 min after the first image build)
 ./run.sh tool:datadog              # every Datadog variant
 ./run.sh public                    # everything that needs no secret
 NEW_RELIC_LICENSE_KEY=... ./run.sh tool:newrelic   # New Relic agents need a (free) key
 
 go run ./cmd/cpm validate          # variants.yaml ↔ docker-compose.yml ↔ annotations/
-go run ./cmd/cpm aggregate -matrix-md results/MATRIX.md   # re-render from results/raw
+go run ./cmd/cpm aggregate         # re-render results/latest from results/raw
 ```
 
 `run.sh` starts Kafka, RabbitMQ and the sink, builds the relay image for each
 variant, runs the driver (16 hops), writes `results/raw/<variant>.json`, and
 finally aggregates everything into `results/latest/results.json` and
 `MATRIX.md`. Look at `results/latest/MATRIX.md` for your rows.
+
+Results are never committed: `results/raw`, `results/latest` and
+`results/MATRIX.md` are gitignored, and every CI run is a GitHub Release
+(`run-YYYY-MM-DD[.N]`) carrying `results.json`, `MATRIX.md`, `changes.json`,
+`raw.tar.gz` and `logs.tar.gz`. `./run.sh fetch -raw` first means your local
+matrix starts complete and a one-variant run only replaces that variant's row.
 
 The first build of the Java and .NET images is slow (agent downloads); later
 builds are cached.
@@ -184,6 +192,18 @@ failures is worse than no annotation. Cite upstream issues you have actually
 read; if none exists, say "no upstream issue yet" and consider filing one
 (link back to the cell permalink on contextpropagation.io).
 
+To see the effect of an annotation edit without measuring anything, work
+from the latest published raw evidence:
+
+```sh
+./run.sh fetch -raw                # results/raw from the latest run-* release
+go run ./cmd/cpm aggregate         # re-embed annotations/ -> results/latest/results.json
+go run ./cmd/cpm validate -strict  # exactly what PR CI runs
+```
+
+Once merged, `republish.yml` does the same on the latest release (replacing
+its `results.json` and `MATRIX.md`) and rebuilds the site — no matrix run.
+
 ### Lifecycle: write once, let the data retire it
 
 Annotations are written once and evaluated against every run, so they are
@@ -206,29 +226,40 @@ page uses it to say what was broken in which release. Release notes for each
 
 ## Pull requests
 
-- CI (`verify.yml`) runs `go vet`, `cpm validate`, and two smoke variants;
-  it needs no secrets, so fork PRs work.
+- CI (`verify.yml`) runs `go vet`, `cpm validate -strict` against the latest
+  published `results.json`, and two smoke variants; it needs no secrets, so
+  fork PRs work.
 - Include the relevant rows from your local `results/latest/MATRIX.md` in
-  the PR description. Do not commit `results/raw` changes from a partial
-  local run unless you ran the full variant set for those rows — CI
-  regenerates results on merge anyway.
+  the PR description. Results themselves are gitignored and cannot be
+  committed; CI measures and publishes on merge.
 - Version bumps come from Dependabot and `bump-agents.yml`; if you bump
   manually, keep one agent per PR so cell changes stay attributable.
-- Merging anything under `relays/**`, `driver/**`, `sink/**`, `variants.yaml`
-  or `docker-compose.yml` triggers a full matrix run and a new release.
+- Merging a change runs only the variants it can affect (`cpm affected`):
+  a file under `relays/rust/` re-runs the Rust variants, `relays/node/Dockerfile`
+  every Node variant, a changed `relay-<id>` service or variant definition that
+  variant; anything under `driver/`, `sink/`, `proto/`, `gen/`, `docker/`,
+  `go.mod`/`go.sum` or `matrix.yml` itself re-runs everything. Cells not
+  re-measured are carried over from the previous release, and the new release
+  records `run.partial` / `run.reran`. Annotation-only merges go through
+  `republish.yml` instead. The Monday schedule and `workflow_dispatch` always
+  run the full matrix. Try it locally: `go run ./cmd/cpm affected -base origin/main`.
 
 ### Repository secrets (maintainers)
 
-`matrix.yml` and `backtest.yml` publish releases with the built-in
-`GITHUB_TOKEN`; these three are configured under *Settings → Secrets and
-variables → Actions* and are optional in the sense that the workflow degrades
-rather than fails without them:
+`matrix.yml`, `republish.yml` and `backtest.yml` publish releases with the
+built-in `GITHUB_TOKEN`; these three are configured under *Settings → Secrets
+and variables → Actions* and are optional in the sense that the workflow
+degrades rather than fails without them:
 
 | Secret | Used by | Without it |
 |---|---|---|
 | `NEW_RELIC_LICENSE_KEY` | New Relic relays (`tool:newrelic`) | New Relic variants are skipped (they appear in `results.json` as registered but not run); every other cell is unaffected. A free-tier key is sufficient. |
-| `NETLIFY_BUILD_HOOK_URL` | `matrix.yml` after a release | contextpropagation.io is not rebuilt until its next scheduled build; the release itself is unaffected. |
+| `NETLIFY_BUILD_HOOK_URL` | `matrix.yml` and `republish.yml` after publishing | contextpropagation.io is not rebuilt until its next scheduled build; the release itself is unaffected. |
 | `SLACK_WEBHOOK_URL` | `matrix.yml` summary step | No Slack summary is posted. |
+
+The step that opens a PR marking resolved annotations fixed also needs
+*Settings → Actions → "Allow GitHub Actions to create and approve pull
+requests"*; without it the branch is pushed and the step warns.
 
 ## Reporting a wrong cell
 

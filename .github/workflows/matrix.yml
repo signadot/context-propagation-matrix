@@ -1,0 +1,345 @@
+# matrix.yml — run the matrix and publish a versioned result.
+#
+#   plan      → which variants: everything on schedule / dispatch; on a push to
+#               main only those the pushed change can affect (`cpm affected`),
+#               and New Relic ones only when the secret exists
+#   run       → one job per variant, all in parallel, each with its own brokers
+#   aggregate → this run's raw results over the previous release's raw.tar.gz
+#               → results.json (schema v2) + MATRIX.md + changes.json; publish a
+#               GitHub Release run-YYYY-MM-DD[.N]; fire the Netlify build hook so
+#               contextpropagation.io rebuilds; post to Slack if cells changed.
+#
+# Nothing is committed back to the repository: Releases are the only home for
+# results (scripts/fetch-latest.sh restores them locally; republish.yml
+# re-renders the latest release when annotations change).
+#
+# Triggers: weekly, manual, and any merge to main that can change a result.
+name: matrix
+
+on:
+  schedule:
+    - cron: '17 6 * * 1' # Mondays 06:17 UTC
+  workflow_dispatch:
+    inputs:
+      variants:
+        description: 'Space-separated variant ids, or "all" / "public" / "tool:datadog" / "language:python"'
+        default: all
+        required: false
+      publish:
+        description: 'Publish a release and fire hooks'
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    # Keep in step with the "every variant" paths in internal/affected.
+    paths:
+      - 'relays/**'
+      - 'driver/**'
+      - 'sink/**'
+      - 'proto/**'
+      - 'gen/**'
+      - 'docker/**'
+      - 'docker-compose.yml'
+      - 'variants.yaml'
+      - 'go.mod'
+      - 'go.sum'
+      - '.dockerignore'
+      - '.github/workflows/matrix.yml'
+
+# Shared with republish.yml so a republish never races a run's publish.
+concurrency:
+  group: matrix
+  cancel-in-progress: false
+
+permissions:
+  contents: write # release create; push of the annotations/resolved-* branch
+  packages: write # GHCR layer cache
+  pull-requests: write
+
+env:
+  CACHE_IMAGE: ghcr.io/${{ github.repository }}/cache
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      variants: ${{ steps.plan.outputs.variants }}
+      publish: ${{ steps.plan.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # cpm affected diffs against the commit before the push
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - id: plan
+        env:
+          HAS_NR: ${{ secrets.NEW_RELIC_LICENSE_KEY != '' }}
+          SELECTOR: ${{ github.event.inputs.variants || 'all' }}
+          PUBLISH: ${{ github.event.inputs.publish || 'true' }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          list() {
+            case "$1" in
+              all)        go run ./cmd/cpm list ;;
+              public)     go run ./cmd/cpm list -no-secret ;;
+              tool:*)     go run ./cmd/cpm list -tool "${1#tool:}" ;;
+              language:*) go run ./cmd/cpm list -language "${1#language:}" ;;
+              *)          echo "$1" ;;
+            esac
+          }
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            # Only the variants the pushed change can alter; every other cell is
+            # carried over from the previous release (reasons are printed to the log).
+            selected=$(go run ./cmd/cpm affected -base "$BEFORE" -head "$GITHUB_SHA" | sort -u)
+          else
+            selected=$(for s in $SELECTOR; do list "$s"; done | sort -u)
+          fi
+          if [[ "$HAS_NR" != "true" ]]; then
+            secret=$(go run ./cmd/cpm list -secret)
+            selected=$(comm -23 <(echo "$selected") <(echo "$secret" | sort))
+            echo "::notice::NEW_RELIC_LICENSE_KEY not set; skipping: $(echo $secret)"
+          fi
+          echo "variants=$(echo "$selected" | jq -R . | jq -sc 'map(select(length > 0))')" >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          if [[ -z "$selected" ]]; then
+            echo "::notice::no variant is affected by this change; nothing to run or publish"
+          else
+            echo "Running: $(echo $selected)"
+          fi
+
+  run:
+    needs: plan
+    if: needs.plan.outputs.variants != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 47 # one wave for the whole matrix (the plan allows 60 concurrent jobs)
+      matrix:
+        variant: ${{ fromJson(needs.plan.outputs.variants) }}
+    env:
+      NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+      V: ${{ matrix.variant }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build sink, driver and relay-${{ matrix.variant }} (GHCR layer cache)
+        run: |
+          set -euo pipefail
+          # Two cache refs per relay: one per Dockerfile (relays/java/Dockerfile →
+          # relays-java) so every tool stage of a language shares its app build
+          # and a cold build is paid once per language, and one per variant so a
+          # variant's own layers are always complete whichever sibling wrote last.
+          df=$(docker buildx bake -f docker-compose.yml --print "relay-$V" | jq -r ".target[\"relay-$V\"].dockerfile")
+          lang_ref="$CACHE_IMAGE:$(dirname "$df" | tr / -)"
+          args=(--load)
+          for t in sink driver; do
+            args+=(--set "$t.tags=cpmatrix-$t"
+                   --set "$t.cache-from=type=registry,ref=$CACHE_IMAGE:$t"
+                   --set "$t.cache-to=type=registry,ref=$CACHE_IMAGE:$t,mode=max")
+          done
+          args+=(--set "relay-$V.tags=cpmatrix-relay-$V"
+                 --set "relay-$V.cache-from=type=registry,ref=$CACHE_IMAGE:relay-$V"
+                 --set "relay-$V.cache-from=type=registry,ref=$lang_ref"
+                 --set "relay-$V.cache-to=type=registry,ref=$CACHE_IMAGE:relay-$V,mode=max"
+                 --set "relay-$V.cache-to=type=registry,ref=$lang_ref,mode=max")
+          docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-$V"
+      - name: Start brokers and sink
+        run: |
+          mkdir -p results/raw results/data
+          docker compose up -d --no-build kafka rabbitmq sink
+      - name: Create topics
+        run: |
+          docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic "relay-in-$V" --partitions 1 --replication-factor 1
+          docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic sink-in --partitions 1 --replication-factor 1
+      - name: Start relay
+        run: docker compose up -d --no-build "relay-$V"
+      - name: Prime (agents that need a backend handshake before propagating)
+        if: startsWith(matrix.variant, 'newrelic-')
+        run: |
+          sleep 5
+          docker compose run --rm --pull never driver -variant "$V" >/dev/null 2>&1 || true
+          sleep 10
+      - name: Measure (retry once on driver failure)
+        run: |
+          docker compose run --rm --pull never driver -variant "$V" || {
+            echo "::warning::driver failed once for $V; retrying"
+            docker compose restart "relay-$V"; sleep 5
+            docker compose run --rm --pull never driver -variant "$V"
+          }
+      - name: Relay + sink logs
+        if: always()
+        run: docker compose logs --no-color "relay-$V" sink > "relay-$V.log" 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: raw-${{ matrix.variant }}
+          path: |
+            results/raw/${{ matrix.variant }}.json
+            relay-${{ matrix.variant }}.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    needs: [plan, run]
+    if: always() && needs.plan.result == 'success' && needs.plan.outputs.variants != '[]'
+    runs-on: ubuntu-latest
+    outputs:
+      run_id: ${{ steps.ids.outputs.run_id }}
+      changed: ${{ steps.agg.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Previous release (raw evidence to carry over, results.json to diff against)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p results/raw logs prev
+          prev=$(gh release list --limit 100 --json tagName --jq '[.[] | select(.tagName|startswith("run-"))][0].tagName // empty')
+          if [[ -z "$prev" ]]; then
+            echo "::notice::no previous run-* release; every cell comes from this run and changes.json is skipped"
+            exit 0
+          fi
+          gh release download "$prev" -p results.json -p raw.tar.gz -D prev || true
+          if [[ -f prev/results.json ]]; then
+            mv prev/results.json prev.json
+            echo "prev=$prev" >> "$GITHUB_ENV"
+          fi
+          if [[ -f prev/raw.tar.gz ]]; then
+            tar xzf prev/raw.tar.gz -C results # → results/raw/<variant>.json
+            echo "carried over $(ls results/raw | wc -l) raw result(s) from $prev"
+          else
+            echo "::warning::$prev has no raw.tar.gz; variants not measured in this run will show as not run"
+          fi
+      - name: Collect this run's raw results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: raw-*
+          path: artifacts
+      - id: merge
+        name: Lay this run's raw results over the carried-over ones
+        # A partial run (a push that touched one relay, or tool:datadog) refreshes
+        # only its own variants; the rest keep their last published result so
+        # results.json stays complete. Raw files for variants that have since
+        # left variants.yaml are dropped by `cpm aggregate -ignore-unknown`.
+        run: |
+          set -euo pipefail
+          find artifacts -name '*.json' -exec cp {} results/raw/ \;
+          find artifacts -name '*.log' -exec mv {} logs/ \; || true
+          reran=$(find artifacts -name '*.json' -exec basename {} .json \; | sort | tr '\n' ' ')
+          echo "reran=$reran" >> "$GITHUB_OUTPUT"
+          echo "measured now: $reran"
+          echo "raw results to aggregate: $(ls results/raw | wc -l)"
+      - id: ids
+        name: Choose a unique run id
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base="run-$(date -u +%F)"
+          id="$base"; n=1
+          while gh release view "$id" >/dev/null 2>&1; do id="$base.$n"; n=$((n+1)); done
+          echo "run_id=$id" >> "$GITHUB_OUTPUT"
+      - id: agg
+        name: Aggregate → results.json, MATRIX.md, changes.json
+        env:
+          RERAN: ${{ steps.merge.outputs.reran }}
+        run: |
+          set -euo pipefail
+          args=(-kind matrix -run-id "${{ steps.ids.outputs.run_id }}" -commit "$GITHUB_SHA"
+                -notes "trigger: $GITHUB_EVENT_NAME" -ignore-unknown -reran "$RERAN")
+          [[ -f prev.json ]] && args+=(-prev prev.json)
+          go run ./cmd/cpm aggregate "${args[@]}"
+          if [[ -f results/latest/changes.json ]] && [[ "$(jq '(.changed_cells|length)+(.added_variants|length)+(.removed_variants|length)+(.version_bumps|length)' results/latest/changes.json)" != "0" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+          go run ./cmd/cpm summary results/latest/results.json ${prev:+-changes results/latest/changes.json} | tee summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Package raw evidence
+        run: tar czf raw.tar.gz -C results raw && tar czf logs.tar.gz logs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aggregated
+          path: |
+            results/latest/
+            raw.tar.gz
+            logs.tar.gz
+            summary.md
+      # When an upstream fix lands, the affected annotation's cells all pass and
+      # the aggregator marks it resolved (never an error). Open a PR that records
+      # `status: fixed` / `fixed_in` so PR CI (`cpm validate -strict`) is green
+      # again and the site shows the fix as history. Requires the repository
+      # setting "Allow GitHub Actions to create and approve pull requests"; if
+      # it is off, the step only warns and the Slack summary still names the ids.
+      # The branch starts from the checked-out main commit; results/ is ignored
+      # so only annotations/ is staged.
+      - name: Open PR marking resolved annotations fixed
+        if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main' && steps.agg.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          resolved=$(go run ./cmd/cpm annotations resolved results/latest/results.json)
+          [[ -z "$resolved" ]] && { echo "no newly resolved annotations"; exit 0; }
+          git config user.name "matrix-bot"
+          git config user.email "matrix-bot@users.noreply.github.com"
+          branch="annotations/resolved-${{ steps.ids.outputs.run_id }}"
+          git checkout -B "$branch"
+          body="The following annotations matched only passing cells in [${{ steps.ids.outputs.run_id }}](https://github.com/${{ github.repository }}/releases/tag/${{ steps.ids.outputs.run_id }}), so the upstream problem they describe appears fixed. This PR records that in \`annotations/\`."$'\n\n'
+          while IFS=$'\t' read -r id ver; do
+            [[ -z "$id" ]] && continue
+            go run ./cmd/cpm annotations mark-fixed "$id" -fixed-in "${ver:-unknown}"
+            body+="- \`$id\` → fixed in \`${ver:-unknown}\`"$'\n'
+          done <<< "$resolved"
+          git add annotations
+          if git diff --cached --quiet; then echo "annotations already marked"; git checkout -q -; exit 0; fi
+          git commit -m "annotations: mark resolved in ${{ steps.ids.outputs.run_id }} as fixed"
+          git push -f origin "$branch"
+          if ! gh pr create --base main --head "$branch" \
+               --title "annotations: mark fixed after ${{ steps.ids.outputs.run_id }}" \
+               --body "$body"$'\n'"Check the linked upstream release notes before merging; adjust \`fixed_in\` if the fix shipped earlier than the version we happened to test."; then
+            echo "::warning::could not open PR (enable 'Allow GitHub Actions to create and approve pull requests' in Settings → Actions); branch $branch is pushed"
+          fi
+          git checkout -q -
+      - name: Publish release ${{ steps.ids.outputs.run_id }}
+        if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.ids.outputs.run_id }}" \
+            --title "${{ steps.ids.outputs.run_id }}" \
+            --notes-file summary.md \
+            results/latest/results.json results/latest/MATRIX.md raw.tar.gz logs.tar.gz \
+            $( [[ -f results/latest/changes.json ]] && echo results/latest/changes.json )
+      - name: Rebuild contextpropagation.io
+        if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main'
+        env:
+          HOOK: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
+        run: |
+          if [[ -z "$HOOK" ]]; then echo "::notice::NETLIFY_BUILD_HOOK_URL not set; site not rebuilt"; exit 0; fi
+          curl -fsS -X POST -d '{}' "$HOOK?trigger_title=${{ steps.ids.outputs.run_id }}"
+      - name: Slack summary (only when cells, variants or versions changed)
+        if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main' && steps.agg.outputs.changed == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [[ -z "$SLACK_WEBHOOK_URL" ]]; then echo "::notice::SLACK_WEBHOOK_URL not set"; exit 0; fi
+          text=$(head -c 2800 summary.md)
+          jq -n --arg t "$text" --arg url "https://github.com/${{ github.repository }}/releases/tag/${{ steps.ids.outputs.run_id }}" \
+            '{text: ($t + "\n" + $url)}' | curl -fsS -X POST -H 'content-type: application/json' -d @- "$SLACK_WEBHOOK_URL"

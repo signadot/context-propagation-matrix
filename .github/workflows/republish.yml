@@ -1,0 +1,86 @@
+# republish.yml — ship annotation edits to the site without re-measuring.
+#
+# results.json embeds annotations/ (titles, causes, links, fixed_in), so a
+# merge that only touches annotations/** needs the latest release re-rendered,
+# not re-run: download that release's raw.tar.gz, aggregate it again at this
+# commit, replace results.json and MATRIX.md on the same release, and fire the
+# Netlify build hook. Measurements and the run id are unchanged, so the site's
+# history sees one run with better explanations rather than a new run.
+#
+# Also useful by hand (workflow_dispatch) after an aggregator change in
+# cmd/cpm or internal/ that alters results.json without new measurements.
+name: republish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'annotations/**'
+      - '.github/workflows/republish.yml'
+  workflow_dispatch:
+
+# Same group as matrix.yml: never clobber a release while a run is publishing.
+concurrency:
+  group: matrix
+  cancel-in-progress: false
+
+permissions:
+  contents: write # gh release upload --clobber
+
+jobs:
+  republish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - id: fetch
+        name: Latest run-* release (results.json for diff continuity, raw.tar.gz to re-aggregate)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=$(gh release list --limit 100 --json tagName --jq '[.[] | select(.tagName|startswith("run-"))][0].tagName // empty')
+          if [[ -z "$tag" ]]; then
+            echo "::notice::no run-* release yet; nothing to republish (the first matrix run will embed the current annotations)"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p prev results/raw
+          gh release download "$tag" -p results.json -p raw.tar.gz -D prev
+          tar xzf prev/raw.tar.gz -C results # → results/raw/<variant>.json
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "republishing $tag from $(ls results/raw | wc -l) raw result(s)"
+      - name: Re-aggregate at this commit
+        if: steps.fetch.outputs.tag != ''
+        env:
+          TAG: ${{ steps.fetch.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Keep the previous run's provenance (partial/reran) by passing the same
+          # measured set back in; only the annotations and this commit sha change.
+          reran=$(jq -r '.run.reran // [] | join(" ")' prev/results.json)
+          go run ./cmd/cpm aggregate -kind matrix -run-id "$TAG" -commit "$GITHUB_SHA" \
+            -notes "annotations republished from $TAG" -ignore-unknown -reran "$reran"
+          # Safety net, not a gate: PR CI already ran validate -strict on this
+          # tree, so a resolved-but-unmarked annotation here means the matrix
+          # moved under the PR. Report it and still publish the better text.
+          go run ./cmd/cpm validate -results results/latest/results.json -strict \
+            || echo "::warning::annotations are out of step with $TAG (see above); republished anyway"
+          go run ./cmd/cpm summary results/latest/results.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Replace results.json and MATRIX.md on ${{ steps.fetch.outputs.tag }}
+        if: steps.fetch.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.fetch.outputs.tag }}
+        run: gh release upload "$TAG" results/latest/results.json results/latest/MATRIX.md --clobber
+      - name: Rebuild contextpropagation.io
+        if: steps.fetch.outputs.tag != ''
+        env:
+          HOOK: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
+          TAG: ${{ steps.fetch.outputs.tag }}
+        run: |
+          if [[ -z "$HOOK" ]]; then echo "::notice::NETLIFY_BUILD_HOOK_URL not set; site not rebuilt"; exit 0; fi
+          curl -fsS -X POST -d '{}' "$HOOK?trigger_title=republish-$TAG"

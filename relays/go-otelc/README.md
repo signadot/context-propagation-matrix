@@ -18,7 +18,7 @@ the libraries the app imports.
 | kafka | github.com/segmentio/kafka-go v0.4.51 | yes — the **only** Kafka client otelc v1 supports (the hand-wired `otel-go` relay uses franz-go + kotel, so the rows also compare client coverage) |
 | rabbitmq | github.com/rabbitmq/amqp091-go | **no** — otelc has no AMQP instrumentation; the dark rabbitmq cells measure that |
 
-Measured result (see `results/MATRIX.md` and FINDINGS §11): every
+Measured result (see `MATRIX.md` on the latest release and FINDINGS §11): every
 http/grpc-inbound leg propagates **everything — traceparent, tracestate, and
 W3C baggage — including into Kafka** (kafka-go's `WriteMessages(ctx, …)`
 gives the weaver a context to inject from). Every Kafka-inbound leg loses
