@@ -45,7 +45,7 @@ http = "1"
 # datadog-opentelemetry 0.5.x pins opentelemetry 0.32, so all carriers and
 # global propagator calls resolve to a single copy of the API crate.
 opentelemetry = "0.32"
-opentelemetry_sdk = "0.32"
+opentelemetry_sdk = "0.33"
 opentelemetry-http = "0.32"
 datadog-opentelemetry = "0.5"
 
