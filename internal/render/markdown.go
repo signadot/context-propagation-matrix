@@ -1,4 +1,5 @@
-// Package render turns a results document into results/MATRIX.md.
+// Package render turns a results document into MATRIX.md (a release asset,
+// results/latest/MATRIX.md locally).
 package render
 
 import (
@@ -140,8 +141,8 @@ func Markdown(res *results.Results) string {
 	if len(res.Summary.CanaryLeaks) == 0 {
 		w("Canary check: in all recorded runs the non-tracing control header")
 		w("(`x-sd-canary`) was verified absent after the hop, proving relays re-emit")
-		w("rather than proxy. Raw per-test header dumps live in `results/raw/*.json`")
-		w("and, per hop, under `variants[].hops[].observed_headers` in `results.json`.")
+		w("rather than proxy. Raw per-test header dumps live in this release's `raw.tar.gz`")
+		w("(`raw/{variant}.json`) and, per hop, under `variants[].hops[].observed_headers` in `results.json`.")
 	} else {
 		w("**WARNING — canary leaked (relay proxied headers, results invalid): %s**",
 			strings.Join(res.Summary.CanaryLeaks, ", "))

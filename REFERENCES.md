@@ -1,7 +1,9 @@
 # Upstream references — evidence for every non-success case
 
 Companion to [`FINDINGS.md`](FINDINGS.md): each failing (or surprising) cell
-family in [`results/MATRIX.md`](results/MATRIX.md) mapped to upstream
+family in the published matrix (`MATRIX.md` on the
+[latest release](https://github.com/signadot/context-propagation-matrix/releases/latest))
+mapped to upstream
 evidence — GitHub issues, PRs, normative specs, and vendor docs. Every link
 below was fetched and verified against its live content on 2026-09-06;
 quotes are verbatim. Where **no upstream source exists**, that is recorded

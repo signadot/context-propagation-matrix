@@ -222,7 +222,10 @@ contract is **results schema v2**, produced by `go run ./cmd/cpm aggregate`
 from `results/raw/*.json` plus the registry (`variants.yaml`):
 
 - `results/latest/results.json` — one document per run: a run manifest
-  (`run_id`, `harness_commit`, broker images, timestamps), the dimensions
+  (`run_id`, `harness_commit`, broker images, timestamps, and for a push-
+  triggered run `partial: true` plus `reran: [ids]` naming the variants
+  measured in that run; everything else was carried over from the previous
+  release and keeps its own `ran_at`), the dimensions
   (tools, languages, protocols, boundaries, headers, setup tiers, verbatim
   from the registry so consumers never need the YAML), and one entry per
   variant with tracer coordinates + observed version, runtime, client
@@ -232,11 +235,29 @@ from `results/raw/*.json` plus the registry (`variants.yaml`):
   (`pass` · `partial` · `new_trace` · `fail` · `undelivered` · `not_run`)
   next to the driver's raw status. Annotations (below) are embedded, and a
   `summary` carries per-header totals and a tool × language scorecard.
-- `results/latest/MATRIX.md` (mirrored to `results/MATRIX.md`) — the
-  human-readable tables, rendered from the same document.
+- `results/latest/MATRIX.md` — the human-readable tables, rendered from the
+  same document.
 - `results/latest/changes.json` — when a previous run is given
   (`-prev`), every cell whose outcome differed, tracer version bumps, and
   added/removed variants. CI uses it to decide whether to post a summary.
+
+None of these are tracked in git (`results/raw`, `results/latest` and
+`results/MATRIX.md` are ignored). The published copy of a run is a GitHub
+Release tagged `run-YYYY-MM-DD[.N]` with five assets:
+
+| Asset | Contents |
+|---|---|
+| `results.json` | the schema v2 document above |
+| `MATRIX.md` | the rendered tables |
+| `changes.json` | diff against the previous `run-*` release (absent on the first) |
+| `raw.tar.gz` | `raw/{variant}.json` for every variant in the document — the evidence, and the input the next run carries over from |
+| `logs.tar.gz` | relay and sink container logs for the variants measured in that run |
+
+Back-tests of older tracer versions publish `backtest-{variant}-{version}`
+releases with a single-variant `results.json`, `MATRIX.md` and the raw file.
+`scripts/fetch-latest.sh` (or `./run.sh fetch [-raw]`) restores a release
+into `results/latest` and `results/raw`, and `republish.yml` re-renders the
+latest release in place when `annotations/` changes.
 
 contextpropagation.io consumes only `results.json` (from GitHub Releases), so
 the schema is versioned (`schema_version: 2`) and changes to it are breaking
@@ -314,10 +335,17 @@ Releases, PECL and New Relic's download index daily and opens a PR per
 newer version (same shape as a Dependabot PR).
 
 After merging any bump that touches a tracer or instrumentation library, CI
-re-runs the full matrix (`matrix.yml`), publishes a Release with the new
-`results.json`, and diffs it against the previous release into
-`changes.json`. Locally: `./run.sh <variants>` re-runs and re-aggregates;
-update `annotations/` (and FINDINGS/REFERENCES) if a cell changed.
+(`matrix.yml`) re-runs the variants that bump can affect — `cpm affected`
+maps the changed paths to variants through each variant's `source` directory
+and diffs `variants.yaml` and `docker-compose.yml` structurally; changes to
+the driver, sink, protobuf contract, shared images or the workflow re-run
+everything — carries every other variant's raw result over from the previous
+release, publishes a new Release with the resulting `results.json`, and
+diffs it against the previous release into `changes.json`. A Rust tracer
+bump therefore measures two variants in a few minutes rather than 47. The
+Monday schedule and manual dispatches run the full matrix. Locally:
+`./run.sh <variants>` re-runs and re-aggregates; update `annotations/` (and
+FINDINGS/REFERENCES) if a cell changed.
 
 ## Extending the matrix
 
