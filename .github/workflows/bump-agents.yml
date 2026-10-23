@@ -2,8 +2,9 @@
 #
 # Java agent jars, .NET profiler tarballs, the PHP agents and the OTel PHP
 # extension are pinned as Dockerfile ARGs / RUN lines (the `kind: arg` entries
-# of versions/pins.yaml). Daily, look up the latest stable version of each in
-# its registry and open one PR per newer agent (`versions/pin.mjs --latest`). Merging a PR touches relays/**, which triggers
+# of pins.yaml). Daily, look up the latest stable version of each in its
+# registry and open one PR per newer agent (`cpm pins latest`). Merging a PR
+# touches relays/**, which triggers
 # matrix.yml → new release → site rebuild → changelog entry.
 name: bump-agents
 
@@ -23,15 +24,16 @@ jobs:
       bumps: ${{ steps.find.outputs.bumps }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-go@v5
         with:
-          node-version: 22
+          go-version-file: go.mod
+          cache: true
       - id: find
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          node versions/pin.mjs --latest > bumps.json
+          go run ./cmd/cpm pins latest > bumps.json
           echo "bumps=$(jq -c . bumps.json)" >> "$GITHUB_OUTPUT"
           echo "Proposed bumps:"; jq -r '.[] | "  \(.id): \(.from) -> \(.to)"' bumps.json
 
@@ -46,13 +48,14 @@ jobs:
         bump: ${{ fromJson(needs.discover.outputs.bumps) }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-go@v5
         with:
-          node-version: 22
+          go-version-file: go.mod
+          cache: true
       - name: Apply ${{ matrix.bump.id }} ${{ matrix.bump.from }} → ${{ matrix.bump.to }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node versions/pin.mjs --latest --only "${{ matrix.bump.id }}" --apply >/dev/null
+        run: go run ./cmd/cpm pins latest -only "${{ matrix.bump.id }}" -apply >/dev/null
       - name: Open PR
         env:
           GH_TOKEN: ${{ github.token }}

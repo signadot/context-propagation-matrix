@@ -1,27 +1,27 @@
-# versions/pins.yaml — where every tracer/agent version is pinned, and how to
-# move it. The pins themselves stay in the manifests next to each relay
-# (go.mod, package.json, requirements-*.txt, Gemfile, Cargo.toml, Dockerfile
-# ARGs); this file only says where they are. Read by versions/pin.mjs:
+# pins.yaml — where every tracer/agent version is pinned, and how to move it.
+# The pins themselves stay in the manifests next to each relay (go.mod,
+# package.json, requirements-*.txt, Gemfile, Cargo.toml, Dockerfile ARGs);
+# this file only says where they are. Read by `go run ./cmd/cpm pins`:
 #
-#   pin.mjs --latest             bump-agents.yml: for the `kind: arg` entries
-#                                (the ones Dependabot cannot see) look up the
-#                                newest stable version in `source` and rewrite
-#                                the pin; one PR per entry.
-#   pin.mjs --variant V --version X
-#                                backtest.yml: set the pin behind variant V to
-#                                X in a scratch checkout, then build the
-#                                unchanged Dockerfiles. Same edit a Dependabot
-#                                PR would make, pointed backwards.
-#   pin.mjs --check              verify.yml: every entry resolves to a current
-#                                version in its file, and every instrumented
-#                                variant in variants.yaml has exactly one entry
-#                                whose `source` is its tracer coordinate.
+#   cpm pins latest [-apply]       bump-agents.yml: for the `kind: arg` entries
+#                                  (the ones Dependabot cannot see) look up the
+#                                  newest stable version in `source` and rewrite
+#                                  the pin; one PR per entry.
+#   cpm pins set -variant V -version X
+#                                  backtest.yml: set the pin behind variant V to
+#                                  X in a scratch checkout, then build the
+#                                  unchanged Dockerfiles. Same edit a Dependabot
+#                                  PR would make, pointed backwards.
+#   cpm pins check                 verify.yml: every entry resolves to a current
+#                                  version in its file, and every instrumented
+#                                  variant in variants.yaml has exactly one entry
+#                                  whose `source` is its tracer coordinate.
 #
 # Fields
 #   id        stable name (bump branch names, PR titles)
 #   kind      how the pin is written — arg | gomod | npm | pip | bundler | cargo
-#   source    registry + package, the same coordinates as variants.yaml `tracer`
-#             (that equality is how a variant finds its pin)
+#   source    registry + package (+ tag_prefix), the same coordinates as
+#             variants.yaml `tracer` (that equality is how a variant finds its pin)
 #   variants  registry variants built from this pin (PR bodies; cross-checked)
 #   kind: arg      file + arg (`ARG NAME=<version>`) or pattern (regex with a
 #                  named group `version`; the first match is rewritten)
@@ -32,8 +32,8 @@
 #   kind: npm      file (package.json) + packages
 #   kind: pip      file (requirements-*.txt) + packages (globs; every `pkg==`)
 #   kind: bundler  file (Gemfile) + packages (gem names)
-#   kind: cargo    dir + packages (crates): Cargo.toml requirement rewritten and
-#                  Cargo.lock moved with `cargo update --precise`, so the
+#   kind: cargo    dir + packages (crates): Cargo.toml requirement set exact
+#                  and Cargo.lock moved with `cargo update`, so the
 #                  Dockerfile's `--locked` build still applies.
 
 pins:
@@ -68,25 +68,25 @@ pins:
     kind: arg
     file: relays/dotnet/Dockerfile
     arg: OTEL_DOTNET_AUTO_VERSION
-    source: { registry: github-releases, package: open-telemetry/opentelemetry-dotnet-instrumentation, tagPrefix: v }
+    source: { registry: github-releases, package: open-telemetry/opentelemetry-dotnet-instrumentation, tag_prefix: v }
     variants: [otel-dotnet]
   - id: dd-dotnet-tracer
     kind: arg
     file: relays/dotnet/Dockerfile
     arg: DD_DOTNET_TRACER_VERSION
-    source: { registry: github-releases, package: DataDog/dd-trace-dotnet, tagPrefix: v }
+    source: { registry: github-releases, package: DataDog/dd-trace-dotnet, tag_prefix: v }
     variants: [datadog-dotnet, datadog-dotnet-defaults]
   - id: newrelic-dotnet-agent
     kind: arg
     file: relays/dotnet/Dockerfile
     arg: NEWRELIC_DOTNET_AGENT_VERSION
-    source: { registry: github-releases, package: newrelic/newrelic-dotnet-agent, tagPrefix: v }
+    source: { registry: github-releases, package: newrelic/newrelic-dotnet-agent, tag_prefix: v }
     variants: [newrelic-dotnet]
   - id: elastic-dotnet-agent
     kind: arg
     file: relays/dotnet/Dockerfile
     arg: ELASTIC_APM_DOTNET_VERSION
-    source: { registry: github-releases, package: elastic/apm-agent-dotnet, tagPrefix: v }
+    source: { registry: github-releases, package: elastic/apm-agent-dotnet, tag_prefix: v }
     variants: [elastic-dotnet]
 
   # ---- PHP (Dockerfile RUN lines) -----------------------------------------
@@ -132,7 +132,7 @@ pins:
     kind: arg
     file: relays/php/Dockerfile
     arg: ELASTIC_APM_PHP_VERSION
-    source: { registry: github-releases, package: elastic/apm-agent-php, tagPrefix: v }
+    source: { registry: github-releases, package: elastic/apm-agent-php, tag_prefix: v }
     variants: [elastic-php]
 
   # ---- Go (go.mod; Dependabot bumps forward) -----------------------------

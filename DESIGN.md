@@ -256,8 +256,8 @@ Release tagged `run-YYYY-MM-DD[.N]` with five assets:
 Back-tests of older tracer versions publish `backtest-{variant}-{version}`
 releases with a single-variant `results.json`, `MATRIX.md` and the raw file.
 A back-test does not build differently: `backtest.yml` rewrites the pin
-behind the variant in its checkout (`versions/pin.mjs --variant V --version
-X`, the edit a Dependabot PR would make, pointed backwards) and builds the
+behind the variant in its checkout (`cpm pins set -variant V -version X`,
+the edit a Dependabot PR would make, pointed backwards) and builds the
 unchanged Dockerfile, so the measured image is produced exactly the way the
 matrix produces it.
 `scripts/fetch-latest.sh` (or `./run.sh fetch [-raw]`) restores a release
@@ -339,15 +339,17 @@ The Dockerfile-only versions are bumped automatically by
 Releases, PECL and New Relic's download index daily and opens a PR per
 newer version (same shape as a Dependabot PR).
 
-`versions/pins.yaml` lists where every tracer's pin lives — Dockerfile ARG,
-go.mod module family, package.json, requirements file, Gemfile, Cargo.toml —
-keyed by the same registry/package coordinates as `variants.yaml`'s `tracer`.
-`versions/pin.mjs` reads and writes them the way each ecosystem expects
-(`go get` + `go mod tidy`, `cargo update`, a JSON key, a `==` line, a `gem`
-line, an `ARG`); `bump-agents.yml` uses it to move the `arg` pins forward,
-`backtest.yml` to move any pin backwards in a scratch checkout, and
-`verify.yml --check` to ensure every instrumented variant has exactly one
-pin. The versions themselves stay in the manifests.
+`pins.yaml` lists where every tracer's pin lives — Dockerfile ARG, go.mod
+module family, package.json, requirements file, Gemfile, Cargo.toml — keyed
+by the same registry/package coordinates as `variants.yaml`'s `tracer`.
+`cpm pins` reads and writes them the way each ecosystem expects (`go get` +
+`go mod tidy`, `cargo update`, a JSON key, a `==` line, a `gem` line, an
+`ARG`): `bump-agents.yml` runs `cpm pins latest -apply` to move the `arg`
+pins forward, `backtest.yml` runs `cpm pins set` to move any pin backwards
+in a scratch checkout, and `verify.yml` runs `cpm pins check` so every
+instrumented variant has exactly one pin. `cpm discover` lists the older
+versions a back-test should cover, from the same registry clients
+(`internal/versions`). The versions themselves stay in the manifests.
 
 After merging any bump that touches a tracer or instrumentation library, CI
 (`matrix.yml`) re-runs the variants that bump can affect — `cpm affected`

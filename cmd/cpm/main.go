@@ -9,6 +9,9 @@
 //	cpm summary <results.json> [-changes changes.json]
 //	cpm annotations mark-fixed <id> -fixed-in <version>
 //	cpm annotations resolved <results.json>
+//	cpm coords [-results results.json]
+//	cpm pins [list|check|set -variant V -version X|latest [-only id] [-apply]]
+//	cpm discover [-depth 5] [-variants a,b] [-include-secret] [-skip-published]
 package main
 
 import (
@@ -56,6 +59,10 @@ func main() {
 		err = cmdCoords(os.Args[2:])
 	case "annotations":
 		err = cmdAnnotations(os.Args[2:])
+	case "pins":
+		err = cmdPins(os.Args[2:])
+	case "discover":
+		err = cmdDiscover(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -69,7 +76,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|diff|summary|coords|annotations> [flags]
+	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|diff|summary|coords|annotations|pins|discover> [flags]
 
   list       print variant ids from variants.yaml (one per line, or -json)
   affected   variant ids whose measurement a change could alter: -base <rev> [-head HEAD]
@@ -79,7 +86,13 @@ func usage() {
   summary    markdown summary of a results.json for CI/Slack
   coords     tracer package coordinates per variant as JSON (for version discovery)
   annotations mark-fixed <id> -fixed-in <version>   record an upstream fix in annotations/
-  annotations resolved <results.json>              list resolved-but-unmarked annotations (id<TAB>version)`)
+  annotations resolved <results.json>              list resolved-but-unmarked annotations (id<TAB>version)
+  pins [list]                      every pin in pins.yaml with its current version (JSON)
+  pins check                       pins resolve and every instrumented variant has exactly one
+  pins set -variant V -version X   move the pin behind variant V to X (backtest.yml, scratch checkout)
+  pins latest [-only id] [-apply]  newer upstream versions of the kind: arg pins (bump-agents.yml)
+  discover [-depth N] [-variants a,b] [-include-secret] [-skip-published]
+                                   (variant, older version) back-test candidates as JSON`)
 	os.Exit(2)
 }
 
@@ -282,35 +295,51 @@ func appendUnique(ids []string, id string) []string {
 // ---------------------------------------------------------------------------
 
 // cmdCoords prints, for every instrumented variant, the tracer (and weaver)
-// package coordinates plus the version observed in the latest results, so
-// versions/discover.mjs can enumerate back-test candidates without parsing
-// YAML.
+// package coordinates plus the version observed in the latest results, as
+// JSON for anything outside this binary; `cpm discover` and `cpm pins` use
+// loadCoords in-process.
 func cmdCoords(args []string) error {
 	fs := flag.NewFlagSet("coords", flag.ExitOnError)
 	regPath := regFlag(fs)
 	resPath := fs.String("results", "results/latest/results.json", "results.json for current versions (optional)")
 	fs.Parse(args)
 
-	reg, err := registry.Load(*regPath)
+	out, err := loadCoords(*regPath, *resPath)
 	if err != nil {
 		return err
 	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", " ")
+	return enc.Encode(out)
+}
+
+// coord is one instrumented variant's tracer coordinate plus the version the
+// latest published results.json reports for it.
+type coord struct {
+	Variant  string            `json:"variant"`
+	Tool     string            `json:"tool"`
+	Language string            `json:"language"`
+	Tracer   *registry.Package `json:"tracer"`
+	Weaver   *registry.Package `json:"weaver,omitempty"`
+	Current  string            `json:"current_version,omitempty"`
+	Secret   string            `json:"requires_secret,omitempty"`
+}
+
+// loadCoords lists every instrumented variant in registry order. resPath is
+// optional: before the first release there is no results.json and Current
+// stays empty.
+func loadCoords(regPath, resPath string) ([]coord, error) {
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		return nil, err
+	}
 	current := map[string]string{}
-	if res, err := results.Load(*resPath); err == nil {
+	if res, err := results.Load(resPath); err == nil {
 		for _, v := range res.Variants {
 			if v.Tracer != nil {
 				current[v.ID] = v.Tracer.Version
 			}
 		}
-	}
-	type coord struct {
-		Variant  string            `json:"variant"`
-		Tool     string            `json:"tool"`
-		Language string            `json:"language"`
-		Tracer   *registry.Package `json:"tracer"`
-		Weaver   *registry.Package `json:"weaver,omitempty"`
-		Current  string            `json:"current_version,omitempty"`
-		Secret   string            `json:"requires_secret,omitempty"`
 	}
 	var out []coord
 	for _, v := range reg.SortedVariants() {
@@ -319,9 +348,7 @@ func cmdCoords(args []string) error {
 		}
 		out = append(out, coord{v.ID, v.Tool, v.Language, v.Tracer, v.Weaver, current[v.ID], reg.RequiresSecret(v)})
 	}
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", " ")
-	return enc.Encode(out)
+	return out, nil
 }
 
 // ---------------------------------------------------------------------------
