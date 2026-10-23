@@ -57,7 +57,7 @@ RUN mkdir -p /agent \
 
 # ---- runtime targets ----
 
-FROM eclipse-temurin:17-jre AS base
+FROM eclipse-temurin:25-jre AS base
 WORKDIR /app
 COPY --from=build /relay.jar /app/relay.jar
 ENV TRACER_VERSION_FILE=/agent/version.txt
