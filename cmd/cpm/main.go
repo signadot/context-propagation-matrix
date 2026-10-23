@@ -432,7 +432,7 @@ func cmdValidate(args []string) error {
 		problems := annotations.Apply(res, anns)
 		for _, p := range problems {
 			fmt.Println("  " + p.String())
-			if p.Fatal || *strict {
+			if p.Fatal || (*strict && !p.Info) {
 				errs = append(errs, p.String())
 			}
 		}
