@@ -270,7 +270,7 @@ jobs:
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
-          go run ./cmd/cpm summary results/latest/results.json ${prev:+-changes results/latest/changes.json} | tee summary.md >> "$GITHUB_STEP_SUMMARY"
+          go run ./cmd/cpm summary ${prev:+-changes results/latest/changes.json} results/latest/results.json | tee summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Package raw evidence
         run: tar czf raw.tar.gz -C results raw && tar czf logs.tar.gz logs
       - uses: actions/upload-artifact@v4
