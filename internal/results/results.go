@@ -246,7 +246,12 @@ func Build(reg *registry.Registry, raws []*raw.VariantResult, run Run) (*Results
 		}
 		r, ok := byID[rv.ID]
 		if !ok {
+			// Empty, not nil: the site types hops/cells as arrays and reads
+			// them unguarded in places, so a missing variant must serialise
+			// as [] rather than null.
 			v.Missing = true
+			v.Hops = []Hop{}
+			v.Cells = []Cell{}
 			res.Variants = append(res.Variants, v)
 			continue
 		}
