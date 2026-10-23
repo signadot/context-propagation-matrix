@@ -582,18 +582,41 @@ func cmdAggregate(args []string) error {
 
 // ---------------------------------------------------------------------------
 
+// parsePositionals parses fs's flags plus exactly n positional arguments, in
+// any order. Go's flag package stops at the first non-flag argument, so the
+// `cpm summary results.json -changes changes.json` shape the usage strings
+// (and matrix.yml) use would otherwise see three positionals and no flag.
+func parsePositionals(fs *flag.FlagSet, args []string, n int) ([]string, error) {
+	var pos []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return nil, err
+		}
+		rest := fs.Args()
+		if len(rest) == 0 {
+			break
+		}
+		pos = append(pos, rest[0])
+		args = rest[1:]
+	}
+	if len(pos) != n {
+		return nil, fmt.Errorf("want %d positional argument(s), got %d", n, len(pos))
+	}
+	return pos, nil
+}
+
 func cmdDiff(args []string) error {
 	fs := flag.NewFlagSet("diff", flag.ExitOnError)
 	out := fs.String("out", "", "write changes.json here (default: stdout)")
-	fs.Parse(args)
-	if fs.NArg() != 2 {
+	pos, err := parsePositionals(fs, args, 2)
+	if err != nil {
 		return fmt.Errorf("usage: cpm diff <from.json> <to.json> [-out changes.json]")
 	}
-	from, err := results.Load(fs.Arg(0))
+	from, err := results.Load(pos[0])
 	if err != nil {
 		return err
 	}
-	to, err := results.Load(fs.Arg(1))
+	to, err := results.Load(pos[1])
 	if err != nil {
 		return err
 	}
@@ -610,11 +633,11 @@ func cmdSummary(args []string) error {
 	fs := flag.NewFlagSet("summary", flag.ExitOnError)
 	changesPath := fs.String("changes", "", "changes.json to include")
 	siteURL := fs.String("site", "https://contextpropagation.io", "site base URL for permalinks")
-	fs.Parse(args)
-	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: cpm summary <results.json> [-changes changes.json]")
+	pos, err := parsePositionals(fs, args, 1)
+	if err != nil {
+		return fmt.Errorf("usage: cpm summary <results.json> [-changes changes.json] [-site url]")
 	}
-	res, err := results.Load(fs.Arg(0))
+	res, err := results.Load(pos[0])
 	if err != nil {
 		return err
 	}
