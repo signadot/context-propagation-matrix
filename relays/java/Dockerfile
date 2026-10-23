@@ -9,7 +9,7 @@ ARG DD_JAVA_AGENT_VERSION=1.65.1
 ARG NEWRELIC_JAVA_AGENT_VERSION=9.4.0
 ARG ELASTIC_APM_JAVA_AGENT_VERSION=1.56.0
 
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
 COPY relays/java/pom.xml .
 COPY relays/java/src ./src
@@ -19,7 +19,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -q -DskipTests package \
 
 # ---- agent fetch stages (version-pinned URLs; version.txt from the ARG) ----
 
-FROM maven:3.9-eclipse-temurin-17 AS fetch-otel
+FROM maven:3.9-eclipse-temurin-25 AS fetch-otel
 ARG OTEL_JAVA_AGENT_VERSION
 RUN mkdir -p /agent \
  && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
@@ -28,7 +28,7 @@ RUN mkdir -p /agent \
  && echo "${OTEL_JAVA_AGENT_VERSION}" > /agent/version.txt \
  && cat /agent/version.txt
 
-FROM maven:3.9-eclipse-temurin-17 AS fetch-datadog
+FROM maven:3.9-eclipse-temurin-25 AS fetch-datadog
 ARG DD_JAVA_AGENT_VERSION
 RUN mkdir -p /agent \
  && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
@@ -37,7 +37,7 @@ RUN mkdir -p /agent \
  && echo "${DD_JAVA_AGENT_VERSION}" > /agent/version.txt \
  && cat /agent/version.txt
 
-FROM maven:3.9-eclipse-temurin-17 AS fetch-newrelic
+FROM maven:3.9-eclipse-temurin-25 AS fetch-newrelic
 ARG NEWRELIC_JAVA_AGENT_VERSION
 RUN mkdir -p /agent \
  && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
@@ -46,7 +46,7 @@ RUN mkdir -p /agent \
  && echo "${NEWRELIC_JAVA_AGENT_VERSION}" > /agent/version.txt \
  && cat /agent/version.txt
 
-FROM maven:3.9-eclipse-temurin-17 AS fetch-elastic
+FROM maven:3.9-eclipse-temurin-25 AS fetch-elastic
 ARG ELASTIC_APM_JAVA_AGENT_VERSION
 RUN mkdir -p /agent \
  && (command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)) \
@@ -57,7 +57,7 @@ RUN mkdir -p /agent \
 
 # ---- runtime targets ----
 
-FROM eclipse-temurin:17-jre AS base
+FROM eclipse-temurin:25-jre AS base
 WORKDIR /app
 COPY --from=build /relay.jar /app/relay.jar
 ENV TRACER_VERSION_FILE=/agent/version.txt
