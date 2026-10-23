@@ -129,9 +129,15 @@ updates:
           - "datadog-opentelemetry"
 
   # Base images in every Dockerfile. Language toolchain images are checked
-  # against their manifests by scripts/check-toolchains.sh; the .NET images
-  # must move with Relay.csproj's TargetFramework, so their major bumps are
-  # left to a human (bump sdk, aspnet and the csproj together).
+  # against their manifests by scripts/check-toolchains.sh. Two toolchains are
+  # pinned in more than one place, and Dependabot only sees the Docker tags,
+  # so a major bump from it can never pass that check:
+  #   .NET  dotnet/sdk + dotnet/aspnet must move with Relay.csproj's
+  #         TargetFramework (bump sdk, aspnet and the csproj together).
+  #   Java  the maven builder image + the eclipse-temurin runtime image must
+  #         move with pom.xml's <java.version> (bump all three together; the
+  #         JVM is a measured parameter, so pick the LTS deliberately).
+  # Their majors are left to a human.
   - package-ecosystem: docker
     directories:
       - /docker
@@ -151,3 +157,9 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "mcr.microsoft.com/dotnet/aspnet"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "eclipse-temurin"
+        update-types: ["version-update:semver-major"]
+      # maven:3.9-eclipse-temurin-N — the JDK is the suffix, so Dependabot
+      # does not see its bump as a major; ignore the image outright. Build-
+      # only, so the Maven version does not matter to the measurement.
+      - dependency-name: "maven"
