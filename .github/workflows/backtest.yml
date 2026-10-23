@@ -1,11 +1,11 @@
 # backtest.yml — measure older tracer releases so the site can show when a
 # cell changed (and auto-fill `fixed_in` on annotations).
 #
-# For each (variant, older version) pair from versions/discover.mjs: in the
-# job's checkout, move the pin behind that variant to the older version
-# (`versions/pin.mjs` — the same edit to go.mod / package.json /
-# requirements / Gemfile / Cargo.toml / Dockerfile ARG that a Dependabot PR
-# makes, pointed backwards), build the relay with the unchanged Dockerfile,
+# For each (variant, older version) pair from `cpm discover`: in the job's
+# checkout, move the pin behind that variant to the older version (`cpm pins
+# set` — the same edit to go.mod / package.json / requirements / Gemfile /
+# Cargo.toml / Dockerfile ARG that a Dependabot PR makes, pointed backwards),
+# build the relay with the unchanged Dockerfile,
 # run the 16 hops, aggregate a single-variant results.json with
 # kind=backtest, and publish it as Release `backtest-<variant>-<version>`.
 # Pairs that already have a release are skipped, so re-runs only fill gaps.
@@ -53,12 +53,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      # discover.mjs excludes the version the matrix currently measures; that
-      # comes from the latest published results.json (`cpm coords`), which is
-      # a release asset, not a tracked file.
+      # discover excludes the version the matrix currently measures; that
+      # comes from the latest published results.json, which is a release
+      # asset, not a tracked file.
       - name: Fetch results.json from the latest run-* release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -68,10 +65,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          args=(--depth "${{ github.event.inputs.depth || '5' }}" --skip-published)
-          [[ -n "${{ github.event.inputs.variants }}" ]] && args+=(--variants "${{ github.event.inputs.variants }}")
-          [[ "${{ github.event.inputs.include_secret }}" == "true" ]] && args+=(--include-secret)
-          node versions/discover.mjs "${args[@]}" > pairs.json
+          args=(-depth "${{ github.event.inputs.depth || '5' }}" -skip-published)
+          [[ -n "${{ github.event.inputs.variants }}" ]] && args+=(-variants "${{ github.event.inputs.variants }}")
+          [[ "${{ github.event.inputs.include_secret }}" == "true" ]] && args+=(-include-secret)
+          go run ./cmd/cpm discover "${args[@]}" > pairs.json
           echo "pairs=$(jq -c . pairs.json)" >> "$GITHUB_OUTPUT"
           echo "count=$(jq length pairs.json)" >> "$GITHUB_OUTPUT"
           echo "### Back-test plan: $(jq length pairs.json) builds" >> "$GITHUB_STEP_SUMMARY"
@@ -97,10 +94,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      # pin.mjs moves Cargo.lock with `cargo update` for the Rust relays.
+      # `cpm pins set` moves Cargo.lock with `cargo update` for the Rust relays.
       - uses: dtolnay/rust-toolchain@stable
         if: endsWith(env.V, '-rust')
       - uses: docker/setup-buildx-action@v3
@@ -112,7 +106,7 @@ jobs:
       - name: Pin ${{ env.V }}'s tracer to ${{ env.VER }} in this checkout
         run: |
           set -euo pipefail
-          node versions/pin.mjs --variant "$V" --version "$VER" > /tmp/pin.json
+          go run ./cmd/cpm pins set -variant "$V" -version "$VER" > /tmp/pin.json
           echo "### Pinned" >> "$GITHUB_STEP_SUMMARY"
           jq -r '"`\(.id)` (\(.kind)) \(.from) → \(.to) in " + (.files | map("`" + . + "`") | join(", "))' /tmp/pin.json >> "$GITHUB_STEP_SUMMARY"
           git --no-pager diff --stat
@@ -148,11 +142,11 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/raw && cp "results/raw/$V.json" /tmp/raw/
           go run ./cmd/cpm aggregate -raw /tmp/raw -out /tmp/out -kind backtest -commit "$GITHUB_SHA" \
-            -run-id "backtest-$V-$VER" -notes "pinned $(jq -r .id /tmp/pin.json) to $VER via versions/pin.mjs"
+            -run-id "backtest-$V-$VER" -notes "pinned $(jq -r .id /tmp/pin.json) to $VER via cpm pins set"
           reported=$(jq -r --arg v "$V" '.variants[] | select(.id==$v) | .tracer.version' /tmp/out/results.json)
           echo "relay reported tracer version: $reported (requested $VER)"
           if [[ "$reported" != "$VER" && "$reported" != "v$VER" && "$reported" != "unknown" ]]; then
-            echo "::warning::relay reported $reported, requested $VER — check the versions/pins.yaml entry for $V"
+            echo "::warning::relay reported $reported, requested $VER — check the pins.yaml entry for $V"
           fi
       - name: Publish release backtest-${{ env.V }}-${{ env.VER }}
         env:

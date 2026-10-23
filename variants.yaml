@@ -8,12 +8,13 @@
 #                                  nothing else; annotations must match cells)
 #   - go run ./cmd/cpm aggregate  (results.json + MATRIX.md: ordering, display
 #                                  names, setup tiers, tracer coordinates)
-#   - versions/discover.mjs       (tracer package coordinates → last N versions)
+#   - go run ./cmd/cpm discover   (tracer package coordinates → last N versions)
+#   - go run ./cmd/cpm pins       (which pin in pins.yaml backs each variant)
 #   - the contextpropagation.io site (via results.json, never directly)
 #
 # Versions are deliberately NOT here. Exact pins live in the manifests and
 # Dockerfile ARGs next to each relay (Dependabot / bump-agents.yml bump them;
-# versions/pins.yaml says where each one is); the aggregator records the
+# pins.yaml says where each one is); the aggregator records the
 # version the relay actually reported at run time.
 
 schema_version: 1

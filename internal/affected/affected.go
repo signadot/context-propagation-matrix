@@ -62,8 +62,8 @@ var allFiles = map[string]bool{"go.mod": true, "go.sum": true, ".dockerignore": 
 // Prefixes and files that cannot change a raw measurement: documentation,
 // annotations (republished separately), the aggregator and its tests, version
 // discovery, other workflows, local tooling and the ignored outputs.
-var nonePrefixes = []string{"annotations/", ".github/", "cmd/", "internal/", "matrixgen/", "versions/", "results/", "scripts/"}
-var noneFiles = map[string]bool{"run.sh": true, ".gitignore": true, ".env.example": true, "LICENSE": true}
+var nonePrefixes = []string{"annotations/", ".github/", "cmd/", "internal/", "matrixgen/", "results/", "scripts/"}
+var noneFiles = map[string]bool{"run.sh": true, ".gitignore": true, ".env.example": true, "LICENSE": true, "pins.yaml": true}
 
 // Compute applies the rules to one change.
 func Compute(in Inputs) Result {
