@@ -219,6 +219,7 @@ the cell exist?) and then by **outcome** (default: every non-pass outcome).
 | some described cells still fail | attaches to those cells | ok | Explanations card |
 | every described cell now passes | attaches to the green cells with `resolved: true`; fills `fixed_in` from the variant's reported tracer version if the YAML has none; **warns** | fails until you record `status: fixed` and `fixed_in` | "resolved" card, kept for history |
 | a selector names a cell that does not exist (variant, header or boundary removed) | **fails** — the selector is stale or mistyped | fails | — |
+| a selector names only variants that are registered but have no results in this release (e.g. the New Relic variants when `NEW_RELIC_LICENSE_KEY` is unset, before any release carried their cells over) | notes it, attaches nothing | ok — nothing to check yet | — |
 | `status: fixed` but cells fail again | attaches; warns "regression?" | fails | card shows the regression |
 
 Marking something fixed is two lines — `cpm annotations mark-fixed <id>

@@ -118,18 +118,24 @@ func LoadDir(dir string) ([]*Annotation, error) {
 	return all, nil
 }
 
-// Problem is a validation finding.
+// Problem is a validation finding. Fatal problems stop aggregation; warnings
+// are reported and, under `cpm validate -strict`, fail a pull request; Info
+// problems are reported only — they describe this release, not the YAML.
 type Problem struct {
 	Annotation string
 	File       string
 	Fatal      bool
 	Message    string
+	Info       bool
 }
 
 func (p Problem) String() string {
 	lvl := "warn"
-	if p.Fatal {
+	switch {
+	case p.Fatal:
 		lvl = "error"
+	case p.Info:
+		lvl = "note"
 	}
 	return fmt.Sprintf("%s: %s (%s): %s", lvl, p.Annotation, p.File, p.Message)
 }
@@ -142,7 +148,12 @@ func (p Problem) String() string {
 //
 //   - structural: tool/language/variant/flavour/header/boundary, ignoring
 //     outcome. Zero structural matches is fatal — the selector names a cell
-//     that does not exist (stale after a variant/protocol removal, or a typo).
+//     that does not exist (stale after a variant/protocol removal, or a typo)
+//     — unless every variant it names is registered but Missing from this
+//     release (a secret-gated tool without its key, or a partial run with no
+//     earlier release to carry cells from). That is reported as an Info
+//     problem and the annotation is attached to nothing: there is nothing to
+//     check yet, and nothing in the YAML to fix.
 //   - outcome: the structural cells further filtered by the selector's
 //     outcome list (default: every non-pass, non-not_run outcome). These are
 //     the cells the annotation is attached to.
@@ -164,11 +175,17 @@ func Apply(res *results.Results, anns []*Annotation) []Problem {
 		structVars := map[string]bool{}
 		anyNonPassStructural := false
 		for _, sel := range a.Match {
-			nStruct, nActive := 0, 0
+			nStruct, nActive, nPresent := 0, 0, 0
+			var notRun []string // registered variants the selector names that have no results in this release
 			for _, v := range res.Variants {
-				if v.Missing || !sel.matchesVariant(v) {
+				if !sel.matchesVariant(v) {
 					continue
 				}
+				if v.Missing {
+					notRun = append(notRun, v.ID)
+					continue
+				}
+				nPresent++
 				for i := range v.Cells {
 					c := &v.Cells[i]
 					if !sel.matchesShape(c) {
@@ -191,10 +208,15 @@ func Apply(res *results.Results, anns []*Annotation) []Problem {
 				}
 			}
 			switch {
+			case nStruct == 0 && nPresent == 0 && len(notRun) > 0:
+				problems = append(problems, Problem{Annotation: a.ID, File: a.sourceFile, Info: true,
+					Message: fmt.Sprintf("selector %s matches only variants with no results in this release (%s); nothing to check", sel, strings.Join(notRun, ", "))})
 			case nStruct == 0:
-				problems = append(problems, Problem{a.ID, a.sourceFile, true, fmt.Sprintf("selector %s matches no cell (variant, header or boundary no longer exists)", sel)})
+				problems = append(problems, Problem{Annotation: a.ID, File: a.sourceFile, Fatal: true,
+					Message: fmt.Sprintf("selector %s matches no cell (variant, header or boundary no longer exists)", sel)})
 			case nActive == 0 && len(sel.Outcome) > 0:
-				problems = append(problems, Problem{a.ID, a.sourceFile, false, fmt.Sprintf("selector %s matches cells but none currently has outcome %s", sel, strings.Join(sel.Outcome, "|"))})
+				problems = append(problems, Problem{Annotation: a.ID, File: a.sourceFile,
+					Message: fmt.Sprintf("selector %s matches cells but none currently has outcome %s", sel, strings.Join(sel.Outcome, "|"))})
 			}
 		}
 
@@ -212,7 +234,7 @@ func Apply(res *results.Results, anns []*Annotation) []Problem {
 			ann.Cells = keys(active)
 			ann.Variants = keys(activeVars)
 			if a.Status == "fixed" {
-				problems = append(problems, Problem{a.ID, a.sourceFile, false, fmt.Sprintf("status is fixed but %d matched cell(s) do not pass — regression?", len(active))})
+				problems = append(problems, Problem{Annotation: a.ID, File: a.sourceFile, Message: fmt.Sprintf("status is fixed but %d matched cell(s) do not pass — regression?", len(active))})
 			}
 		case len(structural) > 0 && !anyNonPassStructural:
 			// Everything it describes passes: keep it, attached to the green cells.
@@ -229,7 +251,7 @@ func Apply(res *results.Results, anns []*Annotation) []Problem {
 				ann.FixedIn = tracerVersions(res, ann.Variants)
 			}
 			if a.Status != "fixed" {
-				problems = append(problems, Problem{a.ID, a.sourceFile, false, fmt.Sprintf("every matched cell now passes; set status: fixed and fixed_in: %q", ann.FixedIn)})
+				problems = append(problems, Problem{Annotation: a.ID, File: a.sourceFile, Message: fmt.Sprintf("every matched cell now passes; set status: fixed and fixed_in: %q", ann.FixedIn)})
 			}
 		default:
 			// Structural matches exist but only with outcomes the selector

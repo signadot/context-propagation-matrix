@@ -79,6 +79,33 @@ func TestApply_StaleSelectorIsFatal(t *testing.T) {
 	}
 }
 
+func TestApply_NotRunVariantsAreInfoNotStale(t *testing.T) {
+	res := fixture(nil)
+	// Registered but absent from this release (secret-gated tool, no key):
+	// results.Load marks these Missing with no cells.
+	res.Variants = append(res.Variants,
+		&results.Variant{ID: "newrelic-java", Tool: "newrelic", Language: "java", Missing: true},
+		&results.Variant{ID: "newrelic-node", Tool: "newrelic", Language: "node", Missing: true})
+	a := ann("newrelic-no-baggage", "open", Selector{Tool: []string{"newrelic"}, Header: []string{"baggage"}, Outcome: []string{"fail"}})
+	ps := Apply(res, []*Annotation{a})
+	if fatal(ps) != 0 {
+		t.Fatalf("variants that were not run must not make the selector stale: %v", ps)
+	}
+	if len(ps) != 1 || !ps[0].Info || !strings.Contains(ps[0].Message, "newrelic-java, newrelic-node") {
+		t.Fatalf("want one Info problem naming the missing variants; got %v", ps)
+	}
+	got := res.Annotations[0]
+	if got.Resolved || len(got.Cells) != 0 {
+		t.Fatalf("nothing to attach and nothing resolved; got resolved=%v cells=%v", got.Resolved, got.Cells)
+	}
+	// A selector that is stale for a *present* variant stays fatal even when
+	// another variant it names is missing: the boundary really does not exist.
+	b := ann("gone-boundary", "open", Selector{Tool: []string{"datadog", "newrelic"}, Boundary: []string{"*->sqs"}})
+	if ps := Apply(res, []*Annotation{b}); fatal(ps) != 1 {
+		t.Fatalf("non-existent boundary on a present variant must be fatal; got %v", ps)
+	}
+}
+
 func TestApply_AllPassBecomesResolvedNotFatal(t *testing.T) {
 	out := map[string]results.Outcome{}
 	for _, b := range []string{"http-http", "http-kafka", "kafka-http", "kafka-kafka"} {
