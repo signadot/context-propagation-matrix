@@ -255,6 +255,11 @@ Release tagged `run-YYYY-MM-DD[.N]` with five assets:
 
 Back-tests of older tracer versions publish `backtest-{variant}-{version}`
 releases with a single-variant `results.json`, `MATRIX.md` and the raw file.
+A back-test does not build differently: `backtest.yml` rewrites the pin
+behind the variant in its checkout (`versions/pin.mjs --variant V --version
+X`, the edit a Dependabot PR would make, pointed backwards) and builds the
+unchanged Dockerfile, so the measured image is produced exactly the way the
+matrix produces it.
 `scripts/fetch-latest.sh` (or `./run.sh fetch [-raw]`) restores a release
 into `results/latest` and `results/raw`, and `republish.yml` re-renders the
 latest release in place when `annotations/` changes.
@@ -333,6 +338,16 @@ The Dockerfile-only versions are bumped automatically by
 `.github/workflows/bump-agents.yml`, which queries Maven Central, GitHub
 Releases, PECL and New Relic's download index daily and opens a PR per
 newer version (same shape as a Dependabot PR).
+
+`versions/pins.yaml` lists where every tracer's pin lives — Dockerfile ARG,
+go.mod module family, package.json, requirements file, Gemfile, Cargo.toml —
+keyed by the same registry/package coordinates as `variants.yaml`'s `tracer`.
+`versions/pin.mjs` reads and writes them the way each ecosystem expects
+(`go get` + `go mod tidy`, `cargo update`, a JSON key, a `==` line, a `gem`
+line, an `ARG`); `bump-agents.yml` uses it to move the `arg` pins forward,
+`backtest.yml` to move any pin backwards in a scratch checkout, and
+`verify.yml --check` to ensure every instrumented variant has exactly one
+pin. The versions themselves stay in the manifests.
 
 After merging any bump that touches a tracer or instrumentation library, CI
 (`matrix.yml`) re-runs the variants that bump can affect — `cpm affected`
