@@ -3,7 +3,15 @@ relays/go-otelc/.otelc-build/
 
 .env
 .env.*
+!.env.example
 
-# The sink's append-only observation log (a local debugging aid; every
-# observation the results depend on is already in results/raw/*.json).
+# Harness outputs are published as GitHub Release assets (run-YYYY-MM-DD),
+# never committed: raw driver output, the aggregated results.json/MATRIX.md,
+# and the sink's append-only observation log (a local debugging aid).
+# `./run.sh fetch` restores results/latest (and -raw results/raw) from the
+# latest release. results/experiments and results/nokey are hand-curated
+# evidence and stay tracked.
+results/raw/
+results/latest/
 results/data/
+results/MATRIX.md

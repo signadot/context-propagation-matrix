@@ -9,7 +9,10 @@
 # Orchestrion's own version and dd-trace-go's are pinned in go.mod (Dependabot
 # bumps them).
 
-FROM golang:1.25 AS build
+# go.mod is the source of truth for the Go version; the image is a bootstrap
+# (see docker/go.Dockerfile and scripts/check-toolchains.sh).
+FROM golang:1.26 AS build
+ENV GOTOOLCHAIN=auto
 WORKDIR /src
 # Both modules' manifests first, for layer-cached dependency downloads. The
 # relays/go-orchestrion module has a `replace
