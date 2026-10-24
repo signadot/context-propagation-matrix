@@ -100,7 +100,7 @@ ENTRYPOINT ["/newrelic-entrypoint.sh"]
 # --- Elastic: APM PHP agent via the documented .deb package (per-arch).
 # Must tolerate an unreachable ELASTIC_APM_SERVER_URL (it logs and drops).
 FROM app AS elastic
-ARG ELASTIC_APM_PHP_VERSION=1.17.0
+ARG ELASTIC_APM_PHP_VERSION=1.17.1
 RUN set -eux; \
     arch="$(dpkg --print-architecture)"; \
     curl -fLo /tmp/apm-agent-php.deb \
