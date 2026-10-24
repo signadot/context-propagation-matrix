@@ -84,7 +84,7 @@ RUN curl -fLo /tmp/datadog-setup.php \
 # are auto-instrumented for distributed tracing; php-amqplib has agent
 # instrumentation (agent >= 11.6); ext-rdkafka and ext-grpc are unsupported.
 FROM app AS newrelic
-ARG NEWRELIC_PHP_AGENT_VERSION=12.10.0.39
+ARG NEWRELIC_PHP_AGENT_VERSION=12.12.0.41
 RUN set -eux; \
     ver="${NEWRELIC_PHP_AGENT_VERSION}"; \
     curl -fsSL "https://download.newrelic.com/php_agent/archive/${ver}/newrelic-php5-${ver}-linux.tar.gz" \
