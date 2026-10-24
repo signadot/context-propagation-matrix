@@ -69,7 +69,7 @@ ENV OTEL_PHP_AUTOLOAD_ENABLED=true \
 # (each release's setup script installs that release's tracer). Tracer
 # version is read at runtime via phpversion('ddtrace') for /info.
 FROM app AS datadog
-ARG DD_PHP_TRACER_VERSION=1.25.0
+ARG DD_PHP_TRACER_VERSION=1.26.2
 RUN curl -fLo /tmp/datadog-setup.php \
       "https://github.com/DataDog/dd-trace-php/releases/download/${DD_PHP_TRACER_VERSION}/datadog-setup.php" \
  && php /tmp/datadog-setup.php --php-bin=all \
