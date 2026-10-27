@@ -9,7 +9,7 @@ go 1.26.0
 // (Dependabot bumps them); kafka-go because it is the only Kafka client otelc
 // v1 instruments.
 require (
-	github.com/rabbitmq/amqp091-go v1.14.0
+	github.com/rabbitmq/amqp091-go v1.16.0
 	github.com/segmentio/kafka-go v0.4.51
 	github.com/signadot/context-propagation-matrix v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.84.0
@@ -19,8 +19,8 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/dave/dst v0.27.4 // indirect
 	github.com/gofrs/flock v0.13.0 // indirect
-	github.com/klauspost/compress v1.20.0 // indirect
-	github.com/pierrec/lz4/v4 v4.1.30 // indirect
+	github.com/klauspost/compress v1.20.3 // indirect
+	github.com/pierrec/lz4/v4 v4.1.33 // indirect
 	github.com/urfave/cli/v3 v3.10.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
