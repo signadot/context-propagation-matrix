@@ -11,11 +11,11 @@
 source 'https://rubygems.org'
 
 gem 'bunny', '3.4.0'
-gem 'grpc', '1.83.1'
+gem 'grpc', '1.84.1'
 gem 'karafka', '2.6.1'
 gem 'puma', '8.0.2'
 gem 'rackup', '2.3.1'
 gem 'sinatra', '4.2.1'
-gem 'waterdrop', '2.10.4'
+gem 'waterdrop', '2.10.7'
 
 gem 'datadog', '2.42.0'
