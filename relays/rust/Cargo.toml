@@ -47,7 +47,7 @@ http = "1"
 opentelemetry = "0.32"
 opentelemetry_sdk = "0.32"
 opentelemetry-http = "0.32"
-datadog-opentelemetry = "0.5"
+datadog-opentelemetry = "0.6"
 
 [build-dependencies]
 # tonic 0.14 moved protobuf codegen out of tonic-build into tonic-prost-build.
