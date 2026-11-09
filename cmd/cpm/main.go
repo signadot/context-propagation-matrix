@@ -521,10 +521,17 @@ func cmdAggregate(args []string) error {
 		*runID = "run-" + res.Run.FinishedAt.UTC().Format("2006-01-02")
 	}
 	res.Run.RunID = *runID
+	var from *results.Results
+	if *prev != "" {
+		if from, err = results.Load(*prev); err != nil {
+			return err
+		}
+	}
+	var measured map[string]bool
 	if ids := strings.FieldsFunc(*reran, func(r rune) bool { return r == ' ' || r == ',' || r == '\n' }); len(ids) > 0 {
 		sort.Strings(ids)
 		res.Run.Reran = ids
-		measured := map[string]bool{}
+		measured = map[string]bool{}
 		for _, id := range ids {
 			measured[id] = true
 		}
@@ -534,6 +541,9 @@ func cmdAggregate(args []string) error {
 				break
 			}
 		}
+	}
+	if err := res.SetProvenance(from, measured); err != nil {
+		return err
 	}
 
 	if anns, err := annotations.LoadDir(*annDir); err != nil {
@@ -565,11 +575,7 @@ func cmdAggregate(args []string) error {
 	fmt.Printf("wrote %s/results.json and MATRIX.md (%s: %d variants, %d hops, %d cells)\n",
 		*outDir, res.Run.RunID, res.Summary.VariantCount, res.Summary.HopCount, res.Summary.CellCount)
 
-	if *prev != "" {
-		from, err := results.Load(*prev)
-		if err != nil {
-			return err
-		}
+	if from != nil {
 		ch := results.Diff(from, res)
 		if err := ch.Write(filepath.Join(*outDir, "changes.json")); err != nil {
 			return err
