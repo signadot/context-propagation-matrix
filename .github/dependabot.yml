@@ -138,6 +138,9 @@ updates:
   #         move with pom.xml's <java.version> (bump all three together; the
   #         JVM is a measured parameter, so pick the LTS deliberately).
   # Their majors are left to a human.
+  # relays/php pins php:8.3-apache by tag@digest and the extension installer by
+  # exact version so its ~30 min gRPC compile stays cached between runs; the
+  # digest and version bumps arrive here as PRs (see the Dockerfile header).
   - package-ecosystem: docker
     directories:
       - /docker
