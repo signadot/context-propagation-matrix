@@ -10,6 +10,7 @@ import (
 
 	"github.com/signadot/context-propagation-matrix/internal/pins"
 	"github.com/signadot/context-propagation-matrix/internal/registry"
+	"github.com/signadot/context-propagation-matrix/internal/results"
 	"github.com/signadot/context-propagation-matrix/internal/versions"
 )
 
@@ -18,8 +19,18 @@ import (
 // registry coordinates in variants.yaml), minus the version the latest
 // published results.json already measures (tracer.pinned), minus versions
 // the pin's backtest policy in pins.yaml rules out (too old to build, never
-// shipped for the whole family), minus any (variant, version) pair that
-// already has a `backtest-<variant>-<version>` GitHub Release.
+// shipped for the whole family), minus — with -skip-published — any
+// (variant, version) pair already measured: filed in the variant's
+// `variant-<id>` release (by a matrix run or a back-test) or published as a
+// `backtest-<variant>-<version>` release.
+//
+// Depth is a window over the tracer's release history (the newest N versions
+// older than current), not a count of gaps, so a monthly run with a small
+// depth keeps up with ordinary bumps and a large depth back-fills further.
+// When the candidates exceed -max (GitHub caps a matrix at 256 jobs) they
+// are taken round-robin across variants, newest first, so every variant
+// gets its most recent gaps filled and repeating the dispatch finishes the
+// rest.
 //
 //	cpm discover                                   # all public variants, depth 10
 //	cpm discover -depth 5 -variants datadog-java,otel-python
@@ -36,7 +47,7 @@ func cmdDiscover(args []string) error {
 	depth := fs.Int("depth", 10, "how many older versions per variant")
 	only := fs.String("variants", "", "comma-separated variant ids (default: every variant)")
 	includeSecret := fs.Bool("include-secret", false, "include variants whose tool needs a secret")
-	skipPublished := fs.Bool("skip-published", false, "skip pairs that already have a backtest-* release")
+	skipPublished := fs.Bool("skip-published", false, "skip pairs already measured (filed in the variant-* release or with a backtest-* release)")
 	repo := fs.String("repo", envOr("GITHUB_REPOSITORY", harnessRepo), "GitHub repository for -skip-published")
 	max := fs.Int("max", 250, "cap on the number of pairs (GitHub Actions caps a matrix at 256 jobs)")
 	pinsPath := fs.String("pins", "pins.yaml", "pins manifest, for each pin's backtest policy (\"\" to ignore)")
@@ -61,17 +72,36 @@ func cmdDiscover(args []string) error {
 	ctx := context.Background()
 	client := &versions.Client{}
 
-	published := map[string]bool{}
+	// Pairs that need no back-test: backtest-* release tags, plus every
+	// version in each variant-* release's index.json — which also holds the
+	// versions matrix runs measured, so a version the matrix measured before
+	// a bump is not measured again as a back-test (its matrix entry stays in
+	// the index).
+	published := map[string]bool{}    // backtest-<variant>-<version> tags
+	var indexAssets map[string]string // variant id → index.json asset URL
 	if *skipPublished {
-		tags, err := backtestReleases(ctx, client, *repo)
+		rels, err := publishedReleases(ctx, client, *repo)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not list releases (%v); not skipping\n", err)
 		} else {
-			for _, t := range tags {
+			for _, t := range rels.backtests {
 				published[t] = true
 			}
-			fmt.Fprintf(os.Stderr, "skip-published: %d backtest releases exist\n", len(published))
+			indexAssets = rels.indexes
+			fmt.Fprintf(os.Stderr, "skip-published: %d backtest releases, %d variant releases\n", len(published), len(indexAssets))
 		}
+	}
+	filedVersions := func(variant string) map[string]bool {
+		url, ok := indexAssets[variant]
+		if !ok {
+			return nil
+		}
+		filed, err := indexVersions(ctx, client, url)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: variant-%s/index.json: %v; not skipping its filed versions\n", variant, err)
+			return nil
+		}
+		return filed
 	}
 
 	// Registries are queried once per distinct package, not per variant.
@@ -97,7 +127,8 @@ func cmdDiscover(args []string) error {
 		Registry string `json:"registry"`
 		Current  string `json:"current"`
 	}
-	out := []pair{}
+	var perVariant [][]pair // candidates per variant, newest first
+	total := 0
 	for _, c := range cs {
 		if len(want) > 0 && !want[c.Variant] {
 			continue
@@ -128,49 +159,111 @@ func cmdDiscover(args []string) error {
 				break
 			}
 		}
+		filed := filedVersions(c.Variant)
+		var mine []pair
 		for _, v := range older {
-			if published["backtest-"+c.Variant+"-"+v] {
+			if published["backtest-"+c.Variant+"-"+v] || filed[v] {
 				continue
 			}
-			out = append(out, pair{c.Variant, v, c.Tracer.Package, c.Tracer.Registry, current})
+			mine = append(mine, pair{c.Variant, v, c.Tracer.Package, c.Tracer.Registry, current})
 		}
 		cur := current
 		if cur == "" {
 			cur = "?"
 		}
-		fmt.Fprintf(os.Stderr, "%s: current %s → %d older candidate(s), %d excluded by policy\n", c.Variant, cur, len(older), excluded)
+		fmt.Fprintf(os.Stderr, "%s: current %s → %d older candidate(s), %d excluded by policy, %d already measured\n", c.Variant, cur, len(older), excluded, len(older)-len(mine))
+		if len(mine) > 0 {
+			perVariant = append(perVariant, mine)
+			total += len(mine)
+		}
 	}
-	if len(out) > *max {
-		fmt.Fprintf(os.Stderr, "warning: %d candidates, truncating to %d (newest versions first per variant)\n", len(out), *max)
-		out = out[:*max]
+	out := []pair{}
+	if total <= *max {
+		for _, mine := range perVariant {
+			out = append(out, mine...)
+		}
+	} else {
+		// Round-robin: the newest gap of every variant before anyone's second.
+		fmt.Fprintf(os.Stderr, "warning: %d candidates, taking %d round-robin across %d variants (newest first); dispatch again for the rest\n", total, *max, len(perVariant))
+		for i := 0; len(out) < *max; i++ {
+			for _, mine := range perVariant {
+				if i < len(mine) && len(out) < *max {
+					out = append(out, mine[i])
+				}
+			}
+		}
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", " ")
 	return enc.Encode(out)
 }
 
-// backtestReleases lists the repo's backtest-* release tags (up to 1000).
-func backtestReleases(ctx context.Context, client *versions.Client, repo string) ([]string, error) {
-	headers := map[string]string{"Accept": "application/vnd.github+json"}
+// releases is what -skip-published needs from the repo's GitHub Releases.
+type releases struct {
+	backtests []string          // backtest-<variant>-<version> tags
+	indexes   map[string]string // variant id → API URL of variant-<id>'s index.json asset
+}
+
+func githubHeaders(accept string) map[string]string {
+	headers := map[string]string{"Accept": accept}
 	if t := os.Getenv("GITHUB_TOKEN"); t != "" {
 		headers["Authorization"] = "Bearer " + t
 	}
-	var out []string
+	return headers
+}
+
+// publishedReleases pages through the repo's releases (up to 1000) and
+// collects the backtest-* tags and each variant-* release's index.json asset.
+func publishedReleases(ctx context.Context, client *versions.Client, repo string) (*releases, error) {
+	out := &releases{indexes: map[string]string{}}
 	for page := 1; page <= 10; page++ {
 		var rel []struct {
 			TagName string `json:"tag_name"`
+			Assets  []struct {
+				Name string `json:"name"`
+				URL  string `json:"url"`
+			} `json:"assets"`
 		}
-		if err := client.GetJSON(ctx, fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100&page=%d", repo, page), headers, &rel); err != nil {
+		if err := client.GetJSON(ctx, fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100&page=%d", repo, page), githubHeaders("application/vnd.github+json"), &rel); err != nil {
 			return nil, err
 		}
 		if len(rel) == 0 {
 			break
 		}
 		for _, r := range rel {
-			if strings.HasPrefix(r.TagName, "backtest-") {
-				out = append(out, r.TagName)
+			switch {
+			case strings.HasPrefix(r.TagName, "backtest-"):
+				out.backtests = append(out.backtests, r.TagName)
+			case strings.HasPrefix(r.TagName, "variant-"):
+				for _, a := range r.Assets {
+					if a.Name == "index.json" {
+						out.indexes[strings.TrimPrefix(r.TagName, "variant-")] = a.URL
+					}
+				}
 			}
 		}
+	}
+	return out, nil
+}
+
+// indexVersions downloads a variant-<id> release's index.json (the asset API
+// URL, which redirects to the content) and returns the versions it files.
+func indexVersions(ctx context.Context, client *versions.Client, assetURL string) (map[string]bool, error) {
+	var idx struct {
+		SchemaVersion int `json:"schema_version"`
+		Versions      []struct {
+			Version string `json:"version"`
+		} `json:"versions"`
+	}
+	if err := client.GetJSON(ctx, assetURL, githubHeaders("application/octet-stream"), &idx); err != nil {
+		return nil, err
+	}
+	if idx.SchemaVersion != results.VersionIndexSchema {
+		return nil, fmt.Errorf("schema_version %d, want %d", idx.SchemaVersion, results.VersionIndexSchema)
+	}
+	out := map[string]bool{}
+	for _, v := range idx.Versions {
+		out[v.Version] = true
 	}
 	return out, nil
 }
