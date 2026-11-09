@@ -2,7 +2,7 @@
 # opentelemetry-distro pulls the SDK + opentelemetry-instrument launcher.
 opentelemetry-distro==0.65b0
 opentelemetry-instrumentation-flask==0.65b0
-opentelemetry-instrumentation-requests==0.65b0
+opentelemetry-instrumentation-requests==0.66b2
 opentelemetry-instrumentation-grpc==0.65b0
 opentelemetry-instrumentation-confluent-kafka==0.65b0
 opentelemetry-instrumentation-pika==0.65b0
