@@ -104,8 +104,8 @@ github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
 github.com/google/gofuzz v1.2.0 h1:xRy4A+RhZaiKjJ1bPfwQ8sedCA+YS2YcCHW6ec7JMi0=
 github.com/google/gofuzz v1.2.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
-github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 h1:BHT72Gu3keYf3ZEu2J0b1vyeLSOYI8bm5wbJM/8yDe8=
-github.com/google/pprof v0.0.0-20250403155104-27863c87afa6/go.mod h1:boTsfXsheKC2y+lKOCMpSfarhxDeIzfZG1jqGcPl3cA=
+github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3 h1:LMLX+LgTNWpfvCBdFebv6EsYotImrt/Ppc5cXIriCSo=
+github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3/go.mod h1:jl5iWTm0/hd5PjEYEOuwAJ57L/CibdZfrqZ5XA5GrCk=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/gorilla/securecookie v1.1.1/go.mod h1:ra0sb63/xPlUeL+yeDciTfxMRAA+MP+HVt/4epWDjd4=
@@ -168,8 +168,8 @@ github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee h1:W5t00kpgFd
 github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
 github.com/newrelic/csec-go-agent v1.6.0 h1:OCShRZgiE+kg37jk+QXHw9e9EQ9BvLOeQTk+ovJhnrE=
 github.com/newrelic/csec-go-agent v1.6.0/go.mod h1:LiLGm6a+q+hkmTnrxrYw1ToToirThOHydjrrLMtci5M=
-github.com/newrelic/go-agent/v3 v3.44.2 h1:5/a6TTwk0IGgXqAhpABRloYRsw6npAcmnyuH7bOGzlQ=
-github.com/newrelic/go-agent/v3 v3.44.2/go.mod h1:5A2u/S0na/zIg5hS197XdK+ZkLqTRq5baFzJfVWrc3Q=
+github.com/newrelic/go-agent/v3 v3.45.0 h1:6Y/NvrdVOY+UuvGDPytBDqAECuvCb2uvU6k0qq8gxnE=
+github.com/newrelic/go-agent/v3 v3.45.0/go.mod h1:2aY3paC/QaI9wf/qz9iD0lWP5AQ7UQ9Ks35iDA40ndU=
 github.com/newrelic/go-agent/v3/integrations/nramqp v1.0.3 h1:7qtWxrk5fdWn4po7NyEj6JxR7ytFRxkxvl/YfRi+1go=
 github.com/newrelic/go-agent/v3/integrations/nramqp v1.0.3/go.mod h1:ZrJNRDCKGZZgisypVN9deNmjPxV/XGdQ1NrWmtYY0mo=
 github.com/newrelic/go-agent/v3/integrations/nrgrpc v1.4.10 h1:lT++K9HeRb6Vno2hkmC/Kd5zQ+VZYSDxbp3mJaHdfHs=
@@ -178,6 +178,8 @@ github.com/newrelic/go-agent/v3/integrations/nrsarama v1.0.2 h1:aNOQOOHOIl6XEUjf
 github.com/newrelic/go-agent/v3/integrations/nrsarama v1.0.2/go.mod h1:f3hzl/v9VC0z5z/mj5s8qwtmxc+1wBzYp25vWl9P9ko=
 github.com/newrelic/go-agent/v3/integrations/nrsecurityagent v1.1.0 h1:gqkTDYUHWUyiG+u0PJQCRh98rcHLxP/w7GtIbJDVULY=
 github.com/newrelic/go-agent/v3/integrations/nrsecurityagent v1.1.0/go.mod h1:3wugGvRmOVYov/08y+D8tB1uYIZds5bweVdr5vo4Gbs=
+github.com/nsf/jsondiff v0.0.0-20260207060731-8e8d90c4c0ac h1:4YV96Dzy2csSnhzl14/Qk5YsSrKAQusGsIADDn/4/g8=
+github.com/nsf/jsondiff v0.0.0-20260207060731-8e8d90c4c0ac/go.mod h1:mpRZBD8SJ55OIICQ3iWH0Yz3cjzA61JdqMLoWXeB2+8=
 github.com/outcaste-io/ristretto v0.2.3 h1:AK4zt/fJ76kjlYObOeNwh4T3asEuaCmp26pOvUOL9w0=
 github.com/outcaste-io/ristretto v0.2.3/go.mod h1:W8HywhmtlopSB1jeMg3JtdIhf+DYkLAr0VN/s4+MHac=
 github.com/petermattis/goid v0.0.0-20250813065127-a731cc31b4fe/go.mod h1:pxMtw7cyUw6B2bRH0ZBANSPg+AoSud1I1iyJHI69jH4=
