@@ -42,7 +42,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag=$(gh release list --limit 100 --json tagName --jq '[.[] | select(.tagName|startswith("run-"))][0].tagName // empty')
+          tag=$(scripts/fetch-latest.sh -tag)
           if [[ -z "$tag" ]]; then
             echo "::notice::no run-* release yet; nothing to republish (the first matrix run will embed the current annotations)"
             echo "tag=" >> "$GITHUB_OUTPUT"
