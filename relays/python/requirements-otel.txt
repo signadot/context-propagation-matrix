@@ -5,4 +5,4 @@ opentelemetry-instrumentation-flask==0.65b0
 opentelemetry-instrumentation-requests==0.65b0
 opentelemetry-instrumentation-grpc==0.65b0
 opentelemetry-instrumentation-confluent-kafka==0.65b0
-opentelemetry-instrumentation-pika==0.65b0
+opentelemetry-instrumentation-pika==0.66b2
