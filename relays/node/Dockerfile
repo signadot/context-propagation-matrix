@@ -33,3 +33,5 @@ FROM app AS elastic
 COPY relays/node/tools/elastic/package.json ./tool.package.json
 RUN npm install --no-save $(node -p "Object.entries(require('./tool.package.json').dependencies).map(e=>e.join('@')).join(' ')")
 ENV NODE_OPTIONS="--require elastic-apm-node/start"
+
+# scratch: exercise verify.yml smoke selection (PR to be closed, not merged)
