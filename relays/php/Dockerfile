@@ -69,12 +69,12 @@ ENTRYPOINT ["/entrypoint.sh"]
 FROM app AS otel
 # Extension + instrumentation packages pinned exactly (composer requires in
 # a Dockerfile are not Dependabot-visible; bump manually per DESIGN.md).
-RUN install-php-extensions opentelemetry-1.2.1
+RUN install-php-extensions opentelemetry-1.4.2
 RUN composer require --no-interaction \
       open-telemetry/sdk:1.15.0 \
-      open-telemetry/opentelemetry-auto-slim:1.5.0 \
+      open-telemetry/opentelemetry-auto-slim:1.5.1 \
       open-telemetry/opentelemetry-auto-curl:0.3.0 \
-      open-telemetry/opentelemetry-auto-ext-rdkafka:0.0.5
+      open-telemetry/opentelemetry-auto-ext-rdkafka:0.1.0
 ENV OTEL_PHP_AUTOLOAD_ENABLED=true \
     OTEL_TRACES_EXPORTER=none \
     OTEL_METRICS_EXPORTER=none \
@@ -84,7 +84,7 @@ ENV OTEL_PHP_AUTOLOAD_ENABLED=true \
 # (each release's setup script installs that release's tracer). Tracer
 # version is read at runtime via phpversion('ddtrace') for /info.
 FROM app AS datadog
-ARG DD_PHP_TRACER_VERSION=1.25.0
+ARG DD_PHP_TRACER_VERSION=1.27.1
 RUN curl -fLo /tmp/datadog-setup.php \
       "https://github.com/DataDog/dd-trace-php/releases/download/${DD_PHP_TRACER_VERSION}/datadog-setup.php" \
  && php /tmp/datadog-setup.php --php-bin=all \
@@ -99,7 +99,7 @@ RUN curl -fLo /tmp/datadog-setup.php \
 # are auto-instrumented for distributed tracing; php-amqplib has agent
 # instrumentation (agent >= 11.6); ext-rdkafka and ext-grpc are unsupported.
 FROM app AS newrelic
-ARG NEWRELIC_PHP_AGENT_VERSION=12.10.0.39
+ARG NEWRELIC_PHP_AGENT_VERSION=12.12.0.41
 RUN set -eux; \
     ver="${NEWRELIC_PHP_AGENT_VERSION}"; \
     curl -fsSL "https://download.newrelic.com/php_agent/archive/${ver}/newrelic-php5-${ver}-linux.tar.gz" \
@@ -115,7 +115,7 @@ ENTRYPOINT ["/newrelic-entrypoint.sh"]
 # --- Elastic: APM PHP agent via the documented .deb package (per-arch).
 # Must tolerate an unreachable ELASTIC_APM_SERVER_URL (it logs and drops).
 FROM app AS elastic
-ARG ELASTIC_APM_PHP_VERSION=1.17.0
+ARG ELASTIC_APM_PHP_VERSION=1.17.1
 RUN set -eux; \
     arch="$(dpkg --print-architecture)"; \
     curl -fLo /tmp/apm-agent-php.deb \

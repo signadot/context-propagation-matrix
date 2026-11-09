@@ -3,6 +3,6 @@
   "private": true,
   "description": "Pinned agent dependency for the otel target; installed into the app image by the Dockerfile. Kept as its own manifest so Dependabot can bump it.",
   "dependencies": {
-    "@opentelemetry/auto-instrumentations-node": "0.80.0"
+    "@opentelemetry/auto-instrumentations-node": "0.83.0"
   }
 }
