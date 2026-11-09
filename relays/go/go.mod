@@ -13,7 +13,7 @@ require (
 	github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.10.1
 	github.com/DataDog/dd-trace-go/v2 v2.10.1
 	github.com/IBM/sarama v1.60.2
-	github.com/newrelic/go-agent/v3 v3.44.2
+	github.com/newrelic/go-agent/v3 v3.45.0
 	github.com/newrelic/go-agent/v3/integrations/nramqp v1.0.3
 	github.com/newrelic/go-agent/v3/integrations/nrgrpc v1.4.10
 	github.com/newrelic/go-agent/v3/integrations/nrsarama v1.0.2
@@ -67,6 +67,7 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
+	github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
