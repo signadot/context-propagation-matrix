@@ -6,15 +6,30 @@
 # php-amqplib) started by the entrypoint. gRPC stubs are generated from
 # proto/relay.proto at build time with Debian's protoc + grpc_php_plugin.
 # Tool targets differ only in which instrumentation is installed.
+#
+# Both inputs of the app stage are pinned to immutable references on purpose.
+# `install-php-extensions grpc` below compiles the gRPC extension from source
+# (~25-40 min on a GitHub runner) and is only fast when that layer comes out
+# of the GHCR cache (cache:relays-php). BuildKit keys the layer on the base
+# image digest and on the content of the copied installer script, so the
+# floating `php:8.3-apache` (rebuilt by Docker Hub every week or two) and
+# `php-extension-installer:2` (several releases a week) re-ran the compile in
+# every weekly matrix run. Dependabot (docker ecosystem, /relays/php) bumps
+# the digest and the version as PRs: a cold build is paid once per deliberate
+# bump, not once per run. Keep the tag in front of the digest — that is the
+# form Dependabot updates.
+FROM mlocati/php-extension-installer:2.13.2 AS php-ext-installer
 
-FROM php:8.3-apache AS app
+FROM php:8.3-apache@sha256:a800bbd2c0aa322702259ed475556b2cbc311076a8d3c4bba9bfe96838745472 AS app
 
-COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /usr/local/bin/
+COPY --from=php-ext-installer /usr/bin/install-php-extensions /usr/local/bin/
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends protobuf-compiler protobuf-compiler-grpc unzip \
  && rm -rf /var/lib/apt/lists/*
 
+# The expensive layer. Everything the relay itself needs (composer.json, src,
+# proto) is copied below it so edits to the relay never invalidate it.
 # rdkafka pinned to 6.0.5 — the exact version in dd-trace-php's tested
 # integration matrix (and covered by OTel's ext-rdkafka instrumentation).
 # sockets is required by php-amqplib.

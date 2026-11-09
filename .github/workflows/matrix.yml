@@ -114,7 +114,12 @@ jobs:
     needs: plan
     if: needs.plan.outputs.variants != '[]'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # A warm job is ~5 min. The margin is for a cold PHP relay build: its gRPC
+    # PECL extension compiles from source (25-40 min, relays/php/Dockerfile) and
+    # the five PHP variants compile it concurrently whenever the pinned base
+    # image or extension installer is bumped. 40 was too tight (2026-11-02: three
+    # PHP jobs cancelled at the limit).
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       max-parallel: 47 # one wave for the whole matrix (the plan allows 60 concurrent jobs)
