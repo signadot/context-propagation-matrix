@@ -101,7 +101,10 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      max-parallel: 6
+      # A pair is ~5 min warm, so a full 250-pair dispatch is ~1 h at 30 wide
+      # (~3.5 h at the previous 6). The plan allows 60 concurrent jobs; 30
+      # leaves room for verify.yml on PRs and a matrix run alongside.
+      max-parallel: 30
       matrix:
         pair: ${{ fromJson(needs.plan.outputs.pairs) }}
     env:
