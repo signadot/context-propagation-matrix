@@ -52,9 +52,10 @@ type pinState struct {
 }
 
 // pinsList prints every pin with the version its file holds. With check, it
-// also requires every instrumented variant in variants.yaml to resolve to
-// exactly one pin (and every listed variant to exist), exiting non-zero on
-// any failure — the verify.yml gate.
+// also requires each pin's manifest to pass pins.Check (one copy of every
+// cargo crate in Cargo.lock) and every instrumented variant in variants.yaml
+// to resolve to exactly one pin (and every listed variant to exist), exiting
+// non-zero on any failure — the verify.yml gate.
 func pinsList(args []string, check bool) error {
 	fs := flag.NewFlagSet("pins", flag.ExitOnError)
 	pinsPath := pinsFlag(fs)
@@ -74,6 +75,12 @@ func pinsList(args []string, check bool) error {
 			fmt.Fprintln(os.Stderr, err)
 			failed = true
 			continue
+		}
+		if check {
+			if err := p.Check(); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				failed = true
+			}
 		}
 		out = append(out, pinState{p.ID, p.Kind, cur, p.Source, p.Variants})
 	}

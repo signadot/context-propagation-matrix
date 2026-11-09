@@ -126,6 +126,36 @@ func TestCargoRead(t *testing.T) {
 			t.Fatalf("requirement regexp does not match %s", c)
 		}
 	}
+	if err := p.Check(); err != nil {
+		t.Fatalf("Check with one copy: %v", err)
+	}
+}
+
+// Two copies of a crate in Cargo.lock (another dependency requires a
+// version the relay's requirement does not admit): Read resolves through
+// an exact requirement, refuses a loose one, and Check refuses both.
+func TestCargoTwoCopies(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "Cargo.lock", "[[package]]\nname = \"opentelemetry\"\nversion = \"0.32.0\"\n\n[[package]]\nname = \"opentelemetry\"\nversion = \"0.33.1\"\n\n[[package]]\nname = \"other\"\nversion = \"1.0.0\"\n")
+	p := &Pin{ID: "otel", Kind: KindCargo, Dir: dir, Packages: []string{"opentelemetry"}}
+
+	write(t, dir, "Cargo.toml", "[dependencies]\nopentelemetry = \"=0.33.1\"\n")
+	if got, err := p.Read(); err != nil || got != "0.33.1" {
+		t.Fatalf("Read with exact requirement = %q, %v; want 0.33.1", got, err)
+	}
+	if err := p.Check(); err == nil || !strings.Contains(err.Error(), "0.32.0 and 0.33.1") {
+		t.Fatalf("Check with two copies: got %v, want an error naming both", err)
+	}
+
+	write(t, dir, "Cargo.toml", "[dependencies]\nopentelemetry = \"0.33\"\n")
+	if _, err := p.Read(); err == nil || !strings.Contains(err.Error(), "exact") {
+		t.Fatalf("Read with a loose requirement and two copies: got %v, want an error asking for an exact one", err)
+	}
+
+	write(t, dir, "Cargo.toml", "[dependencies]\nopentelemetry = \"=0.31.0\"\n")
+	if _, err := p.Read(); err == nil {
+		t.Fatal("Read with an exact requirement matching neither copy: want an error")
+	}
 }
 
 func TestLoadAndForVariant(t *testing.T) {

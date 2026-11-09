@@ -41,13 +41,19 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 http = "1"
 
-# Instrumentation. Both tools speak the same OpenTelemetry API surface;
-# datadog-opentelemetry 0.5.x pins opentelemetry 0.32, so all carriers and
-# global propagator calls resolve to a single copy of the API crate.
-opentelemetry = "=0.33.1"
-opentelemetry_sdk = "=0.33.1"
-opentelemetry-http = "=0.33.1"
-datadog-opentelemetry = "0.5"
+# Instrumentation. Both tools speak the same OpenTelemetry API surface, and
+# both relay binaries must resolve to a SINGLE copy of the API crate: the
+# tool installs its propagator in `opentelemetry::global`, and the relay's
+# inject/extract calls have to land in the same crate. With two copies in
+# Cargo.lock the datadog relay builds, boots and propagates nothing.
+# datadog-opentelemetry requires an exact opentelemetry version (0.6.0 →
+# =0.33.0), so the three opentelemetry crates sit at that version, not the
+# newest; `cpm pins check` fails on a second copy, which is what a bump of
+# either side that outruns the other produces (see pins.yaml).
+opentelemetry = "=0.33.0"
+opentelemetry_sdk = "=0.33.0"
+opentelemetry-http = "=0.33.0"
+datadog-opentelemetry = "=0.6.0"
 
 [build-dependencies]
 # tonic 0.14 moved protobuf codegen out of tonic-build into tonic-prost-build.
