@@ -1,21 +1,41 @@
-# bump-agents.yml — Dependabot for the versions Dependabot cannot see.
+# bump-agents.yml — every tracer/agent pin, moved by `cpm pins latest`.
 #
-# Java agent jars, .NET profiler tarballs, the PHP agents and the OTel PHP
-# extension are pinned as Dockerfile ARGs / RUN lines (the `kind: arg` entries
-# of pins.yaml). Daily, look up the latest stable version of each in its
-# registry and open one PR per newer agent (`cpm pins latest`). Merging a PR
-# touches relays/**, which triggers
-# matrix.yml → new release → site rebuild → changelog entry.
+# Dependabot keeps the app dependencies and the toolchain images; the tracer
+# pins listed in pins.yaml (Dockerfile ARGs, go.mod families, package.json,
+# requirements-*.txt, Gemfile, Cargo.toml) are Dependabot-ignored
+# (.github/dependabot.yml) and moved here instead. Every 6 hours: look up the
+# newest stable version of each pin in its registry (`cpm pins latest`) and
+# keep exactly ONE open PR per pin, on branch `bump/<id>`, labelled
+# tracer-bump + auto-merge + dependencies, with squash auto-merge requested.
+# A newer upstream release rewrites that branch (main + one commit) and the
+# PR in place; any older PR for the same pin is closed as superseded.
+# Merging touches relays/**, which triggers matrix.yml → new release → site
+# rebuild → changelog entry.
+#
+# Tokens. Branches pushed and PRs opened with the workflow's own GITHUB_TOKEN
+# do not trigger `pull_request` workflows (GitHub's recursion guard), so
+# verify.yml never ran on the bot's PRs and auto-merge had no checks to wait
+# for. Set the repository secret BUMP_PAT to a fine-grained PAT with
+# contents: write and pull-requests: write on this repository (a classic
+# `repo` token also works) and the bot checks out, pushes and opens PRs with
+# it, so verify runs and auto-merge can complete. Unset, everything falls
+# back to GITHUB_TOKEN and the PRs need a manual close/reopen to get checks.
 name: bump-agents
 
 on:
   schedule:
-    - cron: '41 5 * * *' # daily 05:41 UTC
+    - cron: '41 */6 * * *' # every 6 hours at :41 UTC
   workflow_dispatch:
 
+# Two runs must not rewrite the same bump/* branch at once.
+concurrency:
+  group: bump-agents
+  cancel-in-progress: false
+
 permissions:
-  contents: write
-  pull-requests: write
+  contents: write      # push bump/* branches
+  pull-requests: write # open/edit/close PRs, enable auto-merge
+  issues: write        # gh label create (labels are shared with issues)
 
 jobs:
   discover:
@@ -30,14 +50,17 @@ jobs:
           cache: true
       - id: find
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }} # github-releases lookups
         run: |
           set -euo pipefail
           go run ./cmd/cpm pins latest > bumps.json
           echo "bumps=$(jq -c . bumps.json)" >> "$GITHUB_OUTPUT"
-          echo "Proposed bumps:"; jq -r '.[] | "  \(.id): \(.from) -> \(.to)"' bumps.json
+          {
+            echo "### Proposed bumps: $(jq length bumps.json)"
+            jq -r '.[] | "- `\(.id)` (\(.kind)): \(.from) → \(.to)"' bumps.json
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
-  pr:
+  apply:
     needs: discover
     if: needs.discover.outputs.bumps != '[]'
     runs-on: ubuntu-latest
@@ -46,46 +69,154 @@ jobs:
       max-parallel: 3
       matrix:
         bump: ${{ fromJson(needs.discover.outputs.bumps) }}
+    env:
+      ID: ${{ matrix.bump.id }}
+      KIND: ${{ matrix.bump.kind }}
+      FROM: ${{ matrix.bump.from }}
+      TO: ${{ matrix.bump.to }}
+      BRANCH: bump/${{ matrix.bump.id }}
+      # The exact arrow matters: the title is how daily runs recognise an
+      # up-to-date PR, and how superseded ones are found.
+      TITLE: 'bump(${{ matrix.bump.id }}): ${{ matrix.bump.from }} → ${{ matrix.bump.to }}'
+      # BUMP_PAT when set (see the header), else the workflow token.
+      GH_TOKEN: ${{ secrets.BUMP_PAT || github.token }}
     steps:
+      # Always branch from current main, whatever ref dispatched the run.
+      # The token is persisted for `git push`, so pushes come from BUMP_PAT
+      # when it is set (and so trigger `pull_request: synchronize`).
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.BUMP_PAT || github.token }}
+
+      - name: Is the open PR for ${{ env.BRANCH }} already at ${{ env.TO }}?
+        id: existing
+        run: |
+          set -euo pipefail
+          pr=$(gh pr list --head "$BRANCH" --state open --json number,title --jq '.[0] // empty')
+          number=$(jq -r '.number // empty' <<<"$pr")
+          title=$(jq -r '.title // empty' <<<"$pr")
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          if [[ -n "$number" && "$title" == *"→ $TO" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::#$number ($title) already proposes $TO; nothing to do"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-go@v5
+        if: steps.existing.outputs.skip != 'true'
         with:
           go-version-file: go.mod
           cache: true
-      - name: Apply ${{ matrix.bump.id }} ${{ matrix.bump.from }} → ${{ matrix.bump.to }}
+      # `cpm pins latest -apply` moves Cargo.lock with `cargo update` for the
+      # Rust relays (as backtest.yml does for `cpm pins set`).
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.existing.outputs.skip != 'true' && matrix.bump.kind == 'cargo'
+
+      - name: Apply ${{ env.ID }} ${{ env.FROM }} → ${{ env.TO }}
+        if: steps.existing.outputs.skip != 'true'
+        id: apply
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: go run ./cmd/cpm pins latest -only "${{ matrix.bump.id }}" -apply >/dev/null
-      - name: Open PR
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BRANCH: bump/${{ matrix.bump.id }}-${{ matrix.bump.to }}
+          GITHUB_TOKEN: ${{ github.token }} # github-releases lookups
         run: |
           set -euo pipefail
-          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
-            echo "branch $BRANCH already exists; skipping"; exit 0
+          go run ./cmd/cpm pins latest -only "$ID" -apply > /tmp/bump.json
+          if [[ "$(jq length /tmp/bump.json)" == "0" ]]; then
+            echo "::notice::$ID is already current on main; nothing to apply"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          # A release between discover and apply moves the target; follow it.
+          to=$(jq -r '.[0].to' /tmp/bump.json)
+          if [[ "$to" != "$TO" ]]; then
+            echo "::notice::$ID: discover saw $TO, apply found $to; using $to"
+            echo "TO=$to" >> "$GITHUB_ENV"
+            echo "TITLE=bump($ID): $FROM → $to" >> "$GITHUB_ENV"
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git --no-pager diff --stat
+
+      - name: Commit on bump/${{ env.ID }} and push
+        if: steps.apply.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
           git config user.name "matrix-bot"
           git config user.email "matrix-bot@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git add -A
-          git commit -m "bump(${{ matrix.bump.id }}): ${{ matrix.bump.from }} -> ${{ matrix.bump.to }}"
-          git push -u origin "$BRANCH"
-          variants='${{ join(matrix.bump.variants, ', ') }}'
-          gh pr create --base main --head "$BRANCH" \
-            --title "bump(${{ matrix.bump.id }}): ${{ matrix.bump.from }} → ${{ matrix.bump.to }}" \
-            --label dependencies \
-            --body "$(cat <<EOF
-          Bumps **${{ matrix.bump.id }}** from \`${{ matrix.bump.from }}\` to \`${{ matrix.bump.to }}\`
-          in \`${{ matrix.bump.file }}\`.
+          # The branch is always main + exactly one commit: (re)create it here.
+          git checkout -B "$BRANCH"
+          jq -r '.[0].files[]' /tmp/bump.json | xargs git add --
+          if git diff --cached --quiet; then
+            echo "::warning::$ID: pins latest reported a bump but nothing changed"; exit 0
+          fi
+          git commit -q -m "$TITLE"
+          # bump/* branches are owned by this workflow: a newer upstream release
+          # rewrites the branch on top of current main, so a force push is
+          # expected here — for bump/* branches ONLY, nowhere else in this
+          # repo. --force-with-lease refuses if the branch moved since we
+          # fetched it (someone pushed to it by hand).
+          if git fetch -q origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" 2>/dev/null; then
+            git push --force-with-lease="$BRANCH" origin "$BRANCH"
+          else
+            git push -u origin "$BRANCH"
+          fi
 
-          Source: \`${{ matrix.bump.source.registry }}\` / \`${{ matrix.bump.source.package }}\`
-          Affected variants: ${variants}
+      - name: Open or update the PR, enable auto-merge
+        if: steps.apply.outputs.changed == 'true'
+        id: pr
+        env:
+          EXISTING: ${{ steps.existing.outputs.number }}
+        run: |
+          set -euo pipefail
+          # Idempotent: both labels exist after the first run.
+          gh label create tracer-bump --color 0E8A16 --description "Moves a tracer/agent pin; merged automatically when checks pass" 2>/dev/null || true
+          gh label create auto-merge --color 5319E7 --description "Auto-merge enabled by a workflow" 2>/dev/null || true
 
-          Merging re-runs the matrix (\`matrix.yml\`), publishes a new release and
-          rebuilds contextpropagation.io. Check the run summary's **Changes** section
-          for cells that flipped.
+          body=$(jq -r '.[0] |
+            "Moves the **\(.id)** pin from `\(.from)` to `\(.to)`.\n\n" +
+            "- Pin: `\(.id)` (kind `\(.kind)`)\n" +
+            "- Files: " + (.files | map("`" + . + "`") | join(", ")) + "\n" +
+            "- Variants re-measured: " + (.variants | map("`" + . + "`") | join(", ")) + "\n" +
+            "- Source: `\(.source.registry)` / `\(.source.package)`" + (if .url then " — [registry](\(.url))" else "" end) +
+            (if .releases_url then " · [releases](\(.releases_url))" else "" end) + "\n\n" +
+            "Merging this re-measures the listed variants in the next matrix run and publishes a new release.\n\n" +
+            "_Opened by `bump-agents.yml` (`cpm pins latest -only \(.id) -apply`). A newer upstream release rewrites this branch and PR in place; older PRs for the same pin are closed as superseded._"
+          ' /tmp/bump.json)
 
-          _Opened automatically by \`bump-agents.yml\`._
-          EOF
-          )"
+          if [[ -n "$EXISTING" ]]; then
+            gh pr edit "$EXISTING" --title "$TITLE" --body "$body" --add-label dependencies,tracer-bump,auto-merge
+            pr=$EXISTING
+            echo "updated #$pr"
+          else
+            url=$(gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$body" --label dependencies,tracer-bump,auto-merge)
+            pr=${url##*/}
+            echo "opened #$pr ($url)"
+          fi
+          echo "number=$pr" >> "$GITHUB_OUTPUT"
+          # Squash-merge once checks pass. Needs "Allow auto-merge" in the repo
+          # settings and a branch protection / ruleset with required checks.
+          gh pr merge --auto --squash "$pr" || echo "::notice::auto-merge not enabled on this repo yet"
+          echo "- #$pr $TITLE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Close PRs superseded by #${{ steps.pr.outputs.number }}
+        if: steps.apply.outputs.changed == 'true'
+        env:
+          PR: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+          # Any OTHER open PR for this pin: the old `bump/<id>-<version>`
+          # branch naming (the suffix must start with a digit, so `dd-trace-go`
+          # does not match `bump/dd-trace-go-orchestrion-…`), or a title that
+          # starts with `bump(<id>):`. Branches are left in place.
+          gh pr list --state open -L 200 --json number,headRefName,title \
+            | jq -r --arg id "$ID" --argjson cur "$PR" '
+                .[] | select(.number != $cur)
+                    | select(
+                        ((.headRefName | startswith("bump/\($id)-"))
+                          and (.headRefName[("bump/\($id)-" | length):] | test("^[0-9]")))
+                        or (.title | startswith("bump(\($id)):")))
+                    | .number' \
+            | while read -r n; do
+                echo "closing #$n (superseded by #$PR)"
+                gh pr close "$n" --comment "Superseded by #$PR"
+              done

@@ -185,6 +185,19 @@ func (p *Pin) Read() (string, error) {
 	return v, nil
 }
 
+// Files lists the files Write touches, without writing: the manifest for
+// arg/npm/pip/bundler, go.mod + go.sum for gomod, Cargo.toml + Cargo.lock
+// for cargo. bump-agents.yml names them in the PR body before -apply runs.
+func (p *Pin) Files() []string {
+	switch p.Kind {
+	case KindGoMod:
+		return []string{filepath.Join(p.Dir, "go.mod"), filepath.Join(p.Dir, "go.sum")}
+	case KindCargo:
+		return []string{filepath.Join(p.Dir, "Cargo.toml"), filepath.Join(p.Dir, "Cargo.lock")}
+	}
+	return []string{p.File}
+}
+
 // Write sets the pin to version and returns the files it touched. Kinds
 // gomod and cargo run `go` and `cargo` in the module directory.
 func (p *Pin) Write(version string) ([]string, error) {
@@ -310,7 +323,7 @@ func (p *Pin) writeGoMod(version string) ([]string, error) {
 	if err := run(p.Dir, "go", "mod", "tidy"); err != nil {
 		return nil, err
 	}
-	return []string{filepath.Join(p.Dir, "go.mod"), filepath.Join(p.Dir, "go.sum")}, nil
+	return p.Files(), nil
 }
 
 // ---------------------------------------------------------------------------
@@ -512,7 +525,7 @@ func (p *Pin) writeCargo(version string) ([]string, error) {
 	if err := run(p.Dir, "cargo", args...); err != nil {
 		return nil, err
 	}
-	return []string{path, filepath.Join(p.Dir, "Cargo.lock")}, nil
+	return p.Files(), nil
 }
 
 // ---------------------------------------------------------------------------
