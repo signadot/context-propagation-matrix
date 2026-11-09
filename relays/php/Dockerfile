@@ -74,7 +74,7 @@ RUN composer require --no-interaction \
       open-telemetry/sdk:1.15.0 \
       open-telemetry/opentelemetry-auto-slim:1.5.0 \
       open-telemetry/opentelemetry-auto-curl:0.3.0 \
-      open-telemetry/opentelemetry-auto-ext-rdkafka:0.0.5
+      open-telemetry/opentelemetry-auto-ext-rdkafka:0.1.0
 ENV OTEL_PHP_AUTOLOAD_ENABLED=true \
     OTEL_TRACES_EXPORTER=none \
     OTEL_METRICS_EXPORTER=none \
