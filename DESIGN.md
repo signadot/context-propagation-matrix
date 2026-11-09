@@ -267,7 +267,28 @@ Release tagged `run-YYYY-MM-DD[.N]` with five assets:
 | `logs.tar.gz` | relay and sink container logs for the variants measured in that run |
 
 Back-tests of older tracer versions publish `backtest-{variant}-{version}`
-releases with a single-variant `results.json`, `MATRIX.md` and the raw file.
+pre-releases with a single-variant `results.json`, `MATRIX.md` and the raw
+file.
+
+Runs and back-tests are the record of each *job*. The same measurements are
+also filed the way people look for them — by tracer version — in one rolling
+release per instrumented variant, `variant-{id}`:
+
+| Asset | Contents |
+|---|---|
+| `{version}.json` | a single-variant schema v2 document for that tracer version: the variant, the run manifest it was measured in, the dimensions, the annotations that touch it and a summary for it alone |
+| `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts |
+
+`{version}` is the *pinned* tracer version (`tracer.pinned`: what `cpm pins`
+reads from the manifest the relay was built from, the value a bump PR names
+and a back-test tag carries), not the string the relay reports —
+`open-telemetry/sdk 1.15.0 (ext-opentelemetry 1.2.1)` is filed as `1.2.1`.
+Every matrix run files the variants it measured and every back-test files
+its one pair (`scripts/publish-versions.sh`, wrapping `cpm versions`); when
+a version is measured again the latest measurement replaces the earlier one.
+`scripts/rebuild-versions.sh` recreates all of them from the run and
+back-test releases. The site reads `index.json` per variant and one
+`{version}.json` per page instead of every run release.
 A back-test does not build differently: `backtest.yml` rewrites the pin
 behind the variant in its checkout (`cpm pins set -variant V -version X`,
 the edit a Dependabot PR would make, pointed backwards) and builds the

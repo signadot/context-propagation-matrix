@@ -7,7 +7,10 @@
 # Cargo.toml / Dockerfile ARG that a Dependabot PR makes, pointed backwards),
 # build the relay with the unchanged Dockerfile,
 # run the 16 hops, aggregate a single-variant results.json with
-# kind=backtest, and publish it as Release `backtest-<variant>-<version>`.
+# kind=backtest, and publish it as pre-release `backtest-<variant>-<version>`.
+# A final job then files each document under its version in the variant's
+# rolling `variant-<id>` release (scripts/publish-versions.sh), which is what
+# the site reads per version.
 # Pairs that already have a release are skipped, so re-runs only fill gaps.
 # Nothing is committed; the matrix measures whatever main pins.
 name: backtest
@@ -151,10 +154,49 @@ jobs:
       - name: Publish release backtest-${{ env.V }}-${{ env.VER }}
         env:
           GH_TOKEN: ${{ github.token }}
+        # A pre-release so the Releases page leads with runs; the data is as
+        # good as any run's, and the variant-* release files it by version.
         run: |
-          gh release create "backtest-$V-$VER" --title "backtest: $V @ $VER" \
+          gh release create "backtest-$V-$VER" --title "backtest: $V @ $VER" --prerelease \
             --notes "Back-test of \`$V\` with tracer version \`$VER\` (kind=backtest). See the run's results.json for cells." \
             /tmp/out/results.json /tmp/out/MATRIX.md "results/raw/$V.json#raw-$V.json"
+      - name: Keep the document for the filing job
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-${{ env.V }}-${{ env.VER }}
+          path: /tmp/out/results.json
+          retention-days: 3
       - name: Relay logs (on failure)
         if: failure()
         run: docker compose logs --no-color "relay-$V" sink | tail -200
+
+  # One job, after every pair, so two back-tests of the same variant never
+  # update its variant-* release at the same time.
+  file:
+    name: File each back-test under its tracer version (variant-* releases)
+    needs: run
+    if: always() && needs.run.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: backtest-*
+          path: docs
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          failed=0
+          for doc in docs/backtest-*/results.json; do
+            # The document knows its variant; its run id is backtest-<variant>-<version>.
+            v=$(jq -r '.variants[] | select(.missing | not) | .id' "$doc")
+            ver=$(jq -r --arg v "$v" '.run.run_id | ltrimstr("backtest-" + $v + "-")' "$doc")
+            scripts/publish-versions.sh -version "$ver" "$doc" "$v" || failed=1
+          done
+          exit $failed

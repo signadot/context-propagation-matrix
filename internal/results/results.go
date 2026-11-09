@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -79,11 +80,45 @@ type Dimensions struct {
 	SetupTiers []*registry.SetupTier `json:"setup_tiers"`
 }
 
-// Package is a registry.Package plus the version the relay actually reported.
+// Package is a registry.Package plus the version the relay actually reported
+// (Version) and, for the tracer, the version the harness pinned when it built
+// the relay (Pinned: what `cpm pins` reads, with no "v" prefix — the value a
+// bump PR names, a back-test tag carries and the site puts in a URL). The two
+// normally agree; they differ where a relay reports a composite string (PHP:
+// "open-telemetry/sdk 1.15.0 (ext-opentelemetry 1.2.1)") or when an install
+// silently fell back, which Pinned makes visible.
 type Package struct {
 	registry.Package
 	Version string `json:"version"`
+	Pinned  string `json:"pinned,omitempty"`
 }
+
+// CanonicalVersion is the version that identifies this measurement of the
+// variant: the pinned tracer version, or, for results written before pins
+// were recorded, the one version number in what the relay reported ("2.31.1",
+// "v2.10.1", "ddtrace 1.25.0"). Empty when there is none or more than one
+// (baseline variants; "open-telemetry/sdk 1.15.0 (ext-opentelemetry 1.2.1)"
+// names two and only the pin knows which one it is filed under).
+func (v *Variant) CanonicalVersion() string {
+	if v.Tracer == nil {
+		return ""
+	}
+	if v.Tracer.Pinned != "" {
+		return v.Tracer.Pinned
+	}
+	var found []string
+	for _, tok := range strings.FieldsFunc(v.Tracer.Version, func(r rune) bool { return r == ' ' || r == '(' || r == ')' }) {
+		if plainVersion.MatchString(tok) {
+			found = append(found, strings.TrimPrefix(tok, "v"))
+		}
+	}
+	if len(found) == 1 {
+		return found[0]
+	}
+	return ""
+}
+
+var plainVersion = regexp.MustCompile(`^v?[0-9]+(\.[0-9]+)+[0-9A-Za-z.+-]*$`)
 
 // Hop is one boundary through one relay: the evidence shared by the four
 // header cells that were evaluated on it.
@@ -366,10 +401,12 @@ func Build(reg *registry.Registry, raws []*raw.VariantResult, run Run) (*Results
 // SetProvenance stamps every measured variant with this run's identity and
 // gives every carried-over variant the provenance it had in prev, the
 // release it was carried over from. measured is the set of variant ids whose
-// hops ran in this run; nil means all of them. Run.RunID, HarnessCommit and
+// hops ran in this run; nil means all of them. pinned gives the tracer
+// version the harness built each measured variant with (by variant id;
+// absent entries leave Tracer.Pinned empty). Run.RunID, HarnessCommit and
 // MatrixVersion must already be set. A carried-over variant with no prev to
 // read from is an error: it would otherwise look like it was measured here.
-func (r *Results) SetProvenance(prev *Results, measured map[string]bool) error {
+func (r *Results) SetProvenance(prev *Results, measured map[string]bool, pinned map[string]string) error {
 	var orphans []string
 	for _, v := range r.Variants {
 		if v.Missing {
@@ -379,6 +416,9 @@ func (r *Results) SetProvenance(prev *Results, measured map[string]bool) error {
 			v.MeasuredIn = r.Run.RunID
 			v.MeasuredCommit = r.Run.HarnessCommit
 			v.MatrixVersion = r.Run.MatrixVersion
+			if v.Tracer != nil {
+				v.Tracer.Pinned = pinned[v.ID]
+			}
 			continue
 		}
 		var pv *Variant
@@ -405,6 +445,9 @@ func (r *Results) SetProvenance(prev *Results, measured map[string]bool) error {
 		}
 		if v.MatrixVersion == 0 {
 			v.MatrixVersion = 1
+		}
+		if v.Tracer != nil && pv.Tracer != nil {
+			v.Tracer.Pinned = pv.Tracer.Pinned
 		}
 	}
 	if len(orphans) > 0 {
