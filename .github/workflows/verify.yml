@@ -21,6 +21,13 @@
 # (driver, sink, proto, workflows) affects every variant; smoking 47 relays on
 # every such PR is the matrix run's job, not the gate's, so above
 # SMOKE_CAP variants the gate falls back to a representative pair instead.
+#
+# workflow_dispatch exists for bump-agents.yml: branches it pushes with the
+# workflow's own token raise no pull_request event (GitHub's recursion
+# guard), so it dispatches this workflow on the bump/* branch instead. The
+# check runs land on the branch's head commit, which is the PR's head, so
+# they count for branch protection like any other run. The change is diffed
+# against the branch's merge-base with main, as for a pull request.
 name: verify
 
 on:
@@ -30,6 +37,7 @@ on:
     paths-ignore:
       - 'results/**'
       - '**.md'
+  workflow_dispatch:
 
 concurrency:
   group: verify-${{ github.ref }}
@@ -86,7 +94,7 @@ jobs:
       # review. The scheduled matrix run stays non-strict so an upstream fix
       # can never stop results from being published.
       - name: variants.yaml, docker-compose.yml and annotations agree
-        run: go run ./cmd/cpm validate -results results/latest/results.json ${{ github.event_name == 'pull_request' && '-strict' || '' }}
+        run: go run ./cmd/cpm validate -results results/latest/results.json ${{ github.event_name != 'push' && '-strict' || '' }}
       # Every tracer pin listed in pins.yaml resolves in its file, and every
       # instrumented variant has exactly one pin (what backtest.yml and
       # bump-agents.yml move). Offline.
@@ -116,15 +124,24 @@ jobs:
           PUSH_BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-            # Diff from where the branch forked, not from the base branch's
-            # current tip, so unrelated merges to main do not widen the set.
-            base=$(git merge-base "$PR_BASE" "$PR_HEAD")
-            head="$PR_HEAD"
-          else
-            base="$PUSH_BEFORE"
-            head="$GITHUB_SHA"
-          fi
+          case "$GITHUB_EVENT_NAME" in
+            pull_request)
+              # Diff from where the branch forked, not from the base branch's
+              # current tip, so unrelated merges to main do not widen the set.
+              base=$(git merge-base "$PR_BASE" "$PR_HEAD")
+              head="$PR_HEAD"
+              ;;
+            workflow_dispatch)
+              # Dispatched on a bump/* branch by bump-agents.yml: same idea,
+              # the branch's fork point from main.
+              base=$(git merge-base origin/main "$GITHUB_SHA")
+              head="$GITHUB_SHA"
+              ;;
+            *)
+              base="$PUSH_BEFORE"
+              head="$GITHUB_SHA"
+              ;;
+          esac
           affected=$(go run ./cmd/cpm affected -base "$base" -head "$head" | sort -u)
           n=$(echo "$affected" | sed '/^$/d' | wc -l | tr -d ' ')
           if (( n == 0 )); then
