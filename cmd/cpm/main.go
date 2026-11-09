@@ -344,7 +344,11 @@ func loadCoords(regPath, resPath string) ([]coord, error) {
 	current := map[string]string{}
 	if res, err := results.Load(resPath); err == nil {
 		for _, v := range res.Variants {
-			if v.Tracer != nil {
+			// The pinned version is the one in the registry's terms; the
+			// reported string is the fallback for older documents.
+			if v.Tracer != nil && v.Tracer.Pinned != "" {
+				current[v.ID] = v.Tracer.Pinned
+			} else if v.Tracer != nil {
 				current[v.ID] = v.Tracer.Version
 			}
 		}

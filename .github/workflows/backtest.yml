@@ -11,7 +11,11 @@
 # A final job then files each document under its version in the variant's
 # rolling `variant-<id>` release (scripts/publish-versions.sh), which is what
 # the site reads per version.
-# Pairs that already have a release are skipped, so re-runs only fill gaps.
+# Pairs that already have a release are skipped, so re-runs only fill gaps;
+# dispatch with `refresh` to measure them again (after a matrix_version bump
+# or a relay change), which replaces each release's assets and re-files the
+# version. Versions a pin's `backtest` policy in pins.yaml rules out (too
+# old to build, never shipped for the whole family) are never proposed.
 # Nothing is committed; the matrix measures whatever main pins.
 name: backtest
 
@@ -30,6 +34,10 @@ on:
         default: '5'
       include_secret:
         description: 'Include variants that need a secret (New Relic)'
+        type: boolean
+        default: true
+      refresh:
+        description: 'Measure every pair again, even those with a release (after a matrix_version bump or a relay change)'
         type: boolean
         default: false
 
@@ -68,9 +76,12 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          args=(-depth "${{ github.event.inputs.depth || '5' }}" -skip-published)
+          # On the schedule (no inputs) New Relic is included and nothing is
+          # refreshed; a dispatch can change either.
+          args=(-depth "${{ github.event.inputs.depth || '5' }}")
+          [[ "${{ github.event.inputs.refresh }}" == "true" ]] || args+=(-skip-published)
           [[ -n "${{ github.event.inputs.variants }}" ]] && args+=(-variants "${{ github.event.inputs.variants }}")
-          [[ "${{ github.event.inputs.include_secret }}" == "true" ]] && args+=(-include-secret)
+          [[ "${{ github.event.inputs.include_secret || 'true' }}" == "true" ]] && args+=(-include-secret)
           go run ./cmd/cpm discover "${args[@]}" > pairs.json
           echo "pairs=$(jq -c . pairs.json)" >> "$GITHUB_OUTPUT"
           echo "count=$(jq length pairs.json)" >> "$GITHUB_OUTPUT"
@@ -157,9 +168,18 @@ jobs:
         # A pre-release so the Releases page leads with runs; the data is as
         # good as any run's, and the variant-* release files it by version.
         run: |
-          gh release create "backtest-$V-$VER" --title "backtest: $V @ $VER" --prerelease \
-            --notes "Back-test of \`$V\` with tracer version \`$VER\` (kind=backtest). See the run's results.json for cells." \
-            /tmp/out/results.json /tmp/out/MATRIX.md "results/raw/$V.json#raw-$V.json"
+          set -euo pipefail
+          tag="backtest-$V-$VER"
+          assets=(/tmp/out/results.json /tmp/out/MATRIX.md "results/raw/$V.json#raw-$V.json")
+          if gh release view "$tag" >/dev/null 2>&1; then
+            # A refresh: the release stays, its assets are replaced.
+            gh release upload "$tag" --clobber "${assets[@]}"
+            gh release edit "$tag" --notes "Back-test of \`$V\` with tracer version \`$VER\` (kind=backtest), re-measured $(date -u +%F) at $GITHUB_SHA. See the run's results.json for cells." >/dev/null
+          else
+            gh release create "$tag" --title "backtest: $V @ $VER" --prerelease \
+              --notes "Back-test of \`$V\` with tracer version \`$VER\` (kind=backtest). See the run's results.json for cells." \
+              "${assets[@]}"
+          fi
       - name: Keep the document for the filing job
         uses: actions/upload-artifact@v4
         with:

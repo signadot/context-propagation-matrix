@@ -383,7 +383,13 @@ pins forward, `backtest.yml` runs `cpm pins set` to move any pin backwards
 in a scratch checkout, and `verify.yml` runs `cpm pins check` so every
 instrumented variant has exactly one pin. `cpm discover` lists the older
 versions a back-test should cover, from the same registry clients
-(`internal/versions`). The versions themselves stay in the manifests.
+(`internal/versions`), counting back from each variant's `tracer.pinned`
+and leaving out what a pin's `backtest: { min, skip }` policy rules out
+(versions that cannot be built or whose family never shipped together —
+each with its reason in a comment). The monthly back-test fills gaps only;
+dispatching it with `refresh` measures every candidate pair again, which is
+how older versions catch up after a `matrix_version` bump or a relay
+change. The versions themselves stay in the manifests.
 
 After merging any bump that touches a tracer or instrumentation library, CI
 (`matrix.yml`) re-runs the variants that bump can affect — `cpm affected`

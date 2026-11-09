@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/signadot/context-propagation-matrix/internal/pins"
 	"github.com/signadot/context-propagation-matrix/internal/registry"
 	"github.com/signadot/context-propagation-matrix/internal/versions"
 )
@@ -15,13 +16,16 @@ import (
 // cmdDiscover enumerates back-test candidates: for every instrumented
 // variant, the last N stable versions of its tracer package (from the
 // registry coordinates in variants.yaml), minus the version the latest
-// published results.json already measures, minus any (variant, version)
-// pair that already has a `backtest-<variant>-<version>` GitHub Release.
+// published results.json already measures (tracer.pinned), minus versions
+// the pin's backtest policy in pins.yaml rules out (too old to build, never
+// shipped for the whole family), minus any (variant, version) pair that
+// already has a `backtest-<variant>-<version>` GitHub Release.
 //
 //	cpm discover                                   # all public variants, depth 10
 //	cpm discover -depth 5 -variants datadog-java,otel-python
 //	cpm discover -include-secret                   # New Relic too
 //	cpm discover -skip-published                   # consult GitHub Releases
+//	cpm discover -depth 5                          # without -skip-published: every pair again (a refresh)
 //
 // Output (stdout): JSON array of {variant, version, package, registry,
 // current} suitable for a GitHub Actions matrix. Progress goes to stderr.
@@ -35,11 +39,18 @@ func cmdDiscover(args []string) error {
 	skipPublished := fs.Bool("skip-published", false, "skip pairs that already have a backtest-* release")
 	repo := fs.String("repo", envOr("GITHUB_REPOSITORY", harnessRepo), "GitHub repository for -skip-published")
 	max := fs.Int("max", 250, "cap on the number of pairs (GitHub Actions caps a matrix at 256 jobs)")
+	pinsPath := fs.String("pins", "pins.yaml", "pins manifest, for each pin's backtest policy (\"\" to ignore)")
 	fs.Parse(args)
 
 	cs, err := loadCoords(*regPath, *resPath)
 	if err != nil {
 		return err
+	}
+	var manifest *pins.Manifest
+	if *pinsPath != "" {
+		if manifest, err = pins.Load(*pinsPath); err != nil {
+			return err
+		}
 	}
 	want := map[string]bool{}
 	for _, v := range strings.Split(*only, ",") {
@@ -96,11 +107,23 @@ func cmdDiscover(args []string) error {
 		}
 		// Relays sometimes report "ddtrace 1.25.0" or "v2.10.1"; keep the number.
 		current := versions.Number(c.Current)
-		var older []string
-		for _, v := range versionsFor(*c.Tracer) {
-			if current == "" || versions.Compare(v, current) < 0 {
-				older = append(older, v)
+		var policy *pins.BacktestPolicy
+		if manifest != nil {
+			if pin, err := manifest.ForVariant(c.Variant, *c.Tracer); err == nil {
+				policy = pin.Backtest
 			}
+		}
+		var older []string
+		excluded := 0
+		for _, v := range versionsFor(*c.Tracer) {
+			if current != "" && versions.Compare(v, current) >= 0 {
+				continue
+			}
+			if !policy.Allows(v) {
+				excluded++
+				continue
+			}
+			older = append(older, v)
 			if len(older) == *depth {
 				break
 			}
@@ -115,7 +138,7 @@ func cmdDiscover(args []string) error {
 		if cur == "" {
 			cur = "?"
 		}
-		fmt.Fprintf(os.Stderr, "%s: current %s → %d older candidate(s)\n", c.Variant, cur, len(older))
+		fmt.Fprintf(os.Stderr, "%s: current %s → %d older candidate(s), %d excluded by policy\n", c.Variant, cur, len(older), excluded)
 	}
 	if len(out) > *max {
 		fmt.Fprintf(os.Stderr, "warning: %d candidates, truncating to %d (newest versions first per variant)\n", len(out), *max)
