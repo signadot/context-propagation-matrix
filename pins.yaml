@@ -3,10 +3,14 @@
 # package.json, requirements-*.txt, Gemfile, Cargo.toml, Dockerfile ARGs);
 # this file only says where they are. Read by `go run ./cmd/cpm pins`:
 #
-#   cpm pins latest [-apply]       bump-agents.yml: for the `kind: arg` entries
-#                                  (the ones Dependabot cannot see) look up the
-#                                  newest stable version in `source` and rewrite
-#                                  the pin; one PR per entry.
+#   cpm pins latest [-only id] [-apply]
+#                                  bump-agents.yml: for every entry, whatever
+#                                  its kind, look up the newest stable version
+#                                  in `source` and (with -apply) rewrite the
+#                                  pin; one PR per entry (branch bump/<id>).
+#                                  Dependabot ignores every package listed
+#                                  here (.github/dependabot.yml), so this is
+#                                  the only thing that moves a tracer.
 #   cpm pins set -variant V -version X
 #                                  backtest.yml: set the pin behind variant V to
 #                                  X in a scratch checkout, then build the
@@ -135,7 +139,7 @@ pins:
     source: { registry: github-releases, package: elastic/apm-agent-php, tag_prefix: v }
     variants: [elastic-php]
 
-  # ---- Go (go.mod; Dependabot bumps forward) -----------------------------
+  # ---- Go (go.mod module families) ---------------------------------------
   - id: otel-go
     kind: gomod
     dir: relays/go

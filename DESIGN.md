@@ -317,39 +317,43 @@ Dockerfile, so a rebuild months from now produces the same images and the
 matrix stays attributable to exact tracer versions (each table row carries
 the version that produced it).
 
-Updates arrive as Dependabot PRs (`.github/dependabot.yml` at the repo
-root): gomod (root module, `relays/go`, and the two build-time weaving
-modules `relays/go-orchestrion` — which pins orchestrion + dd-trace-go in
-go.mod — and `relays/go-otelc` — which pins otelc via the go.mod `tool`
-directive), npm (app + one single-dependency manifest per Node tool under
-`relays/node/tools/`), pip (`requirements.txt` + `requirements-<tool>.txt`),
-bundler (one Gemfile per tool under `relays/ruby/gemfiles/`), composer,
-maven, nuget, cargo, and docker base images.
+Two bots move versions, and they do not overlap:
 
-Dependabot cannot see versions that live only in Dockerfiles; these are
-manual ARG bumps:
+- **Dependabot** (`.github/dependabot.yml`) keeps the *application*
+  dependencies and toolchain images current: gomod (root module,
+  `relays/go`, and the two build-time weaving modules `relays/go-orchestrion`
+  and `relays/go-otelc`), npm (app + one single-dependency manifest per Node
+  tool under `relays/node/tools/`), pip (`requirements.txt` +
+  `requirements-<tool>.txt`), bundler (one Gemfile per tool under
+  `relays/ruby/gemfiles/`), composer, maven, nuget, cargo, and docker base
+  images — one grouped `app-deps` PR per ecosystem. Every tracer package
+  that `pins.yaml` lists is in that ecosystem's `ignore` list, so Dependabot
+  never proposes a tracer bump (it also cannot see the Dockerfile ARGs).
+- **bump-agents.yml** moves the *tracers*. `pins.yaml` lists where every
+  tracer's pin lives — Dockerfile ARG, go.mod module family, package.json,
+  requirements file, Gemfile, Cargo.toml — keyed by the same
+  registry/package coordinates as `variants.yaml`'s `tracer`. Every 6 hours
+  `cpm pins latest` asks each pin's registry (Maven Central, GitHub
+  Releases, PECL, Packagist, New Relic's download index, the Go module
+  proxy, npm, PyPI, RubyGems, crates.io) for the newest stable version and,
+  for each pin that is behind, `cpm pins latest -only <id> -apply` writes it
+  the way the ecosystem expects (`go get` + `go mod tidy` for the whole
+  module family, `cargo update` for the crate family, a JSON key, every
+  `==` line, a `gem` line, an `ARG`). There is exactly one PR per pin: branch
+  `bump/<id>`, title `bump(<id>): <from> → <to>`, labels `dependencies` +
+  `tracer-bump` + `auto-merge`, squash auto-merge requested. A newer
+  upstream release rewrites that branch (current `main` + one commit) and
+  PR in place and closes any older PR for the same pin as superseded, so
+  the queue never holds two PRs for one tracer. The PRs are opened with the
+  `BUMP_PAT` secret when it is set, because PRs made with the workflow's
+  own token do not trigger `verify.yml`.
 
-- `relays/java/Dockerfile` — the four agent jars.
-- `relays/dotnet/Dockerfile` — the four agent installers/tarballs.
-- `relays/php/Dockerfile` — the OTel extension + composer requires, the
-  Datadog setup script release, the New Relic tarball, and the Elastic .deb.
-
-The Dockerfile-only versions are bumped automatically by
-`.github/workflows/bump-agents.yml`, which queries Maven Central, GitHub
-Releases, PECL and New Relic's download index daily and opens a PR per
-newer version (same shape as a Dependabot PR).
-
-`pins.yaml` lists where every tracer's pin lives — Dockerfile ARG, go.mod
-module family, package.json, requirements file, Gemfile, Cargo.toml — keyed
-by the same registry/package coordinates as `variants.yaml`'s `tracer`.
-`cpm pins` reads and writes them the way each ecosystem expects (`go get` +
-`go mod tidy`, `cargo update`, a JSON key, a `==` line, a `gem` line, an
-`ARG`): `bump-agents.yml` runs `cpm pins latest -apply` to move the `arg`
-pins forward, `backtest.yml` runs `cpm pins set` to move any pin backwards
-in a scratch checkout, and `verify.yml` runs `cpm pins check` so every
-instrumented variant has exactly one pin. `cpm discover` lists the older
-versions a back-test should cover, from the same registry clients
-(`internal/versions`). The versions themselves stay in the manifests.
+The same `cpm pins` write path serves `backtest.yml`, which runs `cpm pins
+set` to move any pin *backwards* in a scratch checkout, and `verify.yml`
+runs `cpm pins check` so every instrumented variant has exactly one pin.
+`cpm discover` lists the older versions a back-test should cover, from the
+same registry clients (`internal/versions`). The versions themselves stay in
+the manifests.
 
 After merging any bump that touches a tracer or instrumentation library, CI
 (`matrix.yml`) re-runs the variants that bump can affect — `cpm affected`
