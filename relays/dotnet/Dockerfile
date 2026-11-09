@@ -4,7 +4,7 @@
 # Agent versions are pinned for repeatability. Dependabot does not cover
 # these curl-fetched installers/tarballs, so bumps are manual (see DESIGN.md
 # "Version pinning"): update the ARG, rebuild, re-run the variant.
-ARG OTEL_DOTNET_AUTO_VERSION=1.16.0
+ARG OTEL_DOTNET_AUTO_VERSION=1.19.1
 ARG DD_DOTNET_TRACER_VERSION=3.52.0
 ARG NEWRELIC_DOTNET_AGENT_VERSION=10.54.0
 ARG ELASTIC_APM_DOTNET_VERSION=1.34.7
