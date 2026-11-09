@@ -4,9 +4,9 @@
 # Agent versions are pinned for repeatability. Dependabot does not cover
 # these curl-fetched installers/tarballs, so bumps are manual (see DESIGN.md
 # "Version pinning"): update the ARG, rebuild, re-run the variant.
-ARG OTEL_DOTNET_AUTO_VERSION=1.16.0
+ARG OTEL_DOTNET_AUTO_VERSION=1.19.1
 ARG DD_DOTNET_TRACER_VERSION=3.52.0
-ARG NEWRELIC_DOTNET_AGENT_VERSION=10.54.0
+ARG NEWRELIC_DOTNET_AGENT_VERSION=10.57.0
 ARG ELASTIC_APM_DOTNET_VERSION=1.34.7
 
 # The SDK and runtime image majors must match <TargetFramework> in Relay.csproj
@@ -44,7 +44,11 @@ RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl un
  && OTEL_VERSION="${OTEL_DOTNET_AUTO_VERSION}" \
  && curl -fsSL -o /tmp/otel-dotnet-auto-install.sh \
       "https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/releases/download/v${OTEL_VERSION}/otel-dotnet-auto-install.sh" \
- && sh /tmp/otel-dotnet-auto-install.sh \
+ # 1.19+ installers verify the release asset with `gh release verify-asset`
+ # and `gh attestation verify`, which need the GitHub CLI and an API token
+ # inside the build; neither is available here. The asset still comes over
+ # TLS from the project's GitHub release. Older installers ignore the flag.
+ && SKIP_RELEASE_VERIFICATION=true sh /tmp/otel-dotnet-auto-install.sh \
  && echo "${OTEL_VERSION}" > /agent/version.txt \
  && cat /agent/version.txt \
  && rm -f /tmp/otel-dotnet-auto-install.sh \
