@@ -11,11 +11,17 @@
 # A final job then files each document under its version in the variant's
 # rolling `variant-<id>` release (scripts/publish-versions.sh), which is what
 # the site reads per version.
-# Pairs that already have a release are skipped, so re-runs only fill gaps;
-# dispatch with `refresh` to measure them again (after a matrix_version bump
-# or a relay change), which replaces each release's assets and re-files the
-# version. Versions a pin's `backtest` policy in pins.yaml rules out (too
-# old to build, never shipped for the whole family) are never proposed.
+# Pairs already measured — filed in the variant's release by a matrix run or
+# a back-test, or with a backtest-* release — are skipped, so re-runs only
+# fill gaps; dispatch with `refresh` to measure them again (after a
+# matrix_version bump or a relay change), which replaces each release's
+# assets and re-files the version. Versions a pin's `backtest` policy in
+# pins.yaml rules out (too old to build, never shipped for the whole family)
+# are never proposed. `depth` is a window over each tracer's release history
+# (the newest N versions older than the current pin): 5 on the schedule
+# keeps up with ordinary bumps; a large depth back-fills further, 250 pairs
+# per dispatch (GitHub's matrix cap) spread round-robin across variants, so
+# dispatching again continues where the last run stopped.
 # Nothing is committed; the matrix measures whatever main pins.
 name: backtest
 
