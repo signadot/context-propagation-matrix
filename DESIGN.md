@@ -235,6 +235,19 @@ from `results/raw/*.json` plus the registry (`variants.yaml`):
   (`pass` · `partial` · `new_trace` · `fail` · `undelivered` · `not_run`)
   next to the driver's raw status. Annotations (below) are embedded, and a
   `summary` carries per-header totals and a tool × language scorecard.
+
+  A measurement is identified independently of the run that contains it.
+  Each measured variant carries `tracer.version` (what the relay reported
+  at run time), `measured_in` (the run id of the release whose job ran the
+  hops), `measured_commit` (the harness commit that job ran) and
+  `matrix_version` (the measurement contract, from `variants.yaml`, bumped
+  by hand when a dimension or an outcome's meaning changes; the run manifest
+  carries the current value as `run.matrix_version`). A variant measured in
+  this run has `measured_in == run.run_id`; a carried-over one keeps the
+  values it had in the release it came from, so a (variant, tracer version)
+  pair resolves to the same measurement in every run that carries it. The
+  site uses these to present results per tracer version and to say where
+  and when each one was measured.
 - `results/latest/MATRIX.md` — the human-readable tables, rendered from the
   same document.
 - `results/latest/changes.json` — when a previous run is given
@@ -254,7 +267,28 @@ Release tagged `run-YYYY-MM-DD[.N]` with five assets:
 | `logs.tar.gz` | relay and sink container logs for the variants measured in that run |
 
 Back-tests of older tracer versions publish `backtest-{variant}-{version}`
-releases with a single-variant `results.json`, `MATRIX.md` and the raw file.
+pre-releases with a single-variant `results.json`, `MATRIX.md` and the raw
+file.
+
+Runs and back-tests are the record of each *job*. The same measurements are
+also filed the way people look for them — by tracer version — in one rolling
+release per instrumented variant, `variant-{id}`:
+
+| Asset | Contents |
+|---|---|
+| `{version}.json` | a single-variant schema v2 document for that tracer version: the variant, the run manifest it was measured in, the dimensions, the annotations that touch it and a summary for it alone |
+| `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts |
+
+`{version}` is the *pinned* tracer version (`tracer.pinned`: what `cpm pins`
+reads from the manifest the relay was built from, the value a bump PR names
+and a back-test tag carries), not the string the relay reports —
+`open-telemetry/sdk 1.15.0 (ext-opentelemetry 1.2.1)` is filed as `1.2.1`.
+Every matrix run files the variants it measured and every back-test files
+its one pair (`scripts/publish-versions.sh`, wrapping `cpm versions`); when
+a version is measured again the latest measurement replaces the earlier one.
+`scripts/rebuild-versions.sh` recreates all of them from the run and
+back-test releases. The site reads `index.json` per variant and one
+`{version}.json` per page instead of every run release.
 A back-test does not build differently: `backtest.yml` rewrites the pin
 behind the variant in its checkout (`cpm pins set -variant V -version X`,
 the edit a Dependabot PR would make, pointed backwards) and builds the
@@ -352,8 +386,14 @@ The same `cpm pins` write path serves `backtest.yml`, which runs `cpm pins
 set` to move any pin *backwards* in a scratch checkout, and `verify.yml`
 runs `cpm pins check` so every instrumented variant has exactly one pin.
 `cpm discover` lists the older versions a back-test should cover, from the
-same registry clients (`internal/versions`). The versions themselves stay in
-the manifests.
+same registry clients (`internal/versions`), counting back from each
+variant's `tracer.pinned` and leaving out what a pin's
+`backtest: { min, skip }` policy rules out (versions that cannot be built or
+whose family never shipped together — each with its reason in a comment).
+The monthly back-test fills gaps only; dispatching it with `refresh`
+measures every candidate pair again, which is how older versions catch up
+after a `matrix_version` bump or a relay change. The versions themselves
+stay in the manifests.
 
 After merging any bump that touches a tracer or instrumentation library, CI
 (`matrix.yml`) re-runs the variants that bump can affect — `cpm affected`

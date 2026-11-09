@@ -184,3 +184,32 @@ pins:
 		}
 	}
 }
+
+func TestBacktestPolicyAllows(t *testing.T) {
+	var none *BacktestPolicy
+	if !none.Allows("0.0.1") {
+		t.Error("nil policy must allow everything")
+	}
+	p := &BacktestPolicy{Min: "1.0.1", Skip: []string{"1.2.0", "v1.3.0"}}
+	for v, want := range map[string]bool{"1.0.0": false, "0.5.0": false, "1.0.1": true, "1.1.0": true, "1.2.0": false, "v1.2.0": false, "1.3.0": false, "1.4.0": true} {
+		if got := p.Allows(v); got != want {
+			t.Errorf("Allows(%s) = %v, want %v", v, got, want)
+		}
+	}
+	// The repo's pins.yaml parses with its policies.
+	m, err := Load("../../pins.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"otelc", "otel-rust"} {
+		found := false
+		for _, p := range m.Pins {
+			if p.ID == id && p.Backtest != nil {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s: expected a backtest policy in pins.yaml", id)
+		}
+	}
+}

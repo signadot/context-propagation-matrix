@@ -12,6 +12,7 @@
 //	cpm coords [-results results.json]
 //	cpm pins [list|check|set -variant V -version X|latest [-only id] [-apply]]
 //	cpm discover [-depth 5] [-variants a,b] [-include-secret] [-skip-published]
+//	cpm versions -variant V -out DIR [-results results.json [-version X]] [-present a.json,..] [doc.json ...]
 package main
 
 import (
@@ -29,10 +30,12 @@ import (
 
 	"github.com/signadot/context-propagation-matrix/internal/affected"
 	"github.com/signadot/context-propagation-matrix/internal/annotations"
+	"github.com/signadot/context-propagation-matrix/internal/pins"
 	"github.com/signadot/context-propagation-matrix/internal/raw"
 	"github.com/signadot/context-propagation-matrix/internal/registry"
 	"github.com/signadot/context-propagation-matrix/internal/render"
 	"github.com/signadot/context-propagation-matrix/internal/results"
+	"github.com/signadot/context-propagation-matrix/internal/versions"
 )
 
 const harnessRepo = "signadot/context-propagation-matrix"
@@ -63,6 +66,8 @@ func main() {
 		err = cmdPins(os.Args[2:])
 	case "discover":
 		err = cmdDiscover(os.Args[2:])
+	case "versions":
+		err = cmdVersions(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -76,7 +81,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|diff|summary|coords|annotations|pins|discover> [flags]
+	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|diff|summary|coords|annotations|pins|discover|versions> [flags]
 
   list       print variant ids from variants.yaml (one per line, or -json)
   affected   variant ids whose measurement a change could alter: -base <rev> [-head HEAD]
@@ -92,7 +97,10 @@ func usage() {
   pins set -variant V -version X   move the pin behind variant V to X (backtest.yml, scratch checkout)
   pins latest [-only id] [-apply]  newer upstream versions of the kind: arg pins (bump-agents.yml)
   discover [-depth N] [-variants a,b] [-include-secret] [-skip-published]
-                                   (variant, older version) back-test candidates as JSON`)
+                                   (variant, older version) back-test candidates as JSON
+  versions -variant V -out DIR [-results results.json [-version X]] [-present a.json,..] [doc.json ...]
+                                   write DIR/{version}.json for V and update DIR/index.json
+                                   (the variant-V release; see scripts/publish-versions.sh)`)
 	os.Exit(2)
 }
 
@@ -336,7 +344,11 @@ func loadCoords(regPath, resPath string) ([]coord, error) {
 	current := map[string]string{}
 	if res, err := results.Load(resPath); err == nil {
 		for _, v := range res.Variants {
-			if v.Tracer != nil {
+			// The pinned version is the one in the registry's terms; the
+			// reported string is the fallback for older documents.
+			if v.Tracer != nil && v.Tracer.Pinned != "" {
+				current[v.ID] = v.Tracer.Pinned
+			} else if v.Tracer != nil {
 				current[v.ID] = v.Tracer.Version
 			}
 		}
@@ -487,11 +499,18 @@ func cmdAggregate(args []string) error {
 	legacyMD := fs.String("matrix-md", "", "also write MATRIX.md to this path (legacy location)")
 	reran := fs.String("reran", "", "variant ids measured in this run (space/comma separated); the rest are carried over and run.partial is set")
 	ignoreUnknown := fs.Bool("ignore-unknown", false, "skip raw results for variants no longer in variants.yaml (carried over from an older release) instead of failing")
+	pinsPath := fs.String("pins", "pins.yaml", "pins manifest; the version each measured variant's tracer pin holds in this checkout is recorded as tracer.pinned (\"\" to skip)")
 	fs.Parse(args)
 
 	reg, err := registry.Load(*regPath)
 	if err != nil {
 		return err
+	}
+	var manifest *pins.Manifest
+	if *pinsPath != "" {
+		if manifest, err = pins.Load(*pinsPath); err != nil {
+			return err
+		}
 	}
 	raws, err := raw.LoadDir(*rawDir)
 	if err != nil {
@@ -521,10 +540,17 @@ func cmdAggregate(args []string) error {
 		*runID = "run-" + res.Run.FinishedAt.UTC().Format("2006-01-02")
 	}
 	res.Run.RunID = *runID
+	var from *results.Results
+	if *prev != "" {
+		if from, err = results.Load(*prev); err != nil {
+			return err
+		}
+	}
+	var measured map[string]bool
 	if ids := strings.FieldsFunc(*reran, func(r rune) bool { return r == ' ' || r == ',' || r == '\n' }); len(ids) > 0 {
 		sort.Strings(ids)
 		res.Run.Reran = ids
-		measured := map[string]bool{}
+		measured = map[string]bool{}
 		for _, id := range ids {
 			measured[id] = true
 		}
@@ -534,6 +560,29 @@ func cmdAggregate(args []string) error {
 				break
 			}
 		}
+	}
+	// The tracer version this checkout pins for each variant measured here
+	// (the aggregate runs at the commit that built the relays; a back-test
+	// runs it after `cpm pins set`). Carried-over variants inherit theirs.
+	pinned := map[string]string{}
+	if manifest != nil {
+		for _, v := range res.Variants {
+			if v.Missing || v.Tracer == nil || (measured != nil && !measured[v.ID]) {
+				continue
+			}
+			pin, err := manifest.ForVariant(v.ID, v.Tracer.Package)
+			if err != nil {
+				return fmt.Errorf("aggregate: %w", err)
+			}
+			cur, err := pin.Read()
+			if err != nil {
+				return fmt.Errorf("aggregate: %w", err)
+			}
+			pinned[v.ID] = versions.Strip(cur)
+		}
+	}
+	if err := res.SetProvenance(from, measured, pinned); err != nil {
+		return err
 	}
 
 	if anns, err := annotations.LoadDir(*annDir); err != nil {
@@ -565,11 +614,7 @@ func cmdAggregate(args []string) error {
 	fmt.Printf("wrote %s/results.json and MATRIX.md (%s: %d variants, %d hops, %d cells)\n",
 		*outDir, res.Run.RunID, res.Summary.VariantCount, res.Summary.HopCount, res.Summary.CellCount)
 
-	if *prev != "" {
-		from, err := results.Load(*prev)
-		if err != nil {
-			return err
-		}
+	if from != nil {
 		ch := results.Diff(from, res)
 		if err := ch.Write(filepath.Join(*outDir, "changes.json")); err != nil {
 			return err

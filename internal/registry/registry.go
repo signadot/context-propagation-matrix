@@ -87,7 +87,15 @@ type Variant struct {
 func (v Variant) ComposeService() string { return "relay-" + v.ID }
 
 type Registry struct {
-	SchemaVersion int                   `yaml:"schema_version"`
+	SchemaVersion int `yaml:"schema_version"`
+	// MatrixVersion is the version of the measurement contract: the cells a
+	// variant is scored on and what each outcome means. It is bumped by hand
+	// when a dimension (headers, boundaries, protocols) or an outcome's
+	// semantics change, so results measured under different values are not
+	// comparable cell for cell. It is recorded on every result and stays with
+	// a measurement when a later run carries it over. It is independent of
+	// schema_version (the shape of this file) and of the results.json schema.
+	MatrixVersion int                   `yaml:"matrix_version"`
 	Tools         map[string]*Tool      `yaml:"tools"`
 	Languages     map[string]*Language  `yaml:"languages"`
 	Protocols     map[string]*Protocol  `yaml:"protocols"`
@@ -147,6 +155,11 @@ func Parse(b []byte, name string) (*Registry, error) {
 	for id, s := range r.SetupTiers {
 		s.ID = id
 	}
+	if r.MatrixVersion == 0 {
+		// Registries written before the field existed (historical revisions
+		// read by `cpm affected`) measured under the first contract.
+		r.MatrixVersion = 1
+	}
 	if err := r.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", name, err)
 	}
@@ -177,6 +190,9 @@ func mapKeyOrder(doc *yaml.Node, key string) []string {
 // boundaries reference known protocols.
 func (r *Registry) Validate() error {
 	var errs []string
+	if r.MatrixVersion < 1 {
+		errs = append(errs, fmt.Sprintf("matrix_version must be a positive integer, got %d", r.MatrixVersion))
+	}
 	seen := map[string]bool{}
 	for _, v := range r.Variants {
 		if v.ID == "" {

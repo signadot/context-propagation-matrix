@@ -34,6 +34,8 @@ const (
 
 var kinds = map[string]bool{KindArg: true, KindGoMod: true, KindNPM: true, KindPip: true, KindBundler: true, KindCargo: true}
 
+var versionLike = regexp.MustCompile(`^v?[0-9]+(\.[0-9]+)*[0-9A-Za-z.+-]*$`)
+
 // Pin is one entry of pins.yaml.
 type Pin struct {
 	ID   string `yaml:"id" json:"id"`
@@ -52,6 +54,37 @@ type Pin struct {
 	// variants.yaml — that equality is how a variant finds its pin.
 	Source   registry.Package `yaml:"source" json:"source"`
 	Variants []string         `yaml:"variants" json:"variants"`
+
+	// Backtest narrows which older versions `cpm discover` proposes for the
+	// pin's variants. Absent means every version the registry lists.
+	Backtest *BacktestPolicy `yaml:"backtest,omitempty" json:"backtest,omitempty"`
+}
+
+// BacktestPolicy excludes versions that cannot be measured: Min is the
+// oldest version worth building (older ones fail to build or predate the
+// relay's API), Skip lists individual versions to leave out (a release that
+// never shipped for every crate of a family, a yanked one). Each entry
+// should carry a comment in pins.yaml saying why.
+type BacktestPolicy struct {
+	Min  string   `yaml:"min,omitempty" json:"min,omitempty"`
+	Skip []string `yaml:"skip,omitempty" json:"skip,omitempty"`
+}
+
+// Allows reports whether version may be back-tested under the policy; a
+// nil policy allows everything.
+func (b *BacktestPolicy) Allows(version string) bool {
+	if b == nil {
+		return true
+	}
+	if b.Min != "" && versions.Compare(version, b.Min) < 0 {
+		return false
+	}
+	for _, s := range b.Skip {
+		if versions.Strip(s) == versions.Strip(version) {
+			return false
+		}
+	}
+	return true
 }
 
 // Manifest is pins.yaml.
@@ -84,6 +117,16 @@ func Load(path string) (*Manifest, error) {
 		}
 		if p.Source.Registry == "" || p.Source.Package == "" {
 			return nil, fmt.Errorf("%s: %s: needs source {registry, package}", path, p.ID)
+		}
+		if b := p.Backtest; b != nil {
+			if b.Min == "" && len(b.Skip) == 0 {
+				return nil, fmt.Errorf("%s: %s: backtest policy needs min or skip", path, p.ID)
+			}
+			for _, s := range append([]string{b.Min}, b.Skip...) {
+				if s != "" && !versionLike.MatchString(s) {
+					return nil, fmt.Errorf("%s: %s: backtest: %q is not a version", path, p.ID, s)
+				}
+			}
 		}
 		switch p.Kind {
 		case KindArg:

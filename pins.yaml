@@ -39,6 +39,9 @@
 #   kind: cargo    dir + packages (crates): Cargo.toml requirement set exact
 #                  and Cargo.lock moved with `cargo update`, so the
 #                  Dockerfile's `--locked` build still applies.
+#   backtest  optional { min: X, skip: [Y, …] }: versions `cpm discover` must
+#             not propose — older than min, or listed — because they cannot be
+#             built or measured. Say why in a comment next to it.
 
 pins:
   # ---- Java agent jars (Dockerfile ARGs) ---------------------------------
@@ -155,6 +158,9 @@ pins:
     modules: [go.opentelemetry.io/otelc]
     source: { registry: goproxy, package: go.opentelemetry.io/otelc }
     variants: [otel-go-compiletime]
+    # 1.0.0: `go tool otelc go build` fails on the relay; 0.x: no such
+    # module version at this path. (Back-test 2026-11-01.)
+    backtest: { min: 1.0.1 }
   - id: dd-trace-go
     kind: gomod
     dir: relays/go
@@ -274,6 +280,10 @@ pins:
     packages: [opentelemetry, opentelemetry_sdk, opentelemetry-http]
     source: { registry: crates, package: opentelemetry }
     variants: [otel-rust]
+    # The three crates move in lockstep except for point releases of one of
+    # them: opentelemetry 0.29.1 has no opentelemetry-http 0.29.1, so the
+    # exact family requirement cannot resolve. (Back-test 2026-11-01.)
+    backtest: { skip: [0.29.1] }
   - id: datadog-rust
     kind: cargo
     dir: relays/rust
