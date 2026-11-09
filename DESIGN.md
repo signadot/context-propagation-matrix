@@ -235,6 +235,19 @@ from `results/raw/*.json` plus the registry (`variants.yaml`):
   (`pass` · `partial` · `new_trace` · `fail` · `undelivered` · `not_run`)
   next to the driver's raw status. Annotations (below) are embedded, and a
   `summary` carries per-header totals and a tool × language scorecard.
+
+  A measurement is identified independently of the run that contains it.
+  Each measured variant carries `tracer.version` (what the relay reported
+  at run time), `measured_in` (the run id of the release whose job ran the
+  hops), `measured_commit` (the harness commit that job ran) and
+  `matrix_version` (the measurement contract, from `variants.yaml`, bumped
+  by hand when a dimension or an outcome's meaning changes; the run manifest
+  carries the current value as `run.matrix_version`). A variant measured in
+  this run has `measured_in == run.run_id`; a carried-over one keeps the
+  values it had in the release it came from, so a (variant, tracer version)
+  pair resolves to the same measurement in every run that carries it. The
+  site uses these to present results per tracer version and to say where
+  and when each one was measured.
 - `results/latest/MATRIX.md` — the human-readable tables, rendered from the
   same document.
 - `results/latest/changes.json` — when a previous run is given

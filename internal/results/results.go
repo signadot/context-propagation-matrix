@@ -57,10 +57,15 @@ type Run struct {
 	BrokerVersions map[string]string `json:"broker_versions,omitempty"`
 	Generator      string            `json:"generator"`
 	Notes          string            `json:"notes,omitempty"`
+	// MatrixVersion is the measurement contract this run scored against
+	// (variants.yaml matrix_version). Carried-over variants may carry an
+	// older one; see Variant.MatrixVersion.
+	MatrixVersion int `json:"matrix_version"`
 	// Partial is set when only some variants were measured in this run and
 	// the rest were carried over from the previous release (a push to main
 	// re-runs just the variants it affects). Reran lists the measured ids;
-	// each variant's ran_at says when its own cells were last measured.
+	// each variant's ran_at / measured_in say when and where its own cells
+	// were last measured.
 	Partial bool     `json:"partial,omitempty"`
 	Reran   []string `json:"reran,omitempty"`
 }
@@ -152,6 +157,15 @@ type Variant struct {
 	RequiresSecret string            `json:"requires_secret,omitempty"`
 	Source         string            `json:"source"`
 	RanAt          time.Time         `json:"ran_at"`
+	// Provenance of the measurement itself, which may predate this run when
+	// the variant was carried over from an earlier release: MeasuredIn is the
+	// run id (release tag) whose job ran the hops, MeasuredCommit the harness
+	// commit that job ran, MatrixVersion the contract it scored against.
+	// Together with Tracer.Version they identify a result independently of
+	// the run that happens to contain it. Empty for Missing variants.
+	MeasuredIn     string            `json:"measured_in,omitempty"`
+	MeasuredCommit string            `json:"measured_commit,omitempty"`
+	MatrixVersion  int               `json:"matrix_version,omitempty"`
 	Hops           []Hop             `json:"hops"`
 	Cells          []Cell            `json:"cells"`
 	Counts         map[string]*Count `json:"counts"`            // by header id
@@ -343,7 +357,60 @@ func Build(reg *registry.Registry, raws []*raw.VariantResult, run Run) (*Results
 	}
 	res.Summary.Scorecard = scorecard(reg, res.Variants)
 	res.Annotations = []Annotation{}
+	if res.Run.MatrixVersion == 0 {
+		res.Run.MatrixVersion = reg.MatrixVersion
+	}
 	return res, nil
+}
+
+// SetProvenance stamps every measured variant with this run's identity and
+// gives every carried-over variant the provenance it had in prev, the
+// release it was carried over from. measured is the set of variant ids whose
+// hops ran in this run; nil means all of them. Run.RunID, HarnessCommit and
+// MatrixVersion must already be set. A carried-over variant with no prev to
+// read from is an error: it would otherwise look like it was measured here.
+func (r *Results) SetProvenance(prev *Results, measured map[string]bool) error {
+	var orphans []string
+	for _, v := range r.Variants {
+		if v.Missing {
+			continue
+		}
+		if measured == nil || measured[v.ID] {
+			v.MeasuredIn = r.Run.RunID
+			v.MeasuredCommit = r.Run.HarnessCommit
+			v.MatrixVersion = r.Run.MatrixVersion
+			continue
+		}
+		var pv *Variant
+		if prev != nil {
+			pv = prev.Variant(v.ID)
+		}
+		if pv == nil || pv.Missing {
+			orphans = append(orphans, v.ID)
+			continue
+		}
+		// Releases older than this field fall back to the run that
+		// contained them, which is as precise as their data allows.
+		v.MeasuredIn = pv.MeasuredIn
+		if v.MeasuredIn == "" {
+			v.MeasuredIn = prev.Run.RunID
+		}
+		v.MeasuredCommit = pv.MeasuredCommit
+		if v.MeasuredCommit == "" {
+			v.MeasuredCommit = prev.Run.HarnessCommit
+		}
+		v.MatrixVersion = pv.MatrixVersion
+		if v.MatrixVersion == 0 {
+			v.MatrixVersion = prev.Run.MatrixVersion
+		}
+		if v.MatrixVersion == 0 {
+			v.MatrixVersion = 1
+		}
+	}
+	if len(orphans) > 0 {
+		return fmt.Errorf("carried-over variant(s) with no previous results to take provenance from: %s", strings.Join(orphans, ", "))
+	}
+	return nil
 }
 
 // CellID builds the stable, URL-safe id for a cell.
