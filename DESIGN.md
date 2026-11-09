@@ -380,11 +380,12 @@ Two bots move versions, and they do not overlap:
   PR in place and closes any older PR for the same pin as superseded, so
   the queue never holds two PRs for one tracer, and a PR that has gone
   conflicting (a sibling pin in the same manifest merged first) is rebuilt
-  on the next run. PRs made with the workflow's own token raise no
-  `pull_request` event, so after pushing the bot dispatches `verify.yml` on
-  the branch; the checks land on the PR's head commit. With the optional
-  `BUMP_PAT` secret set, the bot pushes and opens PRs as that user instead
-  and the events fire naturally.
+  on the next run. For PRs made with the workflow's own token GitHub holds
+  the `pull_request` run of `verify.yml` for a maintainer's approval
+  ("Approve and run" on the PR); once approved it reports like any other
+  check and auto-merge completes after review. With the optional `BUMP_PAT`
+  secret set, the bot pushes and opens PRs as that user instead and the
+  runs start unprompted.
 
 The same `cpm pins` write path serves `backtest.yml`, which runs `cpm pins
 set` to move any pin *backwards* in a scratch checkout, and `verify.yml`
