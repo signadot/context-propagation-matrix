@@ -44,7 +44,11 @@ RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl un
  && OTEL_VERSION="${OTEL_DOTNET_AUTO_VERSION}" \
  && curl -fsSL -o /tmp/otel-dotnet-auto-install.sh \
       "https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/releases/download/v${OTEL_VERSION}/otel-dotnet-auto-install.sh" \
- && sh /tmp/otel-dotnet-auto-install.sh \
+ # 1.19+ installers verify the release asset with `gh release verify-asset`
+ # and `gh attestation verify`, which need the GitHub CLI and an API token
+ # inside the build; neither is available here. The asset still comes over
+ # TLS from the project's GitHub release. Older installers ignore the flag.
+ && SKIP_RELEASE_VERIFICATION=true sh /tmp/otel-dotnet-auto-install.sh \
  && echo "${OTEL_VERSION}" > /agent/version.txt \
  && cat /agent/version.txt \
  && rm -f /tmp/otel-dotnet-auto-install.sh \
