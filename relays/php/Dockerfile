@@ -69,7 +69,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 FROM app AS otel
 # Extension + instrumentation packages pinned exactly (composer requires in
 # a Dockerfile are not Dependabot-visible; bump manually per DESIGN.md).
-RUN install-php-extensions opentelemetry-1.2.1
+RUN install-php-extensions opentelemetry-1.4.2
 RUN composer require --no-interaction \
       open-telemetry/sdk:1.15.0 \
       open-telemetry/opentelemetry-auto-slim:1.5.0 \
