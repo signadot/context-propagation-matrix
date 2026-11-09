@@ -20,7 +20,7 @@ const pinsFile = "pins.yaml"
 //	cpm pins [list]                      every pin with its current version (JSON)
 //	cpm pins check                       pins resolve + every instrumented variant has exactly one
 //	cpm pins set -variant V -version X   backtest.yml: move the pin behind V (scratch checkout)
-//	cpm pins latest [-only id] [-apply]  bump-agents.yml: newer kind: arg versions; -apply rewrites
+//	cpm pins latest [-only id] [-apply]  bump-agents.yml: newer upstream versions, every kind; -apply rewrites
 func cmdPins(args []string) error {
 	sub := "list"
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -170,13 +170,152 @@ func pinsSet(args []string) error {
 	}{*variant, p.ID, p.Kind, from, to, files})
 }
 
-// pinsLatest lists (and with -apply writes) newer upstream versions of the
-// kind: arg pins — the ones Dependabot cannot see. The other kinds are
-// Dependabot's; proposing them here would open duplicate PRs. Output is the
-// JSON bump-agents.yml consumes: id, file, from, to, source, variants.
+// pinBump is one entry of `cpm pins latest`'s output, the JSON
+// bump-agents.yml consumes. File is Files[0] (the shape older runs read).
+type pinBump struct {
+	ID       string           `json:"id"`
+	Kind     string           `json:"kind"`
+	File     string           `json:"file"`
+	Files    []string         `json:"files"`
+	From     string           `json:"from"`
+	To       string           `json:"to"`
+	Source   registry.Package `json:"source"`
+	Variants []string         `json:"variants"`
+	// URL is the package's page in its registry; ReleasesURL the GitHub
+	// releases page (variants.yaml `github:`, or the package itself for
+	// github-releases sources). Either may be empty.
+	URL         string `json:"url,omitempty"`
+	ReleasesURL string `json:"releases_url,omitempty"`
+}
+
+// latestFunc is the registry lookup findBumps uses; tests substitute one.
+type latestFunc func(ctx context.Context, p registry.Package) (string, error)
+
+// findBumps compares every pin (or the one named by only) with the newest
+// stable version its registry publishes and returns those that are behind.
+// Versions are compared with a leading "v" stripped on both sides, the way
+// the registries report them. A failed lookup skips that pin (and is
+// reported on stderr) so one registry outage does not block the others; a
+// pin that does not resolve in its file is an error.
+func findBumps(ctx context.Context, m *pins.Manifest, only string, latest latestFunc, github map[string]string) ([]pinBump, error) {
+	bumps := []pinBump{}
+	found := false
+	var errs []string
+	for i := range m.Pins {
+		p := &m.Pins[i]
+		if only != "" && p.ID != only {
+			continue
+		}
+		found = true
+		current, err := p.Read()
+		if err != nil {
+			errs = append(errs, err.Error())
+			continue
+		}
+		current = versions.Strip(current)
+		newest, err := latest(ctx, p.Source)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: lookup failed: %v\n", p.ID, err)
+			continue
+		}
+		newest = versions.Strip(newest)
+		if versions.Compare(newest, current) <= 0 {
+			continue
+		}
+		files := p.Files()
+		bumps = append(bumps, pinBump{
+			ID: p.ID, Kind: p.Kind, File: files[0], Files: files,
+			From: current, To: newest, Source: p.Source, Variants: p.Variants,
+			URL:         packageURL(p.Source),
+			ReleasesURL: releasesURL(p.Source, github[sourceKey(p.Source)]),
+		})
+	}
+	if only != "" && !found {
+		return nil, fmt.Errorf("no pin %q in pins.yaml", only)
+	}
+	if len(errs) > 0 {
+		return bumps, fmt.Errorf("some pins did not resolve:\n%s", strings.Join(errs, "\n"))
+	}
+	return bumps, nil
+}
+
+func sourceKey(p registry.Package) string { return p.Registry + ":" + p.Package }
+
+// githubRepos maps every tracer/weaver coordinate in variants.yaml to its
+// `github:` owner/repo, for the releases link in PR bodies. Best effort: an
+// unreadable variants.yaml just means no links.
+func githubRepos(regPath string) map[string]string {
+	out := map[string]string{}
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		return out
+	}
+	for _, v := range reg.Variants {
+		for _, p := range []*registry.Package{v.Tracer, v.Weaver} {
+			if p != nil && p.GitHub != "" {
+				out[sourceKey(*p)] = p.GitHub
+			}
+		}
+	}
+	return out
+}
+
+// packageURL is the package's page in its registry, "" if unknown.
+func packageURL(p registry.Package) string {
+	switch p.Registry {
+	case "maven":
+		g, a, ok := strings.Cut(p.Package, ":")
+		if !ok {
+			return ""
+		}
+		return "https://central.sonatype.com/artifact/" + g + "/" + a
+	case "npm":
+		return "https://www.npmjs.com/package/" + p.Package
+	case "pypi":
+		return "https://pypi.org/project/" + p.Package + "/"
+	case "goproxy":
+		return "https://pkg.go.dev/" + p.Package
+	case "nuget":
+		return "https://www.nuget.org/packages/" + p.Package
+	case "rubygems":
+		return "https://rubygems.org/gems/" + p.Package
+	case "pecl":
+		return "https://pecl.php.net/package/" + p.Package
+	case "packagist":
+		return "https://packagist.org/packages/" + p.Package
+	case "crates":
+		return "https://crates.io/crates/" + p.Package
+	case "github-releases":
+		return "https://github.com/" + p.Package + "/releases"
+	case "newrelic-download":
+		return "https://download.newrelic.com/" + p.Package + "/archive/"
+	}
+	return ""
+}
+
+// releasesURL is the GitHub releases page for a source: github (variants.yaml
+// `github:` owner/repo) when known, else the package itself when the source
+// is github-releases, else "".
+func releasesURL(p registry.Package, github string) string {
+	if github == "" && p.Registry == "github-releases" {
+		github = p.Package
+	}
+	if github == "" {
+		return ""
+	}
+	return "https://github.com/" + github + "/releases"
+}
+
+// pinsLatest lists (and with -apply writes) newer upstream versions of every
+// pin in pins.yaml, whatever its kind: tracers are moved only by
+// bump-agents.yml (Dependabot ignores them, see .github/dependabot.yml).
+// -apply writes through Pin.Write, the same path as `cpm pins set`, so a
+// gomod family moves together and `go mod tidy` / `cargo update` run.
+// Output is the JSON bump-agents.yml consumes (pinBump).
 func pinsLatest(args []string) error {
 	fs := flag.NewFlagSet("pins latest", flag.ExitOnError)
 	pinsPath := pinsFlag(fs)
+	regPath := regFlag(fs)
 	only := fs.String("only", "", "only this pin id")
 	apply := fs.Bool("apply", false, "rewrite the pin(s) in place")
 	fs.Parse(args)
@@ -185,50 +324,32 @@ func pinsLatest(args []string) error {
 	if err != nil {
 		return err
 	}
-	type bump struct {
-		ID       string           `json:"id"`
-		File     string           `json:"file"`
-		From     string           `json:"from"`
-		To       string           `json:"to"`
-		Source   registry.Package `json:"source"`
-		Variants []string         `json:"variants"`
-	}
-	bumps := []bump{}
 	client := &versions.Client{}
 	ctx := context.Background()
-	failed := false
-	for i := range m.Pins {
-		p := &m.Pins[i]
-		if p.Kind != pins.KindArg || (*only != "" && p.ID != *only) {
-			continue
-		}
-		current, err := p.Read()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			failed = true
-			continue
-		}
-		newest, err := client.Latest(ctx, p.Source)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: lookup failed: %v\n", p.ID, err)
-			continue
-		}
-		if versions.Compare(newest, current) <= 0 {
-			continue
-		}
-		bumps = append(bumps, bump{p.ID, p.File, current, newest, p.Source, p.Variants})
-		if *apply {
-			if _, err := p.Write(newest); err != nil {
+	bumps, findErr := findBumps(ctx, m, *only, client.Latest, githubRepos(*regPath))
+	if *apply {
+		for i := range bumps {
+			b := &bumps[i]
+			p := pinByID(m, b.ID)
+			files, err := p.Write(b.To)
+			if err != nil {
 				return err
 			}
-			fmt.Fprintf(os.Stderr, "%s: %s -> %s (%s)\n", p.ID, current, newest, p.File)
+			b.Files, b.File = files, files[0]
+			fmt.Fprintf(os.Stderr, "%s: %s -> %s (%s)\n", b.ID, b.From, b.To, strings.Join(files, ", "))
 		}
 	}
 	if err := writeJSON(bumps); err != nil {
 		return err
 	}
-	if failed {
-		return fmt.Errorf("some pins did not resolve")
+	return findErr
+}
+
+func pinByID(m *pins.Manifest, id string) *pins.Pin {
+	for i := range m.Pins {
+		if m.Pins[i].ID == id {
+			return &m.Pins[i]
+		}
 	}
 	return nil
 }
