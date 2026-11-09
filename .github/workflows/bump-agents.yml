@@ -12,20 +12,23 @@
 # Merging touches relays/**, which triggers matrix.yml → new release → site
 # rebuild → changelog entry.
 #
-# Tokens. Branches pushed and PRs opened with the workflow's own GITHUB_TOKEN
-# do not trigger `pull_request` workflows (GitHub's recursion guard), so on
-# its own verify.yml would never run on the bot's PRs and auto-merge would
-# have no checks to wait for. Two ways round it:
+# Tokens. For a PR opened (or a branch pushed) with the workflow's own
+# GITHUB_TOKEN, GitHub creates the `pull_request` run of verify.yml but holds
+# it as "action required" — a maintainer has to approve it (the "Approve and
+# run" button on the PR, or POST /actions/runs/{id}/approve) before it runs.
+# Nothing the bot can do with its own token releases it; in particular a
+# `workflow_dispatch` of verify.yml on the branch does run, but its check
+# runs are not part of the PR's status rollup, so branch protection ignores
+# them (tried in #164). Two ways to get checks on the bot's PRs:
 #
-#   - default: after pushing a bump/* branch the bot dispatches verify.yml on
-#     it (`workflow_dispatch` is exempt from the guard). The checks land on
-#     the branch head, which is the PR head, so branch protection sees them.
-#     PRs are authored by github-actions[bot]; a maintainer approves and
-#     merges them (or auto-merge does, once approval and checks are in).
+#   - default: a maintainer approves the held run; verify then reports on
+#     the PR normally and auto-merge completes once the review is in. PRs
+#     are authored by github-actions[bot], so the maintainer can approve
+#     (review) them too.
 #   - optional: set the repository secret BUMP_PAT to a fine-grained PAT with
 #     contents: write and pull-requests: write on this repository and the bot
-#     checks out, pushes and opens PRs with it, so pull_request events fire
-#     naturally and no dispatch is needed.
+#     checks out, pushes and opens PRs with it; pull_request runs then start
+#     without approval (the PRs are authored by that user).
 #
 # A PR that has gone CONFLICTING (a sibling pin in the same manifest merged
 # first) is rebuilt on the next run, even when it already names the right
@@ -46,7 +49,6 @@ permissions:
   contents: write      # push bump/* branches
   pull-requests: write # open/edit/close PRs, enable auto-merge
   issues: write        # gh label create (labels are shared with issues)
-  actions: write       # dispatch verify.yml on the bump/* branch
 
 jobs:
   discover:
@@ -182,6 +184,7 @@ jobs:
         id: pr
         env:
           EXISTING: ${{ steps.existing.outputs.number }}
+          HAS_PAT: ${{ secrets.BUMP_PAT != '' }}
         run: |
           set -euo pipefail
           # Idempotent: both labels exist after the first run.
@@ -213,24 +216,9 @@ jobs:
           # settings and a branch protection / ruleset with required checks.
           gh pr merge --auto --squash "$pr" || echo "::notice::auto-merge not enabled on this repo yet"
           echo "- #$pr $TITLE" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Run verify on ${{ env.BRANCH }} (no pull_request event without BUMP_PAT)
-        if: steps.apply.outputs.changed == 'true'
-        env:
-          HAS_PAT: ${{ secrets.BUMP_PAT != '' }}
-          PR: ${{ steps.pr.outputs.number }}
-        run: |
-          set -euo pipefail
-          if [[ "$HAS_PAT" == "true" ]]; then
-            echo "BUMP_PAT set: the push itself triggered verify on #$PR"
-            exit 0
+          if [[ "$HAS_PAT" != "true" ]]; then
+            echo "::notice::#$pr: verify is held for approval (opened with GITHUB_TOKEN); approve the run on the PR or set BUMP_PAT"
           fi
-          # Pushed with the workflow token, so nothing fired: dispatch verify
-          # on the branch. Its check runs attach to the branch head — the PR's
-          # head commit — so the PR shows them and branch protection counts
-          # them. workflow_dispatch is exempt from the recursion guard.
-          gh workflow run verify.yml --ref "$BRANCH"
-          echo "dispatched verify.yml on $BRANCH for #$PR"
 
       - name: Close PRs superseded by #${{ steps.pr.outputs.number }}
         if: steps.apply.outputs.changed == 'true'
