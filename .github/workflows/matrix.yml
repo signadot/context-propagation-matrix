@@ -114,7 +114,12 @@ jobs:
     needs: plan
     if: needs.plan.outputs.variants != '[]'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # A warm job is ~5 min. The margin is for a cold PHP relay build: its gRPC
+    # PECL extension compiles from source (25-40 min, relays/php/Dockerfile) and
+    # the five PHP variants compile it concurrently whenever the pinned base
+    # image or extension installer is bumped. 40 was too tight (2026-11-02: three
+    # PHP jobs cancelled at the limit).
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       max-parallel: 47 # one wave for the whole matrix (the plan allows 60 concurrent jobs)
@@ -211,7 +216,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p results/raw logs prev
-          prev=$(gh release list --limit 100 --json tagName --jq '[.[] | select(.tagName|startswith("run-"))][0].tagName // empty')
+          prev=$(scripts/fetch-latest.sh -tag)
           if [[ -z "$prev" ]]; then
             echo "::notice::no previous run-* release; every cell comes from this run and changes.json is skipped"
             exit 0
@@ -327,6 +332,17 @@ jobs:
             --notes-file summary.md \
             results/latest/results.json results/latest/MATRIX.md raw.tar.gz logs.tar.gz \
             $( [[ -f results/latest/changes.json ]] && echo results/latest/changes.json )
+      - name: File each measured variant under its tracer version (variant-* releases)
+        if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RERAN: ${{ steps.merge.outputs.reran }}
+        # Only the variants measured in this run: carried-over ones were filed
+        # by the run that measured them. Baselines (no tracer) are skipped.
+        run: |
+          set -euo pipefail
+          read -ra ids <<<"$RERAN"
+          scripts/publish-versions.sh results/latest/results.json "${ids[@]}"
       - name: Rebuild contextpropagation.io
         if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main'
         env:

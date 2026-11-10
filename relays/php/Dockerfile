@@ -6,15 +6,30 @@
 # php-amqplib) started by the entrypoint. gRPC stubs are generated from
 # proto/relay.proto at build time with Debian's protoc + grpc_php_plugin.
 # Tool targets differ only in which instrumentation is installed.
+#
+# Both inputs of the app stage are pinned to immutable references on purpose.
+# `install-php-extensions grpc` below compiles the gRPC extension from source
+# (~25-40 min on a GitHub runner) and is only fast when that layer comes out
+# of the GHCR cache (cache:relays-php). BuildKit keys the layer on the base
+# image digest and on the content of the copied installer script, so the
+# floating `php:8.3-apache` (rebuilt by Docker Hub every week or two) and
+# `php-extension-installer:2` (several releases a week) re-ran the compile in
+# every weekly matrix run. Dependabot (docker ecosystem, /relays/php) bumps
+# the digest and the version as PRs: a cold build is paid once per deliberate
+# bump, not once per run. Keep the tag in front of the digest — that is the
+# form Dependabot updates.
+FROM mlocati/php-extension-installer:2.13.2 AS php-ext-installer
 
-FROM php:8.3-apache AS app
+FROM php:8.3-apache@sha256:a800bbd2c0aa322702259ed475556b2cbc311076a8d3c4bba9bfe96838745472 AS app
 
-COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /usr/local/bin/
+COPY --from=php-ext-installer /usr/bin/install-php-extensions /usr/local/bin/
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends protobuf-compiler protobuf-compiler-grpc unzip \
  && rm -rf /var/lib/apt/lists/*
 
+# The expensive layer. Everything the relay itself needs (composer.json, src,
+# proto) is copied below it so edits to the relay never invalidate it.
 # rdkafka pinned to 6.0.5 — the exact version in dd-trace-php's tested
 # integration matrix (and covered by OTel's ext-rdkafka instrumentation).
 # sockets is required by php-amqplib.
@@ -54,12 +69,12 @@ ENTRYPOINT ["/entrypoint.sh"]
 FROM app AS otel
 # Extension + instrumentation packages pinned exactly (composer requires in
 # a Dockerfile are not Dependabot-visible; bump manually per DESIGN.md).
-RUN install-php-extensions opentelemetry-1.2.1
+RUN install-php-extensions opentelemetry-1.5.0
 RUN composer require --no-interaction \
       open-telemetry/sdk:1.15.0 \
-      open-telemetry/opentelemetry-auto-slim:1.5.0 \
-      open-telemetry/opentelemetry-auto-curl:0.3.0 \
-      open-telemetry/opentelemetry-auto-ext-rdkafka:0.0.5
+      open-telemetry/opentelemetry-auto-slim:1.5.1 \
+      open-telemetry/opentelemetry-auto-curl:0.4.0 \
+      open-telemetry/opentelemetry-auto-ext-rdkafka:0.1.0
 ENV OTEL_PHP_AUTOLOAD_ENABLED=true \
     OTEL_TRACES_EXPORTER=none \
     OTEL_METRICS_EXPORTER=none \
@@ -69,7 +84,7 @@ ENV OTEL_PHP_AUTOLOAD_ENABLED=true \
 # (each release's setup script installs that release's tracer). Tracer
 # version is read at runtime via phpversion('ddtrace') for /info.
 FROM app AS datadog
-ARG DD_PHP_TRACER_VERSION=1.25.0
+ARG DD_PHP_TRACER_VERSION=1.27.1
 RUN curl -fLo /tmp/datadog-setup.php \
       "https://github.com/DataDog/dd-trace-php/releases/download/${DD_PHP_TRACER_VERSION}/datadog-setup.php" \
  && php /tmp/datadog-setup.php --php-bin=all \
@@ -84,7 +99,7 @@ RUN curl -fLo /tmp/datadog-setup.php \
 # are auto-instrumented for distributed tracing; php-amqplib has agent
 # instrumentation (agent >= 11.6); ext-rdkafka and ext-grpc are unsupported.
 FROM app AS newrelic
-ARG NEWRELIC_PHP_AGENT_VERSION=12.10.0.39
+ARG NEWRELIC_PHP_AGENT_VERSION=12.12.0.41
 RUN set -eux; \
     ver="${NEWRELIC_PHP_AGENT_VERSION}"; \
     curl -fsSL "https://download.newrelic.com/php_agent/archive/${ver}/newrelic-php5-${ver}-linux.tar.gz" \
@@ -100,7 +115,7 @@ ENTRYPOINT ["/newrelic-entrypoint.sh"]
 # --- Elastic: APM PHP agent via the documented .deb package (per-arch).
 # Must tolerate an unreachable ELASTIC_APM_SERVER_URL (it logs and drops).
 FROM app AS elastic
-ARG ELASTIC_APM_PHP_VERSION=1.17.0
+ARG ELASTIC_APM_PHP_VERSION=1.17.1
 RUN set -eux; \
     arch="$(dpkg --print-architecture)"; \
     curl -fLo /tmp/apm-agent-php.deb \

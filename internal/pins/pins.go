@@ -34,6 +34,8 @@ const (
 
 var kinds = map[string]bool{KindArg: true, KindGoMod: true, KindNPM: true, KindPip: true, KindBundler: true, KindCargo: true}
 
+var versionLike = regexp.MustCompile(`^v?[0-9]+(\.[0-9]+)*[0-9A-Za-z.+-]*$`)
+
 // Pin is one entry of pins.yaml.
 type Pin struct {
 	ID   string `yaml:"id" json:"id"`
@@ -52,6 +54,37 @@ type Pin struct {
 	// variants.yaml — that equality is how a variant finds its pin.
 	Source   registry.Package `yaml:"source" json:"source"`
 	Variants []string         `yaml:"variants" json:"variants"`
+
+	// Backtest narrows which older versions `cpm discover` proposes for the
+	// pin's variants. Absent means every version the registry lists.
+	Backtest *BacktestPolicy `yaml:"backtest,omitempty" json:"backtest,omitempty"`
+}
+
+// BacktestPolicy excludes versions that cannot be measured: Min is the
+// oldest version worth building (older ones fail to build or predate the
+// relay's API), Skip lists individual versions to leave out (a release that
+// never shipped for every crate of a family, a yanked one). Each entry
+// should carry a comment in pins.yaml saying why.
+type BacktestPolicy struct {
+	Min  string   `yaml:"min,omitempty" json:"min,omitempty"`
+	Skip []string `yaml:"skip,omitempty" json:"skip,omitempty"`
+}
+
+// Allows reports whether version may be back-tested under the policy; a
+// nil policy allows everything.
+func (b *BacktestPolicy) Allows(version string) bool {
+	if b == nil {
+		return true
+	}
+	if b.Min != "" && versions.Compare(version, b.Min) < 0 {
+		return false
+	}
+	for _, s := range b.Skip {
+		if versions.Strip(s) == versions.Strip(version) {
+			return false
+		}
+	}
+	return true
 }
 
 // Manifest is pins.yaml.
@@ -84,6 +117,16 @@ func Load(path string) (*Manifest, error) {
 		}
 		if p.Source.Registry == "" || p.Source.Package == "" {
 			return nil, fmt.Errorf("%s: %s: needs source {registry, package}", path, p.ID)
+		}
+		if b := p.Backtest; b != nil {
+			if b.Min == "" && len(b.Skip) == 0 {
+				return nil, fmt.Errorf("%s: %s: backtest policy needs min or skip", path, p.ID)
+			}
+			for _, s := range append([]string{b.Min}, b.Skip...) {
+				if s != "" && !versionLike.MatchString(s) {
+					return nil, fmt.Errorf("%s: %s: backtest: %q is not a version", path, p.ID, s)
+				}
+			}
 		}
 		switch p.Kind {
 		case KindArg:
@@ -140,6 +183,33 @@ func (p *Pin) Read() (string, error) {
 		return "", fmt.Errorf("%s: %w", p.ID, err)
 	}
 	return v, nil
+}
+
+// Check enforces what a pin's manifest must satisfy on main beyond
+// resolving: for cargo, one copy of every listed crate in Cargo.lock. Other
+// kinds have nothing to add. `cpm pins check` runs it; `cpm pins set`
+// (back-test checkouts) does not.
+func (p *Pin) Check() error {
+	if p.Kind != KindCargo {
+		return nil
+	}
+	if err := p.checkCargo(); err != nil {
+		return fmt.Errorf("%s: %w", p.ID, err)
+	}
+	return nil
+}
+
+// Files lists the files Write touches, without writing: the manifest for
+// arg/npm/pip/bundler, go.mod + go.sum for gomod, Cargo.toml + Cargo.lock
+// for cargo. bump-agents.yml names them in the PR body before -apply runs.
+func (p *Pin) Files() []string {
+	switch p.Kind {
+	case KindGoMod:
+		return []string{filepath.Join(p.Dir, "go.mod"), filepath.Join(p.Dir, "go.sum")}
+	case KindCargo:
+		return []string{filepath.Join(p.Dir, "Cargo.toml"), filepath.Join(p.Dir, "Cargo.lock")}
+	}
+	return []string{p.File}
 }
 
 // Write sets the pin to version and returns the files it touched. Kinds
@@ -267,7 +337,7 @@ func (p *Pin) writeGoMod(version string) ([]string, error) {
 	if err := run(p.Dir, "go", "mod", "tidy"); err != nil {
 		return nil, err
 	}
-	return []string{filepath.Join(p.Dir, "go.mod"), filepath.Join(p.Dir, "go.sum")}, nil
+	return p.Files(), nil
 }
 
 // ---------------------------------------------------------------------------
@@ -414,54 +484,127 @@ func (p *Pin) writeBundler(version string) ([]string, error) {
 // resolver pass (crates of a family require each other at the same version,
 // so one at a time cannot resolve). The Dockerfile's `cargo build --locked`
 // then applies unchanged.
+//
+// A crate can be in Cargo.lock twice: another dependency requires a version
+// the relay's own requirement does not admit (datadog-opentelemetry pins the
+// opentelemetry API crate exactly), and cargo links both. The relay's code
+// builds against the copy Cargo.toml names, so reading resolves through the
+// requirement, and `cargo update -p` is given `crate@version` (a bare name
+// is ambiguous). Two copies of the API crate also mean a tool's globally
+// installed propagator and the relay's calls land in different crates and
+// nothing propagates — `cpm pins check` refuses that (Check), since the
+// smoke gate only asserts delivery.
 
 func cargoReqRegexp(crate string) *regexp.Regexp {
 	return regexp.MustCompile(`(?m)^(` + regexp.QuoteMeta(crate) + `\s*=\s*(?:\{[^}]*?version\s*=\s*)?")([^"]+)(")`)
 }
 
-func (p *Pin) cargoLocked(crate string) (string, error) {
+// cargoLockVersions lists every version of crate in Cargo.lock, in file
+// order (cargo sorts entries by name, then version ascending).
+func (p *Pin) cargoLockVersions(crate string) ([]string, error) {
 	path := filepath.Join(p.Dir, "Cargo.lock")
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	re := regexp.MustCompile(`\[\[package\]\]\nname = "` + regexp.QuoteMeta(crate) + `"\nversion = "([^"]+)"`)
-	m := re.FindStringSubmatch(string(b))
-	if m == nil {
-		return "", fmt.Errorf("%s not in %s", crate, path)
-	}
-	return m[1], nil
-}
-
-func (p *Pin) readCargo() (string, error) {
-	path := filepath.Join(p.Dir, "Cargo.toml")
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	for _, crate := range p.Packages {
-		if !cargoReqRegexp(crate).Match(b) {
-			return "", fmt.Errorf("%s not in %s", crate, path)
-		}
-	}
-	return p.cargoLocked(p.Packages[0])
-}
-
-func (p *Pin) writeCargo(version string) ([]string, error) {
-	path := filepath.Join(p.Dir, "Cargo.toml")
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
+	re := regexp.MustCompile(`\[\[package\]\]\nname = "` + regexp.QuoteMeta(crate) + `"\nversion = "([^"]+)"`)
+	var vs []string
+	for _, m := range re.FindAllStringSubmatch(string(b), -1) {
+		vs = append(vs, m[1])
+	}
+	if len(vs) == 0 {
+		return nil, fmt.Errorf("%s not in %s", crate, path)
+	}
+	return vs, nil
+}
+
+// cargoLocked returns the version of crate the relay builds against: the
+// one entry in Cargo.lock, or, when another dependency pulls in a second
+// copy, the one that satisfies req, Cargo.toml's requirement for the crate
+// — which then has to be exact (=X.Y.Z), as Write always leaves it.
+func (p *Pin) cargoLocked(crate, req string) (string, error) {
+	vs, err := p.cargoLockVersions(crate)
+	if err != nil {
+		return "", err
+	}
+	if len(vs) == 1 {
+		return vs[0], nil
+	}
+	if want, exact := strings.CutPrefix(strings.TrimSpace(req), "="); exact {
+		want = strings.TrimSpace(want)
+		for _, v := range vs {
+			if v == want {
+				return v, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("%s: Cargo.lock holds %s and Cargo.toml requires %q; pin an exact version (=X.Y.Z) to say which one the relay builds against",
+		crate, strings.Join(vs, " and "), req)
+}
+
+// cargoReqs returns Cargo.toml's source and the requirement of every crate
+// of the pin.
+func (p *Pin) cargoReqs() (string, map[string]string, error) {
+	path := filepath.Join(p.Dir, "Cargo.toml")
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", nil, err
+	}
 	src := string(b)
+	reqs := map[string]string{}
+	for _, crate := range p.Packages {
+		m := cargoReqRegexp(crate).FindStringSubmatch(src)
+		if m == nil {
+			return "", nil, fmt.Errorf("%s not in %s", crate, path)
+		}
+		reqs[crate] = m[2]
+	}
+	return src, reqs, nil
+}
+
+func (p *Pin) readCargo() (string, error) {
+	_, reqs, err := p.cargoReqs()
+	if err != nil {
+		return "", err
+	}
+	return p.cargoLocked(p.Packages[0], reqs[p.Packages[0]])
+}
+
+// checkCargo requires one copy of every crate of the pin in Cargo.lock: a
+// second copy, pulled in by another dependency's requirement, means the
+// relay binaries no longer share the API crate (see the package comment).
+// Run by `cpm pins check`, not in back-test checkouts, where moving one
+// pin away from the version its neighbour requires is the point.
+func (p *Pin) checkCargo() error {
+	for _, crate := range p.Packages {
+		vs, err := p.cargoLockVersions(crate)
+		if err != nil {
+			return err
+		}
+		if len(vs) > 1 {
+			return fmt.Errorf("%s: Cargo.lock holds %s; the relay needs one copy — pin the version the other dependencies require (see %s)",
+				crate, strings.Join(vs, " and "), filepath.Join(p.Dir, "Cargo.toml"))
+		}
+	}
+	return nil
+}
+
+func (p *Pin) writeCargo(version string) ([]string, error) {
+	path := filepath.Join(p.Dir, "Cargo.toml")
+	src, reqs, err := p.cargoReqs()
+	if err != nil {
+		return nil, err
+	}
 	args := []string{"update"}
 	for _, crate := range p.Packages {
-		re := cargoReqRegexp(crate)
-		if !re.MatchString(src) {
-			return nil, fmt.Errorf("%s not in %s", crate, path)
+		// Name the lock entry being moved: once a second copy of the crate
+		// is in the lock, a bare `-p crate` is ambiguous.
+		locked, err := p.cargoLocked(crate, reqs[crate])
+		if err != nil {
+			return nil, err
 		}
-		src = re.ReplaceAllString(src, "${1}="+version+"${3}")
-		args = append(args, "-p", crate)
+		src = cargoReqRegexp(crate).ReplaceAllString(src, "${1}="+version+"${3}")
+		args = append(args, "-p", crate+"@"+locked)
 	}
 	if err := writeFile(path, src); err != nil {
 		return nil, err
@@ -469,7 +612,7 @@ func (p *Pin) writeCargo(version string) ([]string, error) {
 	if err := run(p.Dir, "cargo", args...); err != nil {
 		return nil, err
 	}
-	return []string{path, filepath.Join(p.Dir, "Cargo.lock")}, nil
+	return p.Files(), nil
 }
 
 // ---------------------------------------------------------------------------

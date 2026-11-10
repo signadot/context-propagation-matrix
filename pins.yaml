@@ -3,10 +3,14 @@
 # package.json, requirements-*.txt, Gemfile, Cargo.toml, Dockerfile ARGs);
 # this file only says where they are. Read by `go run ./cmd/cpm pins`:
 #
-#   cpm pins latest [-apply]       bump-agents.yml: for the `kind: arg` entries
-#                                  (the ones Dependabot cannot see) look up the
-#                                  newest stable version in `source` and rewrite
-#                                  the pin; one PR per entry.
+#   cpm pins latest [-only id] [-apply]
+#                                  bump-agents.yml: for every entry, whatever
+#                                  its kind, look up the newest stable version
+#                                  in `source` and (with -apply) rewrite the
+#                                  pin; one PR per entry (branch bump/<id>).
+#                                  Dependabot ignores every package listed
+#                                  here (.github/dependabot.yml), so this is
+#                                  the only thing that moves a tracer.
 #   cpm pins set -variant V -version X
 #                                  backtest.yml: set the pin behind variant V to
 #                                  X in a scratch checkout, then build the
@@ -34,7 +38,14 @@
 #   kind: bundler  file (Gemfile) + packages (gem names)
 #   kind: cargo    dir + packages (crates): Cargo.toml requirement set exact
 #                  and Cargo.lock moved with `cargo update`, so the
-#                  Dockerfile's `--locked` build still applies.
+#                  Dockerfile's `--locked` build still applies. `check` also
+#                  requires one copy of each crate in Cargo.lock: a second
+#                  copy (another dependency requiring a version the exact
+#                  requirement excludes) splits the OTel API crate and the
+#                  relay stops propagating (relays/rust/Cargo.toml).
+#   backtest  optional { min: X, skip: [Y, …] }: versions `cpm discover` must
+#             not propose — older than min, or listed — because they cannot be
+#             built or measured. Say why in a comment next to it.
 
 pins:
   # ---- Java agent jars (Dockerfile ARGs) ---------------------------------
@@ -44,6 +55,11 @@ pins:
     arg: OTEL_JAVA_AGENT_VERSION
     source: { registry: maven, package: "io.opentelemetry.javaagent:opentelemetry-javaagent" }
     variants: [otel-java]
+    # Agents before 2.15.0 instrument logback with a virtual field the
+    # relay's logback (Spring Boot 3.5) no longer has, so the app dies at
+    # boot with NoSuchFieldError. (Back-test 2026-11-10: 2.13.0–2.14.0
+    # fail, 2.15.0 runs.)
+    backtest: { min: 2.15.0 }
   - id: dd-java-agent
     kind: arg
     file: relays/java/Dockerfile
@@ -134,8 +150,12 @@ pins:
     arg: ELASTIC_APM_PHP_VERSION
     source: { registry: github-releases, package: elastic/apm-agent-php, tag_prefix: v }
     variants: [elastic-php]
+    # The relay image is php:8.3; agent releases before 1.13.0 support PHP
+    # 7.2–8.2 only and their .deb post-install refuses to install.
+    # (Back-test 2026-11-09: 1.8.3–1.12.0 fail, 1.13.0 builds.)
+    backtest: { min: 1.13.0 }
 
-  # ---- Go (go.mod; Dependabot bumps forward) -----------------------------
+  # ---- Go (go.mod module families) ---------------------------------------
   - id: otel-go
     kind: gomod
     dir: relays/go
@@ -145,12 +165,23 @@ pins:
       - go.opentelemetry.io/otel/trace
     source: { registry: goproxy, package: go.opentelemetry.io/otel }
     variants: [otel-go]
+    # relays/go is one module for every Go tracer, so `go get otel@<old>`
+    # must also downgrade dd-trace-go (v2.12.0 requires otel ≥ 1.45) to a
+    # release that accepts the older otel. Below 1.40.0 that lands on a
+    # -dev tag of dd-trace-go whose datadog-agent requirements are
+    # placeholder versions, and `go mod tidy` fails. Measuring older
+    # otel-go needs the Go relays split into one module per tool.
+    # (Back-test 2026-11-09: 1.33.0–1.39.0 fail, 1.40.0 builds.)
+    backtest: { min: 1.40.0 }
   - id: otelc
     kind: gomod
     dir: relays/go-otelc
     modules: [go.opentelemetry.io/otelc]
     source: { registry: goproxy, package: go.opentelemetry.io/otelc }
     variants: [otel-go-compiletime]
+    # 1.0.0: `go tool otelc go build` fails on the relay; 0.x: no such
+    # module version at this path. (Back-test 2026-11-01.)
+    backtest: { min: 1.0.1 }
   - id: dd-trace-go
     kind: gomod
     dir: relays/go
@@ -161,6 +192,10 @@ pins:
       - github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2
     source: { registry: goproxy, package: github.com/DataDog/dd-trace-go/v2 }
     variants: [datadog-go, datadog-go-defaults]
+    # The contrib modules were not tagged for these core releases (no
+    # contrib/net/http/v2.1.0 etc.), so the family cannot move together.
+    # (Back-test 2026-11-10; 2.0.1 and 2.2.2 build.)
+    backtest: { skip: [2.1.0, 2.2.0, 2.2.1] }
   - id: dd-trace-go-orchestrion
     kind: gomod
     dir: relays/go-orchestrion
@@ -169,12 +204,22 @@ pins:
       - github.com/DataDog/dd-trace-go/v2
     source: { registry: goproxy, package: github.com/DataDog/dd-trace-go/v2 }
     variants: [datadog-go-orchestrion]
+    # orchestrion/all has no v2.1.0, v2.2.0 or v2.2.1 tag either.
+    # (Back-test 2026-11-10; 2.0.1 and 2.2.2 build.)
+    backtest: { skip: [2.1.0, 2.2.0, 2.2.1] }
   - id: newrelic-go-agent
     kind: gomod
     dir: relays/go
     modules: [github.com/newrelic/go-agent/v3]
     source: { registry: goproxy, package: github.com/newrelic/go-agent/v3 }
     variants: [newrelic-go]
+    # The v3.43.0 tag's go.mod requires integrations/nrsecurityagent at a
+    # placeholder version (v0.0.0-00010101000000-000000000000), so `go get`
+    # cannot resolve it. (Back-test 2026-11-09; 3.42.0 and 3.43.1 build.)
+    # Below 3.35.0 the relay does not compile: nramqp.PublishWithContext
+    # gained its current arguments in 3.35.0 and the relay calls that form.
+    # (Back-test 2026-11-10: 3.27.0–3.34.0 fail, 3.35.0 builds.)
+    backtest: { min: 3.35.0, skip: [3.43.0] }
   - id: elastic-apm-go
     kind: gomod
     dir: relays/go
@@ -184,6 +229,10 @@ pins:
       - go.elastic.co/apm/module/apmhttp/v2
     source: { registry: goproxy, package: go.elastic.co/apm/v2 }
     variants: [elastic-go]
+    # 2.6.1 was tagged for go.elastic.co/apm/v2 alone; the apmgrpc and
+    # apmhttp modules have no v2.6.1, so the family cannot move together.
+    # (Back-test 2026-11-09; 2.6.0 and 2.6.2 build.)
+    backtest: { skip: [2.6.1] }
 
   # ---- Node (one single-dependency manifest per tool) --------------------
   - id: otel-node
@@ -218,6 +267,12 @@ pins:
     packages: ["opentelemetry-*"]      # distro + instrumentation-* share a version line
     source: { registry: pypi, package: opentelemetry-distro }
     variants: [otel-python]
+    # opentelemetry-instrument before 0.49b0 imports pkg_resources, which
+    # the relay's python:3.12 image does not ship (setuptools is no longer
+    # preinstalled), so the relay never starts. Installing setuptools in
+    # the image would lift this. (Back-test 2026-11-10: 0.47b0–0.48b0
+    # fail, 0.49b0 runs.)
+    backtest: { min: 0.49b0 }
   - id: ddtrace
     kind: pip
     file: relays/python/requirements-datadog.txt
@@ -236,6 +291,11 @@ pins:
     packages: [elastic-apm]
     source: { registry: pypi, package: elastic-apm }
     variants: [elastic-python]
+    # Releases up to 6.13.0 have no wheel for the relay's Python and their
+    # setup.py imports pkg_resources, which the isolated build environment's
+    # setuptools no longer provides. (Back-test 2026-11-10: 6.9.1–6.13.0
+    # fail, 6.13.1 builds.)
+    backtest: { min: 6.13.1 }
 
   # ---- Ruby (one Gemfile per tool) ----------------------------------------
   - id: otel-ruby
@@ -244,12 +304,24 @@ pins:
     packages: [opentelemetry-sdk]
     source: { registry: rubygems, package: opentelemetry-sdk }
     variants: [otel-ruby]
+    # The Gemfile also pins the instrumentation gems (net_http 0.29.0 and
+    # friends), which require opentelemetry-common ~> 0.21; opentelemetry-sdk
+    # below 1.3.0 requires common ~> 0.19.3, so bundler cannot resolve the
+    # pair. Measuring older SDKs needs the instrumentation gems moved with
+    # the SDK. (Back-test 2026-11-09: 1.0.2–1.2.1 fail, 1.3.0 builds.)
+    backtest: { min: 1.3.0 }
   - id: datadog-ruby
     kind: bundler
     file: relays/ruby/gemfiles/datadog/Gemfile
     packages: [datadog]
     source: { registry: rubygems, package: datadog }
     variants: [datadog-ruby, datadog-ruby-defaults]
+    # The relay enables the waterdrop integration, which the gem added in
+    # 2.23.0; older gems raise InvalidIntegrationError in Datadog.configure
+    # and the relay never starts. A version-conditional integration list
+    # would lift this. (Back-test 2026-11-10: 2.18.0–2.22.0 fail, 2.23.0
+    # runs.)
+    backtest: { min: 2.23.0 }
   - id: newrelic-ruby
     kind: bundler
     file: relays/ruby/gemfiles/newrelic/Gemfile
@@ -264,15 +336,40 @@ pins:
     variants: [elastic-ruby]
 
   # ---- Rust (Cargo.toml + Cargo.lock) ------------------------------------
+  # The two Rust pins are coupled: datadog-opentelemetry requires an exact
+  # opentelemetry version (0.6.0 → =0.33.0), and both relay binaries must
+  # share one copy of the API crate (relays/rust/Cargo.toml). So otel-rust
+  # sits at the version datadog-opentelemetry requires, not the newest, and
+  # a bump of either pin that outruns the other fails `cpm pins check` with
+  # two copies in Cargo.lock — move them together.
   - id: otel-rust
     kind: cargo
     dir: relays/rust
     packages: [opentelemetry, opentelemetry_sdk, opentelemetry-http]
     source: { registry: crates, package: opentelemetry }
     variants: [otel-rust]
+    # The three crates move in lockstep except for point releases of one of
+    # them: opentelemetry 0.29.1 has no opentelemetry-http 0.29.1, so the
+    # exact family requirement cannot resolve. (Back-test 2026-11-01.)
+    # Back-testing otel-rust below the datadog requirement is fine: the
+    # otel relay binary only uses the copy Cargo.toml names.
+    # The relay source is written to the 0.28 API (opentelemetry_sdk 0.28
+    # renamed TracerProvider to SdkTracerProvider); 0.27 and older fail to
+    # compile, and 0.27.1 also has no opentelemetry-http 0.27.1. Measuring
+    # them needs version-conditional relay source. (Back-test 2026-11-09:
+    # 0.22.0–0.27.1 fail, 0.28.0 builds.)
+    backtest: { min: 0.28.0, skip: [0.29.1] }
   - id: datadog-rust
     kind: cargo
     dir: relays/rust
     packages: [datadog-opentelemetry]
     source: { registry: crates, package: datadog-opentelemetry }
     variants: [datadog-rust]
+    # Older datadog-opentelemetry releases require an older opentelemetry
+    # than the relay pins (0.5.x → ^0.32, 0.3–0.4 → ^0.31), so a back-test
+    # of one builds with two copies of the API crate and measures nothing
+    # (the 0.3.2 and 0.4.0 back-tests of 2026-11-01 show 0/16 for that
+    # reason). Measuring them needs `cpm pins set` to move the opentelemetry
+    # family to the version the datadog release requires; until then only
+    # releases that share the relay's opentelemetry pin are back-tested.
+    backtest: { min: 0.6.0 }

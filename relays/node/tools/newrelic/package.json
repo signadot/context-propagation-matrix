@@ -3,6 +3,6 @@
   "private": true,
   "description": "Pinned agent dependency for the newrelic target; installed into the app image by the Dockerfile. Kept as its own manifest so Dependabot can bump it.",
   "dependencies": {
-    "newrelic": "14.3.10"
+    "newrelic": "14.12.0"
   }
 }

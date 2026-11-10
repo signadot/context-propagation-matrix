@@ -6,6 +6,7 @@
 #
 #   scripts/fetch-latest.sh              # newest run-* release -> results/latest/
 #   scripts/fetch-latest.sh -raw         # ... and raw.tar.gz -> results/raw/ (replaces *.json there)
+#   scripts/fetch-latest.sh -tag         # only print the newest run-* tag (empty if none)
 #   scripts/fetch-latest.sh run-2026-10-20
 #   REPO=you/your-fork scripts/fetch-latest.sh
 #
@@ -17,11 +18,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 raw=false
+tag_only=false
 tag=""
 for a in "$@"; do
   case "$a" in
     -raw|--raw) raw=true ;;
-    -h|--help)  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -tag|--tag) tag_only=true ;;
+    -h|--help)  sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*)         echo "fetch-latest: unknown flag $a (try -h)" >&2; exit 2 ;;
     *)          tag="$a" ;;
   esac
@@ -34,13 +37,24 @@ if ! command -v gh >/dev/null 2>&1; then
 fi
 
 if [[ -z "$tag" ]]; then
-  # gh lists newest first; run-* tags sort the same way by construction.
-  tag=$(gh release list -R "$repo" --limit 100 --json tagName \
-          --jq '[.[] | select(.tagName | startswith("run-"))][0].tagName // empty')
+  # Newest first (creation order), paging through every release: the monthly
+  # back-test publishes 100+ backtest-* releases in one go, so a fixed
+  # `--limit` can return no run-* at all (2026-11-02 published with nothing
+  # carried over and no changes.json for exactly that reason). `sed -n 1p`
+  # reads all of stdin, so gh never sees a closed pipe under pipefail.
+  tag=$(gh api --paginate "repos/$repo/releases?per_page=100" \
+          --jq '.[] | select(.draft | not) | .tag_name | select(startswith("run-"))' | sed -n 1p)
+  if $tag_only; then
+    printf '%s\n' "$tag"
+    exit 0
+  fi
   if [[ -z "$tag" ]]; then
     echo "::notice::fetch-latest: $repo has no run-* release yet; nothing fetched (results/latest left as is)"
     exit 0
   fi
+elif $tag_only; then
+  printf '%s\n' "$tag"
+  exit 0
 fi
 
 mkdir -p results/latest

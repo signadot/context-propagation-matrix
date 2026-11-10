@@ -1,24 +1,33 @@
-# Dependabot keeps the context-propagation-matrix harness pinned to exact,
-# current versions: every manifest pins exact versions and Dependabot opens
-# PRs to bump them. After merging a bump that touches a tracer/agent, re-run
-# the affected variants and regenerate results/MATRIX.md (see DESIGN.md
-# "Version pinning").
+# Dependabot keeps the context-propagation-matrix harness's APP dependencies
+# and toolchain images pinned to exact, current versions: clients,
+# frameworks, build tooling, base images. It does not move tracers.
 #
-# NOT covered by Dependabot — bumped by .github/workflows/bump-agents.yml from
-# versions/agents.yaml, which also re-runs the affected variants:
-#   - Java agent jars           (relays/java/Dockerfile ARGs)
-#   - .NET profiler tarballs    (relays/dotnet/Dockerfile ARGs)
-#   - PHP agents + OTel ext     (relays/php/Dockerfile ARGs / pinned requires)
+# Tracer/agent pins are NOT Dependabot's. Every one of them — Dockerfile ARGs,
+# go.mod module families, package.json, requirements-*.txt, Gemfile,
+# Cargo.toml — is listed in pins.yaml and moved by `cpm pins latest -apply`
+# from .github/workflows/bump-agents.yml: one PR per pin (branch bump/<id>,
+# labelled tracer-bump + auto-merge), rewritten in place when a newer
+# release appears, auto-merged when checks pass, and the merge re-measures
+# exactly that pin's variants (see DESIGN.md "Version pinning & updates").
+# Each ecosystem below therefore `ignore`s the packages pins.yaml lists for
+# it (gomod: the `modules:` of each family; the others: `packages:`), so
+# Dependabot never opens a competing single-package PR. Adding a tracer
+# package to pins.yaml means adding it to the matching ignore list here;
+# `cpm pins check` (verify.yml) keeps pins.yaml itself honest.
 #
-# Grouping: per manifest, everything that is NOT a tracer/agent package lands
-# in one "app-deps" PR (clients, frameworks, build tooling). Tracer packages
-# stay one-PR-per-package so a merge maps to exactly one variant to re-run.
-# Each ecosystem's exclude-patterns list only the tracer packages that
-# ecosystem's manifests actually pull in (Dependabot has no anchors or shared
+# Deliberately NOT ignored, because pins.yaml does not list them (they carry
+# their own version line, see the pins.yaml header) and nothing else would
+# bump them: the OTel Go contrib modules (otelhttp/otelgrpc), the New Relic
+# Go integrations (nrgrpc, nramqp, nrsarama), orchestrion itself, and the
+# OTel Ruby instrumentation gems. Those stay Dependabot's.
+#
+# Grouping: per manifest, everything that is not a tracer/agent package lands
+# in one "app-deps" PR. The exclude-patterns keep the tracer-adjacent
+# packages above out of that group so each stays one PR per package and a
+# merge maps to one variant to re-run (Dependabot has no anchors or shared
 # group definitions; `pattern` matching is per package name within one
-# ecosystem). Adding a tracer package to a manifest means adding it here too.
-# Ecosystems whose agents come from Dockerfile ARGs (composer, maven, nuget)
-# have no tracer packages to exclude, so everything there is app-deps.
+# ecosystem). Ecosystems whose agents come from Dockerfile ARGs (composer,
+# maven, nuget) have no tracer packages, so everything there is app-deps.
 version: 2
 
 updates:
@@ -42,6 +51,21 @@ updates:
           - "go.opentelemetry.io/*"       # otel, contrib, otelc
           - "github.com/newrelic/*"       # go-agent + integrations
           - "go.elastic.co/*"             # apm + modules
+    # pins.yaml `modules:` — moved by bump-agents.yml, family by family.
+    ignore:
+      - dependency-name: "go.opentelemetry.io/otel"                                    # otel-go
+      - dependency-name: "go.opentelemetry.io/otel/sdk"                                # otel-go
+      - dependency-name: "go.opentelemetry.io/otel/trace"                              # otel-go
+      - dependency-name: "go.opentelemetry.io/otelc"                                   # otelc
+      - dependency-name: "github.com/DataDog/dd-trace-go/v2"                           # dd-trace-go, dd-trace-go-orchestrion
+      - dependency-name: "github.com/DataDog/dd-trace-go/contrib/net/http/v2"          # dd-trace-go
+      - dependency-name: "github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2" # dd-trace-go
+      - dependency-name: "github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2"        # dd-trace-go
+      - dependency-name: "github.com/DataDog/dd-trace-go/orchestrion/all/v2"           # dd-trace-go-orchestrion
+      - dependency-name: "github.com/newrelic/go-agent/v3"                             # newrelic-go-agent
+      - dependency-name: "go.elastic.co/apm/v2"                                        # elastic-apm-go
+      - dependency-name: "go.elastic.co/apm/module/apmgrpc/v2"                         # elastic-apm-go
+      - dependency-name: "go.elastic.co/apm/module/apmhttp/v2"                         # elastic-apm-go
 
   # Node: app deps + one single-dependency manifest per tool target.
   - package-ecosystem: npm
@@ -60,6 +84,12 @@ updates:
           - "@opentelemetry/*"
           - "newrelic"
           - "elastic-apm-node"
+    # pins.yaml `packages:` — moved by bump-agents.yml.
+    ignore:
+      - dependency-name: "@opentelemetry/auto-instrumentations-node"  # otel-node
+      - dependency-name: "dd-trace"                                   # dd-trace-node
+      - dependency-name: "newrelic"                                   # newrelic-node
+      - dependency-name: "elastic-apm-node"                           # elastic-apm-node
 
   # Python: requirements.txt (app) + requirements-<tool>.txt (agents),
   # all picked up from the same directory.
@@ -74,6 +104,14 @@ updates:
           - "opentelemetry-*"
           - "newrelic"
           - "elastic-apm"
+    # pins.yaml `packages:` — moved by bump-agents.yml. opentelemetry-* is
+    # the whole requirements-otel.txt family (distro + instrumentation-*),
+    # which shares one version line.
+    ignore:
+      - dependency-name: "opentelemetry-*"   # otel-python
+      - dependency-name: "ddtrace"           # ddtrace
+      - dependency-name: "newrelic"          # newrelic-python
+      - dependency-name: "elastic-apm"       # elastic-apm-python
 
   # Ruby: one Gemfile per tool target.
   - package-ecosystem: bundler
@@ -92,6 +130,14 @@ updates:
           - "opentelemetry-*"
           - "newrelic_rpm"
           - "elastic-apm"
+    # pins.yaml `packages:` — moved by bump-agents.yml. Only the SDK gem is
+    # pinned; the opentelemetry-instrumentation-* gems have their own
+    # versions and stay Dependabot's.
+    ignore:
+      - dependency-name: "opentelemetry-sdk"  # otel-ruby
+      - dependency-name: "datadog"            # datadog-ruby
+      - dependency-name: "newrelic_rpm"       # newrelic-ruby
+      - dependency-name: "elastic-apm"        # elastic-apm-ruby
 
   # PHP: app composer.json (agents are installed in the Dockerfile — manual).
   - package-ecosystem: composer
@@ -127,6 +173,13 @@ updates:
         exclude-patterns:
           - "opentelemetry*"              # opentelemetry, opentelemetry_sdk, opentelemetry-http
           - "datadog-opentelemetry"
+    # pins.yaml `packages:` — moved by bump-agents.yml (`cargo update` for
+    # the whole family at once, which single-crate PRs cannot do).
+    ignore:
+      - dependency-name: "opentelemetry"          # otel-rust
+      - dependency-name: "opentelemetry_sdk"      # otel-rust
+      - dependency-name: "opentelemetry-http"     # otel-rust
+      - dependency-name: "datadog-opentelemetry"  # datadog-rust
 
   # Base images in every Dockerfile. Language toolchain images are checked
   # against their manifests by scripts/check-toolchains.sh. Two toolchains are
@@ -138,6 +191,9 @@ updates:
   #         move with pom.xml's <java.version> (bump all three together; the
   #         JVM is a measured parameter, so pick the LTS deliberately).
   # Their majors are left to a human.
+  # relays/php pins php:8.3-apache by tag@digest and the extension installer by
+  # exact version so its ~30 min gRPC compile stays cached between runs; the
+  # digest and version bumps arrive here as PRs (see the Dockerfile header).
   - package-ecosystem: docker
     directories:
       - /docker

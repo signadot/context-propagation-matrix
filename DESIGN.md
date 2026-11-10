@@ -235,6 +235,19 @@ from `results/raw/*.json` plus the registry (`variants.yaml`):
   (`pass` · `partial` · `new_trace` · `fail` · `undelivered` · `not_run`)
   next to the driver's raw status. Annotations (below) are embedded, and a
   `summary` carries per-header totals and a tool × language scorecard.
+
+  A measurement is identified independently of the run that contains it.
+  Each measured variant carries `tracer.version` (what the relay reported
+  at run time), `measured_in` (the run id of the release whose job ran the
+  hops), `measured_commit` (the harness commit that job ran) and
+  `matrix_version` (the measurement contract, from `variants.yaml`, bumped
+  by hand when a dimension or an outcome's meaning changes; the run manifest
+  carries the current value as `run.matrix_version`). A variant measured in
+  this run has `measured_in == run.run_id`; a carried-over one keeps the
+  values it had in the release it came from, so a (variant, tracer version)
+  pair resolves to the same measurement in every run that carries it. The
+  site uses these to present results per tracer version and to say where
+  and when each one was measured.
 - `results/latest/MATRIX.md` — the human-readable tables, rendered from the
   same document.
 - `results/latest/changes.json` — when a previous run is given
@@ -254,7 +267,28 @@ Release tagged `run-YYYY-MM-DD[.N]` with five assets:
 | `logs.tar.gz` | relay and sink container logs for the variants measured in that run |
 
 Back-tests of older tracer versions publish `backtest-{variant}-{version}`
-releases with a single-variant `results.json`, `MATRIX.md` and the raw file.
+pre-releases with a single-variant `results.json`, `MATRIX.md` and the raw
+file.
+
+Runs and back-tests are the record of each *job*. The same measurements are
+also filed the way people look for them — by tracer version — in one rolling
+release per instrumented variant, `variant-{id}`:
+
+| Asset | Contents |
+|---|---|
+| `{version}.json` | a single-variant schema v2 document for that tracer version: the variant, the run manifest it was measured in, the dimensions, the annotations that touch it and a summary for it alone |
+| `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts |
+
+`{version}` is the *pinned* tracer version (`tracer.pinned`: what `cpm pins`
+reads from the manifest the relay was built from, the value a bump PR names
+and a back-test tag carries), not the string the relay reports —
+`open-telemetry/sdk 1.15.0 (ext-opentelemetry 1.2.1)` is filed as `1.2.1`.
+Every matrix run files the variants it measured and every back-test files
+its one pair (`scripts/publish-versions.sh`, wrapping `cpm versions`); when
+a version is measured again the latest measurement replaces the earlier one.
+`scripts/rebuild-versions.sh` recreates all of them from the run and
+back-test releases. The site reads `index.json` per variant and one
+`{version}.json` per page instead of every run release.
 A back-test does not build differently: `backtest.yml` rewrites the pin
 behind the variant in its checkout (`cpm pins set -variant V -version X`,
 the edit a Dependabot PR would make, pointed backwards) and builds the
@@ -317,39 +351,61 @@ Dockerfile, so a rebuild months from now produces the same images and the
 matrix stays attributable to exact tracer versions (each table row carries
 the version that produced it).
 
-Updates arrive as Dependabot PRs (`.github/dependabot.yml` at the repo
-root): gomod (root module, `relays/go`, and the two build-time weaving
-modules `relays/go-orchestrion` — which pins orchestrion + dd-trace-go in
-go.mod — and `relays/go-otelc` — which pins otelc via the go.mod `tool`
-directive), npm (app + one single-dependency manifest per Node tool under
-`relays/node/tools/`), pip (`requirements.txt` + `requirements-<tool>.txt`),
-bundler (one Gemfile per tool under `relays/ruby/gemfiles/`), composer,
-maven, nuget, cargo, and docker base images.
+Two bots move versions, and they do not overlap:
 
-Dependabot cannot see versions that live only in Dockerfiles; these are
-manual ARG bumps:
+- **Dependabot** (`.github/dependabot.yml`) keeps the *application*
+  dependencies and toolchain images current: gomod (root module,
+  `relays/go`, and the two build-time weaving modules `relays/go-orchestrion`
+  and `relays/go-otelc`), npm (app + one single-dependency manifest per Node
+  tool under `relays/node/tools/`), pip (`requirements.txt` +
+  `requirements-<tool>.txt`), bundler (one Gemfile per tool under
+  `relays/ruby/gemfiles/`), composer, maven, nuget, cargo, and docker base
+  images — one grouped `app-deps` PR per ecosystem. Every tracer package
+  that `pins.yaml` lists is in that ecosystem's `ignore` list, so Dependabot
+  never proposes a tracer bump (it also cannot see the Dockerfile ARGs).
+- **bump-agents.yml** moves the *tracers*. `pins.yaml` lists where every
+  tracer's pin lives — Dockerfile ARG, go.mod module family, package.json,
+  requirements file, Gemfile, Cargo.toml — keyed by the same
+  registry/package coordinates as `variants.yaml`'s `tracer`. Every 6 hours
+  `cpm pins latest` asks each pin's registry (Maven Central, GitHub
+  Releases, PECL, Packagist, New Relic's download index, the Go module
+  proxy, npm, PyPI, RubyGems, crates.io) for the newest stable version and,
+  for each pin that is behind, `cpm pins latest -only <id> -apply` writes it
+  the way the ecosystem expects (`go get` + `go mod tidy` for the whole
+  module family, `cargo update` for the crate family, a JSON key, every
+  `==` line, a `gem` line, an `ARG`). There is exactly one PR per pin: branch
+  `bump/<id>`, title `bump(<id>): <from> → <to>`, labels `dependencies` +
+  `tracer-bump` + `auto-merge`, squash auto-merge requested. A newer
+  upstream release rewrites that branch (current `main` + one commit) and
+  PR in place and closes any older PR for the same pin as superseded, so
+  the queue never holds two PRs for one tracer, and a PR that has gone
+  conflicting (a sibling pin in the same manifest merged first) is rebuilt
+  on the next run. For PRs made with the workflow's own token GitHub holds
+  the `pull_request` run of `verify.yml` for a maintainer's approval
+  ("Approve and run" on the PR); once approved it reports like any other
+  check and auto-merge completes after review. With the optional `BUMP_PAT`
+  secret set, the bot pushes and opens PRs as that user instead and the
+  runs start unprompted.
 
-- `relays/java/Dockerfile` — the four agent jars.
-- `relays/dotnet/Dockerfile` — the four agent installers/tarballs.
-- `relays/php/Dockerfile` — the OTel extension + composer requires, the
-  Datadog setup script release, the New Relic tarball, and the Elastic .deb.
-
-The Dockerfile-only versions are bumped automatically by
-`.github/workflows/bump-agents.yml`, which queries Maven Central, GitHub
-Releases, PECL and New Relic's download index daily and opens a PR per
-newer version (same shape as a Dependabot PR).
-
-`pins.yaml` lists where every tracer's pin lives — Dockerfile ARG, go.mod
-module family, package.json, requirements file, Gemfile, Cargo.toml — keyed
-by the same registry/package coordinates as `variants.yaml`'s `tracer`.
-`cpm pins` reads and writes them the way each ecosystem expects (`go get` +
-`go mod tidy`, `cargo update`, a JSON key, a `==` line, a `gem` line, an
-`ARG`): `bump-agents.yml` runs `cpm pins latest -apply` to move the `arg`
-pins forward, `backtest.yml` runs `cpm pins set` to move any pin backwards
-in a scratch checkout, and `verify.yml` runs `cpm pins check` so every
-instrumented variant has exactly one pin. `cpm discover` lists the older
-versions a back-test should cover, from the same registry clients
-(`internal/versions`). The versions themselves stay in the manifests.
+The same `cpm pins` write path serves `backtest.yml`, which runs `cpm pins
+set` to move any pin *backwards* in a scratch checkout, and `verify.yml`
+runs `cpm pins check` so every instrumented variant has exactly one pin and
+every cargo crate has one copy in `Cargo.lock`. That last rule is the Rust
+relay's safety net: `datadog-opentelemetry` requires an exact `opentelemetry`
+version, and a bump of either pin that outruns the other gives the two relay
+binaries different copies of the API crate — the build, boot and delivery
+checks all pass while the datadog relay injects nothing. `otel-rust` is
+therefore pinned to the version `datadog-opentelemetry` requires, and the
+two move together.
+`cpm discover` lists the older versions a back-test should cover, from the
+same registry clients (`internal/versions`), counting back from each
+variant's `tracer.pinned` and leaving out what a pin's
+`backtest: { min, skip }` policy rules out (versions that cannot be built or
+whose family never shipped together — each with its reason in a comment).
+The monthly back-test fills gaps only; dispatching it with `refresh`
+measures every candidate pair again, which is how older versions catch up
+after a `matrix_version` bump or a relay change. The versions themselves
+stay in the manifests.
 
 After merging any bump that touches a tracer or instrumentation library, CI
 (`matrix.yml`) re-runs the variants that bump can affect — `cpm affected`
