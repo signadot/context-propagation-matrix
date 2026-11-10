@@ -161,7 +161,8 @@ func pinsSet(args []string) error {
 	if err != nil {
 		return err
 	}
-	files, err := p.Write(*version)
+	client := &versions.Client{}
+	files, err := p.Write(context.Background(), *version, client.Requirements)
 	if err != nil {
 		return err
 	}
@@ -338,7 +339,7 @@ func pinsLatest(args []string) error {
 		for i := range bumps {
 			b := &bumps[i]
 			p := pinByID(m, b.ID)
-			files, err := p.Write(b.To)
+			files, err := p.Write(ctx, b.To, client.Requirements)
 			if err != nil {
 				return err
 			}

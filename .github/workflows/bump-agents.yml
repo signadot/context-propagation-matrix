@@ -116,8 +116,8 @@ jobs:
             echo "::notice::#$number ($title) already proposes $TO; nothing to do"
           else
             # No PR, a PR for an older version, or a PR that conflicts with
-            # main (a sibling pin in the same Dockerfile / go.sum / Cargo.lock
-            # merged first): rebuild the branch on current main.
+            # main (a sibling pin in the same Dockerfile / go.sum merged
+            # first): rebuild the branch on current main.
             [[ "$mergeable" == "CONFLICTING" ]] && echo "::notice::#$number conflicts with main; rebuilding"
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi

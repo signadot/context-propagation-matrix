@@ -38,8 +38,10 @@ func fixture() *registry.Registry {
 			// As in the real registry, the Node baseline's source is the
 			// directory the tool sources live under.
 			{ID: "none-node", Tool: "none", Language: "node", Flavour: "default", Source: "relays/node"},
-			{ID: "otel-rust", Tool: "otel", Language: "rust", Flavour: "default", SetupTier: tier, Tracer: pkg("otel-rust"), Source: "relays/rust"},
-			{ID: "datadog-rust", Tool: "datadog", Language: "rust", Flavour: "default", SetupTier: tier, Tracer: pkg("dd-rust"), Source: "relays/rust"},
+			// Rust keeps one crate per tool over shared source, like Ruby.
+			{ID: "otel-rust", Tool: "otel", Language: "rust", Flavour: "default", SetupTier: tier, Tracer: pkg("otel-rust"), Source: "relays/rust/otel"},
+			{ID: "datadog-rust", Tool: "datadog", Language: "rust", Flavour: "default", SetupTier: tier, Tracer: pkg("dd-rust"), Source: "relays/rust/datadog"},
+			{ID: "none-rust", Tool: "none", Language: "rust", Flavour: "default", Source: "relays/rust/none"},
 			// Ruby keeps one Gemfile directory per tool and the app code beside them.
 			{ID: "otel-ruby", Tool: "otel", Language: "ruby", Flavour: "default", SetupTier: tier, Tracer: pkg("otel-ruby"), Source: "relays/ruby/gemfiles/otel"},
 			{ID: "none-ruby", Tool: "none", Language: "ruby", Flavour: "default", Source: "relays/ruby/gemfiles/none"},
@@ -63,7 +65,9 @@ func TestPaths(t *testing.T) {
 		want  []string
 		all   bool
 	}{
-		{"one language source", []string{"relays/rust/Cargo.toml"}, []string{"otel-rust", "datadog-rust"}, false},
+		{"one rust tool crate", []string{"relays/rust/otel/Cargo.toml", "relays/rust/otel/Cargo.lock"}, []string{"otel-rust"}, false},
+		{"rust shared source and build script", []string{"relays/rust/src/lib.rs", "relays/rust/build.rs"}, []string{"otel-rust", "datadog-rust", "none-rust"}, false},
+		{"rust shared dockerfile", []string{"relays/rust/Dockerfile"}, []string{"otel-rust", "datadog-rust", "none-rust"}, false},
 		{"java app code", []string{"relays/java/src/main/java/Relay.java"}, []string{"otel-java", "datadog-java", "none-java"}, false},
 		{"one node tool", []string{"relays/node/tools/datadog/package.json"}, []string{"datadog-node", "datadog-node-defaults"}, false},
 		{"node shared dockerfile is an ancestor of the tool sources", []string{"relays/node/Dockerfile"}, []string{"otel-node", "datadog-node", "datadog-node-defaults", "none-node"}, false},
@@ -77,7 +81,7 @@ func TestPaths(t *testing.T) {
 		{"the workflow itself", []string{".github/workflows/matrix.yml"}, allIDs(reg), true},
 		{"annotations only", []string{"annotations/datadog.yaml", "annotations/otel.yaml"}, nil, false},
 		{"docs and aggregator", []string{"README.md", "relays/rust/README.md", "cmd/cpm/main.go", "internal/results/results.go", ".github/workflows/verify.yml", "scripts/fetch-latest.sh", "run.sh"}, nil, false},
-		{"mixed: docs plus one relay", []string{"CONTRIBUTING.md", "relays/rust/src/main.rs"}, []string{"otel-rust", "datadog-rust"}, false},
+		{"mixed: docs plus one relay", []string{"CONTRIBUTING.md", "relays/rust/datadog/Cargo.lock"}, []string{"datadog-rust"}, false},
 		{"unknown top-level path is conservative", []string{"tools/new-thing.sh"}, allIDs(reg), true},
 		{"relay path outside every source is conservative", []string{"relays/common/shared.txt"}, allIDs(reg), true},
 		{"nothing changed", nil, nil, false},

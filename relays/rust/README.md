@@ -11,22 +11,40 @@ exactly this manual extract/inject pattern, because "there is no automatic
 instrumentation for Rust"
 ([Trace Context Propagation → Rust](https://docs.datadoghq.com/tracing/trace_collection/trace_context_propagation/?tab=rust)).
 
-One crate (`cpmatrix-relay`) with a shared instrumentation-free-ish library
-(`src/lib.rs`, `src/inbound.rs`, `src/forward.rs` — transports, env, /info)
-plus the carriers (`src/propagation.rs`) and two binaries, one per tool
-(mirroring relays/go's multi-main layout):
+One crate per tool — `otel/`, `datadog/`, `none/`, each a `Cargo.toml` with
+its own committed `Cargo.lock` — over one shared source tree (the layout
+relays/ruby uses with `gemfiles/<tool>` and relays/node with `tools/<tool>`):
 
-- `src/bin/relay-otel.rs` → plain OpenTelemetry (`opentelemetry` +
-  `opentelemetry_sdk` 0.32)
-- `src/bin/relay-datadog.rs` → Datadog's official Rust SDK
-  (`datadog-opentelemetry` 0.5.2, from
-  [dd-trace-rs](https://github.com/DataDog/dd-trace-rs); the crate pins
-  `opentelemetry` 0.32, so both binaries share one copy of the OTel API and
-  the same shared code paths — only the installed provider/propagator differ)
+- `src/lib.rs`, `src/inbound.rs`, `src/forward.rs` — transports, env, /info;
+  `src/propagation.rs` — the carriers; `build.rs` — gRPC stubs and the
+  `/info` version stamps. Compiled into every tool's crate.
+- `otel/` builds `src/bin/relay-otel.rs` → plain OpenTelemetry
+  (`opentelemetry` + `opentelemetry_sdk` + `opentelemetry-http`, pinned
+  exactly as a family).
+- `datadog/` builds `src/bin/relay-datadog.rs` → Datadog's official Rust SDK
+  (`datadog-opentelemetry`, from
+  [dd-trace-rs](https://github.com/DataDog/dd-trace-rs)) with the
+  `opentelemetry` and `opentelemetry-http` requirements set to what that
+  release of the SDK declares.
+- `none/` builds `src/bin/relay-none.rs` → nothing installed; the API
+  crates are ordinary application dependencies.
+
+The split exists because the tracers are versioned independently and the
+OpenTelemetry API crate must resolve to **one copy** per binary:
+`datadog-opentelemetry` requires an exact `opentelemetry` (0.6.0 → `=0.33.0`),
+and with two copies in a lock the SDK installs its propagator in one while
+the relay's `global::get_text_map_propagator()` reads the other — the build,
+boot and delivery checks all pass and nothing is injected (the 2026-11-01
+back-tests of 0.3.2–0.4.0 show 0/16 for exactly that reason). In one shared
+crate that forced `otel-rust` to sit at whatever `opentelemetry` the Datadog
+SDK required; with a crate per tool the otel pin moves freely and the
+datadog crate's API requirement follows its SDK (`pins.yaml`: `follow`).
+`cpm pins check` still refuses a second copy of a pinned or followed crate.
 
 Build: `relays/rust/Dockerfile` with build context = repo root (for
-`proto/relay.proto`) and `--build-arg TOOL=otel|datadog`, matching
-relays/go/Dockerfile.
+`proto/relay.proto`) and `--build-arg TOOL=otel|datadog|none`, matching
+relays/go/Dockerfile; it copies `src/`, `build.rs` and the selected tool's
+manifest and lockfile only.
 
 ## Transport libraries
 
@@ -135,13 +153,15 @@ docs and the 0.5.2 source):
   queues are declared defensively (idempotent), matching relays/node.
   RabbitMQ deliveries are acked even on handler error (never redeliver-loop
   in the harness, matching relays/node).
-- `/info` versions are stamped at build time by `build.rs` from `Cargo.lock`
-  (`tracer_version` = the `opentelemetry` or `datadog-opentelemetry` crate
-  version) and `rustc --version`; no runtime lookups. Docker builds use
-  `--locked` so the stamped versions always match the committed lockfile.
-- Dockerfile uses `rust:1.93-bookworm` (not 1.8x): the 2026 dependency tree's
-  MSRVs have moved past 1.8x, and 1.93 matches the toolchain the committed
-  `Cargo.lock` was generated with. `cmake` is installed for rdkafka's
+- `/info` versions are stamped at build time by `build.rs` from the tool's
+  `Cargo.lock` (`tracer_version` = the `opentelemetry` or
+  `datadog-opentelemetry` crate version; `libs.propagation` lists the
+  OpenTelemetry crates that lock holds) and `rustc --version`; no runtime
+  lookups. Docker builds use `--locked` so the stamped versions always match
+  the committed lockfile.
+- Dockerfile uses `rust:1.9x-bookworm` (not 1.8x): the 2026 dependency tree's
+  MSRVs have moved past 1.8x, and it matches the toolchain the committed
+  lockfiles were generated with. `cmake` is installed for rdkafka's
   `cmake-build` (vendored librdkafka, zlib statically linked via
   `libz-static`) and `protobuf-compiler` for tonic-prost-build. The COPY
   paths are explicit because the repo root has no `.dockerignore` — a blanket

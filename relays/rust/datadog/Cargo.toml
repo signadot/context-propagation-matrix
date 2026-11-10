@@ -1,0 +1,57 @@
+# The Datadog Rust relay: the shared source in ../src with Datadog's official
+# Rust SDK installed (see ../otel/Cargo.toml for the per-tool layout).
+[package]
+name = "cpmatrix-relay-datadog"
+version = "0.1.0"
+edition = "2021"
+publish = false
+build = "../build.rs"
+
+[lib]
+name = "relay"
+path = "../src/lib.rs"
+
+[[bin]]
+name = "relay-datadog"
+path = "../src/bin/relay-datadog.rs"
+
+[dependencies]
+# Transports (deliberately naive application libraries).
+axum = "0.8"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time", "sync"] }
+# No TLS backend: the sink is plain http, and this keeps the build image lean.
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
+tonic = "0.14"
+tonic-prost = "0.14"
+prost = "0.14"
+# cmake-build: compile the vendored librdkafka with cmake (no system lib).
+# libz-static: statically link zlib so the runtime image needs nothing extra.
+rdkafka = { version = "0.39", features = ["cmake-build", "libz-static", "tokio"] }
+# tokio runtime only; no TLS backend needed for plain amqp://.
+lapin = { version = "4", default-features = false, features = ["tokio"] }
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+http = "1"
+
+# The tracer. datadog-opentelemetry is an OpenTelemetry SDK distribution
+# that installs Datadog's tracer provider and propagator in
+# `opentelemetry::global`; the relay's inject/extract calls (and the HTTP
+# carrier crate) must therefore resolve to the one copy of the API crate it
+# links against — with two copies in Cargo.lock the relay builds, boots and
+# injects nothing. Each datadog-opentelemetry release declares the
+# opentelemetry version it is built against (0.6.0 exactly, 0.5.x and
+# older by caret); `cpm pins` writes that same requirement here for
+# opentelemetry and opentelemetry-http whenever it moves
+# datadog-opentelemetry (pins.yaml: datadog-rust, `follow`), so the three
+# always resolve together. Do not edit the two by hand.
+datadog-opentelemetry = "=0.6.0"
+opentelemetry = "=0.33.0"
+opentelemetry-http = "=0.33.0"
+
+[build-dependencies]
+# tonic 0.14 moved protobuf codegen out of tonic-build into tonic-prost-build.
+tonic-prost-build = "0.14"
+
+[profile.release]
+strip = true

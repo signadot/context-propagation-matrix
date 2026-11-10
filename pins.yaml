@@ -38,11 +38,15 @@
 #   kind: bundler  file (Gemfile) + packages (gem names)
 #   kind: cargo    dir + packages (crates): Cargo.toml requirement set exact
 #                  and Cargo.lock moved with `cargo update`, so the
-#                  Dockerfile's `--locked` build still applies. `check` also
-#                  requires one copy of each crate in Cargo.lock: a second
-#                  copy (another dependency requiring a version the exact
-#                  requirement excludes) splits the OTel API crate and the
-#                  relay stops propagating (relays/rust/Cargo.toml).
+#                  Dockerfile's `--locked` build still applies. Optional
+#                  follow { dep: [crates] }: when the pinned crate is moved,
+#                  the listed crates' requirements are set to the one the
+#                  pinned release declares on dep (crates.io reports it), so
+#                  a tracer that requires the OTel API crate exactly and the
+#                  relay's own use of it resolve to one copy. `check` also
+#                  requires one copy of each pinned and followed crate in
+#                  Cargo.lock: a second copy splits the OTel API crate and
+#                  the relay stops propagating (relays/rust/README.md).
 #   backtest  optional { min: X, skip: [Y, …] }: versions `cpm discover` must
 #             not propose — older than min, or listed — because they cannot be
 #             built or measured. Say why in a comment next to it.
@@ -335,24 +339,19 @@ pins:
     source: { registry: rubygems, package: elastic-apm }
     variants: [elastic-ruby]
 
-  # ---- Rust (Cargo.toml + Cargo.lock) ------------------------------------
-  # The two Rust pins are coupled: datadog-opentelemetry requires an exact
-  # opentelemetry version (0.6.0 → =0.33.0), and both relay binaries must
-  # share one copy of the API crate (relays/rust/Cargo.toml). So otel-rust
-  # sits at the version datadog-opentelemetry requires, not the newest, and
-  # a bump of either pin that outruns the other fails `cpm pins check` with
-  # two copies in Cargo.lock — move them together.
+  # ---- Rust (Cargo.toml + Cargo.lock, one crate per tool) -----------------
+  # Each Rust relay is its own crate, relays/rust/<tool>, with its own
+  # Cargo.lock over the shared source in relays/rust/src — so the two pins
+  # move independently (relays/rust/README.md).
   - id: otel-rust
     kind: cargo
-    dir: relays/rust
+    dir: relays/rust/otel
     packages: [opentelemetry, opentelemetry_sdk, opentelemetry-http]
     source: { registry: crates, package: opentelemetry }
     variants: [otel-rust]
     # The three crates move in lockstep except for point releases of one of
     # them: opentelemetry 0.29.1 has no opentelemetry-http 0.29.1, so the
     # exact family requirement cannot resolve. (Back-test 2026-11-01.)
-    # Back-testing otel-rust below the datadog requirement is fine: the
-    # otel relay binary only uses the copy Cargo.toml names.
     # The relay source is written to the 0.28 API (opentelemetry_sdk 0.28
     # renamed TracerProvider to SdkTracerProvider); 0.27 and older fail to
     # compile, and 0.27.1 also has no opentelemetry-http 0.27.1. Measuring
@@ -361,15 +360,17 @@ pins:
     backtest: { min: 0.28.0, skip: [0.29.1] }
   - id: datadog-rust
     kind: cargo
-    dir: relays/rust
+    dir: relays/rust/datadog
     packages: [datadog-opentelemetry]
+    # datadog-opentelemetry is built against one opentelemetry release and
+    # requires it (=0.33.0 at 0.6.0, ^0.32.0 at 0.5.x, ^0.31.0 at 0.1–0.4);
+    # the relay's own API and HTTP-carrier crates take that requirement so
+    # Cargo.lock holds one copy and the Datadog propagator is the one the
+    # relay calls. (The 2026-11-01 back-tests of 0.3.2–0.4.0 were measured
+    # with two copies and show 0/16 for that reason; re-run after the split.)
+    follow:
+      opentelemetry: [opentelemetry, opentelemetry-http]
     source: { registry: crates, package: datadog-opentelemetry }
     variants: [datadog-rust]
-    # Older datadog-opentelemetry releases require an older opentelemetry
-    # than the relay pins (0.5.x → ^0.32, 0.3–0.4 → ^0.31), so a back-test
-    # of one builds with two copies of the API crate and measures nothing
-    # (the 0.3.2 and 0.4.0 back-tests of 2026-11-01 show 0/16 for that
-    # reason). Measuring them needs `cpm pins set` to move the opentelemetry
-    # family to the version the datadog release requires; until then only
-    # releases that share the relay's opentelemetry pin are back-tested.
-    backtest: { min: 0.6.0 }
+    # 0.0.0 is an empty name reservation with no dependencies.
+    backtest: { min: 0.1.0 }

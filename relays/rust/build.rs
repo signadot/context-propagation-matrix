@@ -1,7 +1,10 @@
-//! Build script: generates the tonic gRPC stubs from the shared
-//! proto/relay.proto (repo root), and stamps dependency versions from
-//! Cargo.lock plus the rustc version into env vars consumed by `/info`
-//! (via `env!` — no runtime lookups, per the harness contract).
+//! Build script shared by the per-tool crates in ../<tool>/Cargo.toml:
+//! generates the tonic gRPC stubs from the shared proto/relay.proto (repo
+//! root), and stamps dependency versions from the crate's own Cargo.lock
+//! plus the rustc version into env vars consumed by `/info` (via `env!` —
+//! no runtime lookups, per the harness contract). A crate the lock does not
+//! hold (opentelemetry_sdk outside the otel relay, datadog-opentelemetry
+//! outside the datadog one) is stamped "unknown" and left out of `/info`.
 
 use std::env;
 use std::error::Error;
@@ -10,15 +13,16 @@ use std::path::Path;
 use std::process::Command;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // gRPC stubs. The proto lives at the repo root; the relative path works
-    // both locally and in the Dockerfile (build context = repo root, crate at
-    // /src/relays/rust). Requires protoc on PATH (tonic-prost-build shells
-    // out to it).
-    println!("cargo:rerun-if-changed=../../proto/relay.proto");
+    // gRPC stubs. The proto lives at the repo root; paths are relative to
+    // the crate directory (relays/rust/<tool>) and work both locally and in
+    // the Dockerfile (build context = repo root, crate at
+    // /src/relays/rust/<tool>). Requires protoc on PATH (tonic-prost-build
+    // shells out to it).
+    println!("cargo:rerun-if-changed=../../../proto/relay.proto");
     tonic_prost_build::configure()
         .build_server(true)
         .build_client(true)
-        .compile_protos(&["../../proto/relay.proto"], &["../../proto"])?;
+        .compile_protos(&["../../../proto/relay.proto"], &["../../../proto"])?;
 
     // Version stamping from Cargo.lock (present before build scripts run;
     // the Docker build uses --locked so these match the committed lockfile).
