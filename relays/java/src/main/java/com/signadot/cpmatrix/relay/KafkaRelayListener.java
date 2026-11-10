@@ -1,6 +1,7 @@
 package com.signadot.cpmatrix.relay;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -8,7 +9,7 @@ import org.springframework.stereotype.Component;
 public class KafkaRelayListener {
 
     private final Forwarder forwarder;
-    private final ObjectMapper om = new ObjectMapper();
+    private final ObjectMapper om = JsonMapper.builder().build();
 
     public KafkaRelayListener(Forwarder forwarder) {
         this.forwarder = forwarder;

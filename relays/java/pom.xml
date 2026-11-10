@@ -19,6 +19,10 @@
     <java.version>25</java.version>
     <grpc.version>1.85.1</grpc.version>
     <protobuf.version>4.36.2</protobuf.version>
+    <!-- Spring Boot 4 manages gRPC and protobuf too; point its properties at
+         ours so the transitive grpc-core/grpc-api match the explicit stubs. -->
+    <grpc-java.version>${grpc.version}</grpc-java.version>
+    <protobuf-java.version>${protobuf.version}</protobuf-java.version>
   </properties>
 
   <dependencies>

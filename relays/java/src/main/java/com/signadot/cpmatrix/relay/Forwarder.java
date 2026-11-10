@@ -1,6 +1,7 @@
 package com.signadot.cpmatrix.relay;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.signadot.cpmatrix.SinkGrpc;
 import com.signadot.cpmatrix.SinkRequest;
 import io.grpc.Grpc;
@@ -26,7 +27,7 @@ public class Forwarder {
     private final RestTemplate http = new RestTemplate();
     private final KafkaTemplate<String, String> kafka;
     private final RabbitTemplate rabbit;
-    private final ObjectMapper om = new ObjectMapper();
+    private final ObjectMapper om = JsonMapper.builder().build();
 
     private final String sinkHttp = env("SINK_HTTP", "http://sink:9080");
     private final String sinkGrpc = env("SINK_GRPC", "sink:9081");
