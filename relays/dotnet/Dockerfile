@@ -14,7 +14,7 @@ ARG ELASTIC_APM_DOTNET_VERSION=1.36.0
 # major's shared framework, so a net8.0 build does not start on aspnet:10.0.
 # Bump the three together, after checking each agent's support matrix for the
 # new runtime. .NET 8 LTS support ends 2026-11-10.
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src/relays/dotnet
 # Mirror the repo layout so Relay.csproj's ../../proto/relay.proto resolves.
 COPY proto/relay.proto /src/proto/relay.proto
@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
 
 # ---- base runtime (uninstrumented) ----
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 COPY --from=build /out /app
 ENV TRACER_VERSION_FILE=/agent/version.txt
