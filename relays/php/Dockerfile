@@ -20,7 +20,7 @@
 # form Dependabot updates.
 FROM mlocati/php-extension-installer:2.13.2 AS php-ext-installer
 
-FROM php:8.3-apache@sha256:a800bbd2c0aa322702259ed475556b2cbc311076a8d3c4bba9bfe96838745472 AS app
+FROM php:8.5-apache@sha256:08af36df144462d84c7f16190557eec06cb9f656882685610b712a15eec54d46 AS app
 
 COPY --from=php-ext-installer /usr/bin/install-php-extensions /usr/local/bin/
 
