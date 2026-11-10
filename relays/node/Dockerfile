@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Build context is the repo root (so proto/ is reachable).
 
-FROM node:22-slim AS app
+FROM node:26-slim AS app
 WORKDIR /app
 COPY relays/node/package.json ./
 RUN npm install --omit=dev
