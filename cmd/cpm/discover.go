@@ -214,11 +214,15 @@ func githubHeaders(accept string) map[string]string {
 
 // publishedReleases pages through the repo's releases (up to 1000) and
 // collects the backtest-* tags and each variant-* release's index.json asset.
+// Drafts are ignored: a publish step that fails part-way (the API's rate
+// limit, say) leaves an empty draft carrying the tag name, and a draft is
+// not a measurement.
 func publishedReleases(ctx context.Context, client *versions.Client, repo string) (*releases, error) {
 	out := &releases{indexes: map[string]string{}}
 	for page := 1; page <= 10; page++ {
 		var rel []struct {
 			TagName string `json:"tag_name"`
+			Draft   bool   `json:"draft"`
 			Assets  []struct {
 				Name string `json:"name"`
 				URL  string `json:"url"`
@@ -232,6 +236,7 @@ func publishedReleases(ctx context.Context, client *versions.Client, repo string
 		}
 		for _, r := range rel {
 			switch {
+			case r.Draft:
 			case strings.HasPrefix(r.TagName, "backtest-"):
 				out.backtests = append(out.backtests, r.TagName)
 			case strings.HasPrefix(r.TagName, "variant-"):
