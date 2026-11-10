@@ -64,6 +64,7 @@
     (`baggage` header out, strict encoding, `CreatePreW3CPropagator()` to opt
     back) — an uninstrumented .NET service changes its propagation behaviour on
     a runtime upgrade. Harness runs used .NET 8.
-  status: by-design
+  status: fixed
+  fixed_in: "unknown"
   links:
     - { title: ".NET 10 breaking change: default trace context propagator", url: "https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/10.0/default-trace-context-propagator" }
