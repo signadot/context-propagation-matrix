@@ -168,7 +168,11 @@ services:
       TOOL: otel
       RELAY_TOPIC: relay-in-otel-node
       OTEL_SERVICE_NAME: relay-otel-node
-      OTEL_TRACES_EXPORTER: none
+      # Not `none`: @opentelemetry/sdk-node registers no TracerProvider when
+      # no trace exporter is configured, so the relay would forward the seeded
+      # headers verbatim (≥0.66.0) or inject nothing (≤0.65.0) without ever
+      # starting a span. `console` keeps the SDK live; spans go to stdout.
+      OTEL_TRACES_EXPORTER: console
       OTEL_METRICS_EXPORTER: none
       OTEL_LOGS_EXPORTER: none
       OTEL_PROPAGATORS: tracecontext,baggage
@@ -333,7 +337,10 @@ services:
       TOOL: otel
       RELAY_TOPIC: relay-in-otel-go-compiletime
       OTEL_SERVICE_NAME: relay-otel-go-compiletime
-      OTEL_TRACES_EXPORTER: none
+      # Not `none`: the otelc runtime installs no TracerProvider without an
+      # exporter, so the woven app forwarded the seeded headers verbatim and
+      # never started a span. `console` keeps the SDK live; spans go to stdout.
+      OTEL_TRACES_EXPORTER: console
       OTEL_PROPAGATORS: tracecontext,baggage
     depends_on: *relay-depends
 

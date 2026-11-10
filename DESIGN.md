@@ -168,7 +168,15 @@ consumes; topics are auto-created; every message is self-describing via
 
 - **otel**: SDK/agent defaults — `OTEL_PROPAGATORS=tracecontext,baggage`,
   exporters disabled/none (`OTEL_TRACES_EXPORTER=none` where applicable).
-  No collector needed: header injection is independent of export.
+  No collector needed. Header injection is independent of export for most
+  SDKs, but not all: `@opentelemetry/sdk-node` (otel-node) and the otelc
+  runtime (otel-go-compiletime) register no `TracerProvider` when no trace
+  exporter is configured, so with `none` they either forward the inbound
+  headers verbatim or inject nothing — a 16/16 or 0/16 that says nothing about
+  the instrumentation. Those two run with `OTEL_TRACES_EXPORTER=console`
+  (spans to stdout, no network). A variant whose observed `traceparent`
+  carries the seeded span-id on every delivered hop is the signature of this
+  problem: an active tracer always starts a new span on the inbound side.
 - **datadog**: primary run with
   `DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage` (the configuration
   from [dd-trace-java#11286](https://github.com/DataDog/dd-trace-java/issues/11286));
