@@ -372,5 +372,8 @@ pins:
       opentelemetry: [opentelemetry, opentelemetry-http]
     source: { registry: crates, package: datadog-opentelemetry }
     variants: [datadog-rust]
-    # 0.0.0 is an empty name reservation with no dependencies.
-    backtest: { min: 0.1.0 }
+    # 0.1.0–0.2.1 no longer build: their libdd-trace-utils (Datadog's own
+    # dependency) fails to compile against the prost it resolves to
+    # (`AgentPayload: Message` not satisfied). 0.0.0 is an empty name
+    # reservation. (Back-test 2026-11-10: 0.1.0–0.2.1 fail, 0.3.0 builds.)
+    backtest: { min: 0.3.0 }
