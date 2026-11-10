@@ -55,6 +55,11 @@ pins:
     arg: OTEL_JAVA_AGENT_VERSION
     source: { registry: maven, package: "io.opentelemetry.javaagent:opentelemetry-javaagent" }
     variants: [otel-java]
+    # Agents before 2.15.0 instrument logback with a virtual field the
+    # relay's logback (Spring Boot 3.5) no longer has, so the app dies at
+    # boot with NoSuchFieldError. (Back-test 2026-11-10: 2.13.0–2.14.0
+    # fail, 2.15.0 runs.)
+    backtest: { min: 2.15.0 }
   - id: dd-java-agent
     kind: arg
     file: relays/java/Dockerfile
@@ -187,6 +192,10 @@ pins:
       - github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2
     source: { registry: goproxy, package: github.com/DataDog/dd-trace-go/v2 }
     variants: [datadog-go, datadog-go-defaults]
+    # The contrib modules were not tagged for these core releases (no
+    # contrib/net/http/v2.1.0 etc.), so the family cannot move together.
+    # (Back-test 2026-11-10; 2.0.1 and 2.2.2 build.)
+    backtest: { skip: [2.1.0, 2.2.0, 2.2.1] }
   - id: dd-trace-go-orchestrion
     kind: gomod
     dir: relays/go-orchestrion
@@ -195,6 +204,9 @@ pins:
       - github.com/DataDog/dd-trace-go/v2
     source: { registry: goproxy, package: github.com/DataDog/dd-trace-go/v2 }
     variants: [datadog-go-orchestrion]
+    # orchestrion/all has no v2.1.0, v2.2.0 or v2.2.1 tag either.
+    # (Back-test 2026-11-10; 2.0.1 and 2.2.2 build.)
+    backtest: { skip: [2.1.0, 2.2.0, 2.2.1] }
   - id: newrelic-go-agent
     kind: gomod
     dir: relays/go
@@ -204,7 +216,10 @@ pins:
     # The v3.43.0 tag's go.mod requires integrations/nrsecurityagent at a
     # placeholder version (v0.0.0-00010101000000-000000000000), so `go get`
     # cannot resolve it. (Back-test 2026-11-09; 3.42.0 and 3.43.1 build.)
-    backtest: { skip: [3.43.0] }
+    # Below 3.35.0 the relay does not compile: nramqp.PublishWithContext
+    # gained its current arguments in 3.35.0 and the relay calls that form.
+    # (Back-test 2026-11-10: 3.27.0–3.34.0 fail, 3.35.0 builds.)
+    backtest: { min: 3.35.0, skip: [3.43.0] }
   - id: elastic-apm-go
     kind: gomod
     dir: relays/go
@@ -252,6 +267,12 @@ pins:
     packages: ["opentelemetry-*"]      # distro + instrumentation-* share a version line
     source: { registry: pypi, package: opentelemetry-distro }
     variants: [otel-python]
+    # opentelemetry-instrument before 0.49b0 imports pkg_resources, which
+    # the relay's python:3.12 image does not ship (setuptools is no longer
+    # preinstalled), so the relay never starts. Installing setuptools in
+    # the image would lift this. (Back-test 2026-11-10: 0.47b0–0.48b0
+    # fail, 0.49b0 runs.)
+    backtest: { min: 0.49b0 }
   - id: ddtrace
     kind: pip
     file: relays/python/requirements-datadog.txt
@@ -270,6 +291,11 @@ pins:
     packages: [elastic-apm]
     source: { registry: pypi, package: elastic-apm }
     variants: [elastic-python]
+    # Releases up to 6.13.0 have no wheel for the relay's Python and their
+    # setup.py imports pkg_resources, which the isolated build environment's
+    # setuptools no longer provides. (Back-test 2026-11-10: 6.9.1–6.13.0
+    # fail, 6.13.1 builds.)
+    backtest: { min: 6.13.1 }
 
   # ---- Ruby (one Gemfile per tool) ----------------------------------------
   - id: otel-ruby
@@ -290,6 +316,12 @@ pins:
     packages: [datadog]
     source: { registry: rubygems, package: datadog }
     variants: [datadog-ruby, datadog-ruby-defaults]
+    # The relay enables the waterdrop integration, which the gem added in
+    # 2.23.0; older gems raise InvalidIntegrationError in Datadog.configure
+    # and the relay never starts. A version-conditional integration list
+    # would lift this. (Back-test 2026-11-10: 2.18.0–2.22.0 fail, 2.23.0
+    # runs.)
+    backtest: { min: 2.23.0 }
   - id: newrelic-ruby
     kind: bundler
     file: relays/ruby/gemfiles/newrelic/Gemfile
