@@ -149,7 +149,8 @@ jobs:
             selected=""
           elif (( n > SMOKE_CAP )); then
             echo "::notice::$n variants affected (shared code changed); smoking the representative pair instead — the matrix run after merge covers them all"
-            selected=$(printf '%s\n' $SMOKE_REPRESENTATIVE)
+            # Sorted: comm below rejects unsorted input.
+            selected=$(printf '%s\n' $SMOKE_REPRESENTATIVE | sort)
           else
             selected="$affected"
           fi
