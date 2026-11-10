@@ -216,7 +216,7 @@ variants:
     setup_tier: in-code
     attach: "otelhttp / otelgrpc wrappers + hand-written Kafka and AMQP carriers"
     tracer: { name: go.opentelemetry.io/otel, registry: goproxy, package: go.opentelemetry.io/otel, github: open-telemetry/opentelemetry-go }
-    source: relays/go
+    source: relays/go/otel
   - id: otel-go-compiletime
     tool: otel
     language: go
@@ -335,7 +335,7 @@ variants:
     setup_tier: in-code
     attach: "dd-trace-go contrib wrappers (net/http, grpc, sarama) + hand-written AMQP carrier"
     tracer: { name: dd-trace-go, registry: goproxy, package: github.com/DataDog/dd-trace-go/v2, github: DataDog/dd-trace-go }
-    source: relays/go
+    source: relays/go/datadog
   - id: datadog-go-defaults
     tool: datadog
     language: go
@@ -344,7 +344,7 @@ variants:
     setup_tier: in-code
     attach: "dd-trace-go contribs, propagation style left at default"
     tracer: { name: dd-trace-go, registry: goproxy, package: github.com/DataDog/dd-trace-go/v2, github: DataDog/dd-trace-go }
-    source: relays/go
+    source: relays/go/datadog
   - id: datadog-go-orchestrion
     tool: datadog
     language: go
@@ -446,7 +446,7 @@ variants:
     setup_tier: in-code
     attach: "apmhttp / apmgrpc wrappers + hand-written carriers"
     tracer: { name: go.elastic.co/apm, registry: goproxy, package: go.elastic.co/apm/v2, github: elastic/apm-agent-go }
-    source: relays/go
+    source: relays/go/elastic
   - id: elastic-dotnet
     tool: elastic
     language: dotnet
@@ -511,7 +511,7 @@ variants:
     setup_tier: in-code
     attach: "go-agent WrapHandle + nrgrpc + nrsarama + nramqp"
     tracer: { name: go-agent, registry: goproxy, package: github.com/newrelic/go-agent/v3, github: newrelic/go-agent }
-    source: relays/go
+    source: relays/go/newrelic
   - id: newrelic-dotnet
     tool: newrelic
     language: dotnet
@@ -544,7 +544,7 @@ variants:
   - { id: none-java,   tool: none, language: java,   flavour: default, display_name: Java,    setup_tier: null, source: relays/java }
   - { id: none-node,   tool: none, language: node,   flavour: default, display_name: Node.js, setup_tier: null, source: relays/node }
   - { id: none-python, tool: none, language: python, flavour: default, display_name: Python,  setup_tier: null, source: relays/python }
-  - { id: none-go,     tool: none, language: go,     flavour: default, display_name: Go,      setup_tier: null, source: relays/go }
+  - { id: none-go,     tool: none, language: go,     flavour: default, display_name: Go,      setup_tier: null, source: relays/go/none }
   - { id: none-dotnet, tool: none, language: dotnet, flavour: default, display_name: .NET,    setup_tier: null, source: relays/dotnet }
   - { id: none-ruby,   tool: none, language: ruby,   flavour: default, display_name: Ruby,    setup_tier: null, source: relays/ruby/gemfiles/none }
   - { id: none-php,    tool: none, language: php,    flavour: default, display_name: PHP,     setup_tier: null, source: relays/php }

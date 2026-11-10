@@ -362,9 +362,10 @@ the version that produced it).
 Two bots move versions, and they do not overlap:
 
 - **Dependabot** (`.github/dependabot.yml`) keeps the *application*
-  dependencies and toolchain images current: gomod (root module,
-  `relays/go`, and the two build-time weaving modules `relays/go-orchestrion`
-  and `relays/go-otelc`), npm (app + one single-dependency manifest per Node
+  dependencies and toolchain images current: gomod (root module, one module
+  per hand-wired Go tool under `relays/go/<tool>`, and the two build-time
+  weaving modules `relays/go-orchestrion` and `relays/go-otelc`), npm (app +
+  one single-dependency manifest per Node
   tool under `relays/node/tools/`), pip (`requirements.txt` +
   `requirements-<tool>.txt`), bundler (one Gemfile per tool under
   `relays/ruby/gemfiles/`), composer, maven, nuget, cargo, and docker base

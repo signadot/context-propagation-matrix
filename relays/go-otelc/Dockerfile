@@ -19,9 +19,9 @@ ENV GOTOOLCHAIN=auto
 WORKDIR /src
 # Both modules' manifests first, for layer-cached dependency downloads. The
 # relays/go-otelc module has a `replace
-# github.com/signadot/context-propagation-matrix => ../../` directive, so the
-# root go.mod must be in place.
-COPY go.mod go.sum ./
+# github.com/signadot/context-propagation-matrix/gen => ../../gen` directive,
+# so the stubs' go.mod must be in place.
+COPY gen/go.mod gen/go.sum ./gen/
 COPY relays/go-otelc/go.mod relays/go-otelc/go.sum ./relays/go-otelc/
 RUN --mount=type=cache,target=/go/pkg/mod cd relays/go-otelc && go mod download
 # Now the source.

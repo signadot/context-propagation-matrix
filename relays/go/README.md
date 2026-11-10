@@ -14,12 +14,24 @@ Orchestrion → `datadog-go-orchestrion`) and `relays/go-otelc/` (OpenTelemetry
 compile-time instrumentation → `otel-go-compiletime`). Comparing those rows
 against the hand-wired ones isolates exactly what weaving replaces.
 
-One Go module (`relays/go/go.mod`) with four main packages (`./otel`,
-`./datadog`, `./newrelic`, `./elastic`) and a shared `./internal/common`
-package (env handling, JSON types, `/info` assembly, `/relay` handler and
-RabbitMQ dial/declare/consume-loop plumbing — nothing tracing-related). The
-module `replace`s the repo root module so it can import the pre-generated
-gRPC stubs at `gen/cpmatrix`.
+One Go module per tool (`relays/go/<tool>/go.mod` for `otel`, `datadog`,
+`newrelic`, `elastic` and the `none` baseline), each a single `main` package.
+They share `./internal/common` (env handling, JSON types, `/info` assembly,
+`/relay` handler and RabbitMQ dial/declare/consume-loop plumbing — nothing
+tracing-related), which is its own small module (`relays/go/internal/go.mod`),
+and the pre-generated gRPC stubs at `gen/cpmatrix`, also their own module
+(`gen/go.mod`). Each tool module `replace`s those two with their in-repo
+directories and depends on nothing else from the repository.
+
+The point of the split is that pinning one tracer to an old release
+(back-tests, `cpm pins set`) must never have to move another module's
+dependency graph. With one shared module, `go get go.opentelemetry.io/otel@1.3x`
+also had to downgrade dd-trace-go, which capped the otel-go history at 1.40.0;
+and depending on the repo root module dragged in the driver's current grpc,
+which requires `go.opentelemetry.io/otel` ≥ 1.45 since grpc 1.70. The two
+shared modules therefore declare *floors* (grpc 1.68.1, the last release
+without an otel requirement) and stay out of Dependabot; the tool modules
+carry the current versions and MVS takes the maximum.
 
 RabbitMQ client for all four relays: `github.com/rabbitmq/amqp091-go`
 v1.14.0. Queues are declared idempotently on startup with the contract's
@@ -27,8 +39,8 @@ properties (durable=false, auto-delete=false, exclusive=false); outbound
 messages go to the sink queue via the default exchange.
 
 Build: `relays/go/Dockerfile` with build context = repo root and
-`--build-arg TOOL=otel|datadog|newrelic|elastic` (single Dockerfile,
-`ARG`-selected binary; pure Go, `CGO_ENABLED=0`).
+`--build-arg TOOL=otel|datadog|newrelic|elastic|none` (single Dockerfile,
+`ARG`-selected module; pure Go, `CGO_ENABLED=0`).
 
 ## otel (`./otel`)
 

@@ -41,7 +41,13 @@ gowant() {
 }
 root_want=$(gowant go.mod)
 for pair in "go.mod docker/go.Dockerfile" \
-            "relays/go/go.mod relays/go/Dockerfile" \
+            "gen/go.mod docker/go.Dockerfile" \
+            "relays/go/internal/go.mod relays/go/Dockerfile" \
+            "relays/go/otel/go.mod relays/go/Dockerfile" \
+            "relays/go/datadog/go.mod relays/go/Dockerfile" \
+            "relays/go/newrelic/go.mod relays/go/Dockerfile" \
+            "relays/go/elastic/go.mod relays/go/Dockerfile" \
+            "relays/go/none/go.mod relays/go/Dockerfile" \
             "relays/go-otelc/go.mod relays/go-otelc/Dockerfile" \
             "relays/go-orchestrion/go.mod relays/go-orchestrion/Dockerfile"; do
   set -- $pair; mod=$1; df=$2
@@ -54,12 +60,14 @@ for pair in "go.mod docker/go.Dockerfile" \
   else
     bad "$df golang:$have is older than $mod go $want (bump the FROM tag)"
   fi
-  # Relay modules depend on the root module through a replace directive.
-  if [[ "$mod" != go.mod ]] && grep -qE '^replace .* => \.\./\.\./?$' "$mod"; then
+  # Relay modules depend on in-repo modules (gen, relays/go/internal) through
+  # replace directives; those modules' go directives follow the root's, so a
+  # relay module must not fall behind the root.
+  if [[ "$mod" != go.mod ]] && grep -qE '^\s*(replace\s+)?github.com/signadot/context-propagation-matrix(/\S+)? => \.\./' "$mod"; then
     if [[ "$(printf '%s\n%s\n' "$root_want" "$want" | sort -V | tail -1)" == "$want" ]]; then
-      ok "$mod go $want >= go.mod go $root_want (replace => ../../)"
+      ok "$mod go $want >= go.mod go $root_want (replaces in-repo modules)"
     else
-      bad "$mod go $want is older than go.mod go $root_want, which it replaces in (run: cd $(dirname "$mod") && go mod edit -go=$root_want && go mod tidy)"
+      bad "$mod go $want is older than go.mod go $root_want (run: cd $(dirname "$mod") && go mod edit -go=$root_want && go mod tidy)"
     fi
   fi
 done
