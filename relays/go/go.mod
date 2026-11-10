@@ -14,7 +14,7 @@ require (
 	github.com/DataDog/dd-trace-go/v2 v2.12.0
 	github.com/IBM/sarama v1.60.2
 	github.com/newrelic/go-agent/v3 v3.45.0
-	github.com/newrelic/go-agent/v3/integrations/nramqp v1.0.3
+	github.com/newrelic/go-agent/v3/integrations/nramqp v1.0.4
 	github.com/newrelic/go-agent/v3/integrations/nrgrpc v1.4.10
 	github.com/newrelic/go-agent/v3/integrations/nrsarama v1.0.2
 	github.com/rabbitmq/amqp091-go v1.14.0
