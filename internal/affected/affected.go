@@ -161,27 +161,53 @@ func hasPrefix(p string, prefixes []string) bool {
 }
 
 // relayVariants maps a path under relays/ to variants. A path inside a
-// variant's source directory affects that variant; a path in an ancestor of
-// one or more sources (relays/node/Dockerfile for the relays/node/tools/*
-// sources, relays/ruby/Gemfile for relays/ruby/gemfiles/*) affects all of
-// them. Deeper matches win so relays/node/tools/datadog/package.json does
-// not also select the other Node variants.
+// variant's source directory affects that variant, and the deepest source
+// wins: relays/node/tools/datadog/package.json belongs to the Datadog Node
+// variants even though the baseline's source, relays/node, contains it too.
+//
+// A path is also shared with every variant whose source sits below one of
+// its ancestor directories, searched from the nearest ancestor upwards and
+// no higher than the source that owns the path (or relays/ when none does):
+// relays/node/Dockerfile, relays/node/package.json and relays/node/app.js are
+// built into all the Node variants, relays/ruby/app/relay.rb into all the
+// Ruby ones. Both rules apply together, so a file in relays/node that is not
+// under relays/node/tools/<tool> selects the baseline and the tools alike.
+// An empty result means no variant source is anywhere under the path's
+// directory and the caller falls back to re-running everything.
 func relayVariants(p string, reg *registry.Registry) []string {
-	var ids []string
+	hit := map[string]bool{}
+
+	owner := ""
 	for _, v := range reg.Variants {
-		if strings.HasPrefix(p, v.Source+"/") {
-			ids = append(ids, v.ID)
+		if strings.HasPrefix(p, v.Source+"/") && len(v.Source) > len(owner) {
+			owner = v.Source
 		}
 	}
-	if len(ids) > 0 {
-		sort.Strings(ids)
-		return ids
-	}
-	dir := path.Dir(p)
 	for _, v := range reg.Variants {
-		if strings.HasPrefix(v.Source, dir+"/") {
-			ids = append(ids, v.ID)
+		if owner != "" && v.Source == owner {
+			hit[v.ID] = true
 		}
+	}
+
+	for dir := path.Dir(p); dir != "relays" && dir != "." && dir != "/"; dir = path.Dir(dir) {
+		if owner != "" && !strings.HasPrefix(dir+"/", owner+"/") {
+			break // above the source that owns p
+		}
+		found := false
+		for _, v := range reg.Variants {
+			if strings.HasPrefix(v.Source, dir+"/") {
+				hit[v.ID] = true
+				found = true
+			}
+		}
+		if found {
+			break
+		}
+	}
+
+	ids := make([]string, 0, len(hit))
+	for id := range hit {
+		ids = append(ids, id)
 	}
 	sort.Strings(ids)
 	return ids

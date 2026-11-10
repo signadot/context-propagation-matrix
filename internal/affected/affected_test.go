@@ -26,7 +26,7 @@ func fixture() *registry.Registry {
 		},
 		ToolOrder: []string{"otel", "datadog", "none"},
 		Languages: map[string]*registry.Language{
-			"java": {ID: "java", Order: 1}, "node": {ID: "node", Order: 2}, "rust": {ID: "rust", Order: 3},
+			"java": {ID: "java", Order: 1}, "node": {ID: "node", Order: 2}, "rust": {ID: "rust", Order: 3}, "ruby": {ID: "ruby", Order: 4},
 		},
 		Variants: []*registry.Variant{
 			{ID: "otel-java", Tool: "otel", Language: "java", Flavour: "default", SetupTier: tier, Attach: "-javaagent", Tracer: pkg("otel-java"), Source: "relays/java"},
@@ -35,8 +35,14 @@ func fixture() *registry.Registry {
 			{ID: "otel-node", Tool: "otel", Language: "node", Flavour: "default", SetupTier: tier, Tracer: pkg("otel-node"), Source: "relays/node/tools/otel"},
 			{ID: "datadog-node", Tool: "datadog", Language: "node", Flavour: "default", SetupTier: tier, Tracer: pkg("dd-node"), Source: "relays/node/tools/datadog"},
 			{ID: "datadog-node-defaults", Tool: "datadog", Language: "node", Flavour: "defaults", SetupTier: tier, Tracer: pkg("dd-node"), Source: "relays/node/tools/datadog"},
+			// As in the real registry, the Node baseline's source is the
+			// directory the tool sources live under.
+			{ID: "none-node", Tool: "none", Language: "node", Flavour: "default", Source: "relays/node"},
 			{ID: "otel-rust", Tool: "otel", Language: "rust", Flavour: "default", SetupTier: tier, Tracer: pkg("otel-rust"), Source: "relays/rust"},
 			{ID: "datadog-rust", Tool: "datadog", Language: "rust", Flavour: "default", SetupTier: tier, Tracer: pkg("dd-rust"), Source: "relays/rust"},
+			// Ruby keeps one Gemfile directory per tool and the app code beside them.
+			{ID: "otel-ruby", Tool: "otel", Language: "ruby", Flavour: "default", SetupTier: tier, Tracer: pkg("otel-ruby"), Source: "relays/ruby/gemfiles/otel"},
+			{ID: "none-ruby", Tool: "none", Language: "ruby", Flavour: "default", Source: "relays/ruby/gemfiles/none"},
 		},
 	}
 }
@@ -60,7 +66,10 @@ func TestPaths(t *testing.T) {
 		{"one language source", []string{"relays/rust/Cargo.toml"}, []string{"otel-rust", "datadog-rust"}, false},
 		{"java app code", []string{"relays/java/src/main/java/Relay.java"}, []string{"otel-java", "datadog-java", "none-java"}, false},
 		{"one node tool", []string{"relays/node/tools/datadog/package.json"}, []string{"datadog-node", "datadog-node-defaults"}, false},
-		{"node shared dockerfile is an ancestor of the tool sources", []string{"relays/node/Dockerfile"}, []string{"otel-node", "datadog-node", "datadog-node-defaults"}, false},
+		{"node shared dockerfile is an ancestor of the tool sources", []string{"relays/node/Dockerfile"}, []string{"otel-node", "datadog-node", "datadog-node-defaults", "none-node"}, false},
+		{"node shared app manifest and code", []string{"relays/node/package.json", "relays/node/app.js"}, []string{"otel-node", "datadog-node", "datadog-node-defaults", "none-node"}, false},
+		{"node shared code in a subdirectory", []string{"relays/node/lib/hop.js"}, []string{"otel-node", "datadog-node", "datadog-node-defaults", "none-node"}, false},
+		{"app code beside the per-tool sources", []string{"relays/ruby/app/relay.rb"}, []string{"otel-ruby", "none-ruby"}, false},
 		{"driver", []string{"driver/main.go"}, allIDs(reg), true},
 		{"proto", []string{"proto/hop.proto", "gen/cpmatrix/hop.pb.go"}, allIDs(reg), true},
 		{"shared go image", []string{"docker/go.Dockerfile"}, allIDs(reg), true},
@@ -89,7 +98,7 @@ func TestPaths(t *testing.T) {
 func TestRegistryDiff(t *testing.T) {
 	base, head := fixture(), fixture()
 	head.Variants[0].Attach = "-javaagent -Dotel.propagators=b3" // otel-java
-	head.Variants[6].Tracer = &registry.Package{Name: "otel-rust", Registry: "r", Package: "otel-rust", TagPrefix: "v"}
+	head.Variants[7].Tracer = &registry.Package{Name: "otel-rust", Registry: "r", Package: "otel-rust", TagPrefix: "v"}
 	head.Variants = append(head.Variants, &registry.Variant{
 		ID: "otel-php", Tool: "otel", Language: "php", Flavour: "default", SetupTier: str("zero_code"), Source: "relays/php",
 	})
