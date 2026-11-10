@@ -9,7 +9,10 @@
 FROM golang:1.27 AS build
 ENV GOTOOLCHAIN=auto
 WORKDIR /src
+# The root module `replace`s the stubs module at ./gen, so its manifest must
+# be in place before the download.
 COPY go.mod go.sum ./
+COPY gen/go.mod gen/go.sum ./gen/
 RUN go mod download
 COPY gen ./gen
 COPY sink ./sink

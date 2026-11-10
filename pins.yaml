@@ -159,24 +159,22 @@ pins:
     # (Back-test 2026-11-09: 1.8.3–1.12.0 fail, 1.13.0 builds.)
     backtest: { min: 1.13.0 }
 
-  # ---- Go (go.mod module families) ---------------------------------------
+  # ---- Go (go.mod module families; one module per tool under relays/go,
+  #      so pinning one tracer never moves another) -------------------------
   - id: otel-go
     kind: gomod
-    dir: relays/go
+    dir: relays/go/otel
     modules:
       - go.opentelemetry.io/otel
       - go.opentelemetry.io/otel/sdk
       - go.opentelemetry.io/otel/trace
     source: { registry: goproxy, package: go.opentelemetry.io/otel }
     variants: [otel-go]
-    # relays/go is one module for every Go tracer, so `go get otel@<old>`
-    # must also downgrade dd-trace-go (v2.12.0 requires otel ≥ 1.45) to a
-    # release that accepts the older otel. Below 1.40.0 that lands on a
-    # -dev tag of dd-trace-go whose datadog-agent requirements are
-    # placeholder versions, and `go mod tidy` fails. Measuring older
-    # otel-go needs the Go relays split into one module per tool.
-    # (Back-test 2026-11-09: 1.33.0–1.39.0 fail, 1.40.0 builds.)
-    backtest: { min: 1.40.0 }
+    # The relay's gRPC legs use the otelgrpc stats handlers
+    # (NewServerHandler / NewClientHandler), which arrived in otelgrpc
+    # v0.45.0 = otel 1.19.0; 1.16.0–1.18.0 do not compile.
+    # (Local pin trial 2026-11-10 after the per-tool module split.)
+    backtest: { min: 1.19.0 }
   - id: otelc
     kind: gomod
     dir: relays/go-otelc
@@ -188,7 +186,7 @@ pins:
     backtest: { min: 1.0.1 }
   - id: dd-trace-go
     kind: gomod
-    dir: relays/go
+    dir: relays/go/datadog
     modules:
       - github.com/DataDog/dd-trace-go/v2
       - github.com/DataDog/dd-trace-go/contrib/net/http/v2
@@ -213,7 +211,7 @@ pins:
     backtest: { skip: [2.1.0, 2.2.0, 2.2.1] }
   - id: newrelic-go-agent
     kind: gomod
-    dir: relays/go
+    dir: relays/go/newrelic
     modules: [github.com/newrelic/go-agent/v3]
     source: { registry: goproxy, package: github.com/newrelic/go-agent/v3 }
     variants: [newrelic-go]
@@ -226,7 +224,7 @@ pins:
     backtest: { min: 3.35.0, skip: [3.43.0] }
   - id: elastic-apm-go
     kind: gomod
-    dir: relays/go
+    dir: relays/go/elastic
     modules:
       - go.elastic.co/apm/v2
       - go.elastic.co/apm/module/apmgrpc/v2

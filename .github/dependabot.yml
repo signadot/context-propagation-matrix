@@ -32,14 +32,20 @@ version: 2
 
 updates:
   # Go: the root module (driver, sink, matrixgen) plus one module per Go
-  # relay flavour — hand-wired contribs (relays/go), Orchestrion build-time
-  # weaving (relays/go-orchestrion, which pins orchestrion + dd-trace-go), and
-  # otelc build-time weaving (relays/go-otelc, which pins otelc via the go.mod
-  # `tool` directive).
+  # relay — hand-wired contribs (relays/go/<tool>, one module per tracer so
+  # pinning one never moves another), Orchestrion build-time weaving
+  # (relays/go-orchestrion, which pins orchestrion + dd-trace-go), and otelc
+  # build-time weaving (relays/go-otelc, which pins otelc via the go.mod
+  # `tool` directive). Deliberately absent: gen and relays/go/internal, whose
+  # requirements are floors shared by every relay module (see gen/go.mod).
   - package-ecosystem: gomod
     directories:
       - /
-      - /relays/go
+      - /relays/go/otel
+      - /relays/go/datadog
+      - /relays/go/newrelic
+      - /relays/go/elastic
+      - /relays/go/none
       - /relays/go-orchestrion
       - /relays/go-otelc
     schedule: { interval: weekly }

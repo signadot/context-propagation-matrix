@@ -26,7 +26,7 @@ func fixture() *registry.Registry {
 		},
 		ToolOrder: []string{"otel", "datadog", "none"},
 		Languages: map[string]*registry.Language{
-			"java": {ID: "java", Order: 1}, "node": {ID: "node", Order: 2}, "rust": {ID: "rust", Order: 3}, "ruby": {ID: "ruby", Order: 4},
+			"java": {ID: "java", Order: 1}, "node": {ID: "node", Order: 2}, "go": {ID: "go", Order: 3}, "rust": {ID: "rust", Order: 4}, "ruby": {ID: "ruby", Order: 5},
 		},
 		Variants: []*registry.Variant{
 			{ID: "otel-java", Tool: "otel", Language: "java", Flavour: "default", SetupTier: tier, Attach: "-javaagent", Tracer: pkg("otel-java"), Source: "relays/java"},
@@ -38,6 +38,12 @@ func fixture() *registry.Registry {
 			// As in the real registry, the Node baseline's source is the
 			// directory the tool sources live under.
 			{ID: "none-node", Tool: "none", Language: "node", Flavour: "default", Source: "relays/node"},
+			// Go keeps one module per hand-wired tool under relays/go over the
+			// shared relays/go/internal; the build-time weavers are separate
+			// directories whose names share the "relays/go" prefix.
+			{ID: "otel-go", Tool: "otel", Language: "go", Flavour: "default", SetupTier: tier, Tracer: pkg("otel-go"), Source: "relays/go/otel"},
+			{ID: "otel-go-compiletime", Tool: "otel", Language: "go", Flavour: "compiletime", SetupTier: tier, Tracer: pkg("otelc"), Source: "relays/go-otelc"},
+			{ID: "none-go", Tool: "none", Language: "go", Flavour: "default", Source: "relays/go/none"},
 			// Rust keeps one crate per tool over shared source, like Ruby.
 			{ID: "otel-rust", Tool: "otel", Language: "rust", Flavour: "default", SetupTier: tier, Tracer: pkg("otel-rust"), Source: "relays/rust/otel"},
 			{ID: "datadog-rust", Tool: "datadog", Language: "rust", Flavour: "default", SetupTier: tier, Tracer: pkg("dd-rust"), Source: "relays/rust/datadog"},
@@ -68,6 +74,9 @@ func TestPaths(t *testing.T) {
 		{"one rust tool crate", []string{"relays/rust/otel/Cargo.toml", "relays/rust/otel/Cargo.lock"}, []string{"otel-rust"}, false},
 		{"rust shared source and build script", []string{"relays/rust/src/lib.rs", "relays/rust/build.rs"}, []string{"otel-rust", "datadog-rust", "none-rust"}, false},
 		{"rust shared dockerfile", []string{"relays/rust/Dockerfile"}, []string{"otel-rust", "datadog-rust", "none-rust"}, false},
+		{"one go tool module", []string{"relays/go/otel/go.mod", "relays/go/otel/go.sum"}, []string{"otel-go"}, false},
+		{"go shared package and dockerfile reach the hand-wired tools, not the weavers", []string{"relays/go/internal/common/common.go", "relays/go/Dockerfile"}, []string{"otel-go", "none-go"}, false},
+		{"go weaver directory stands alone", []string{"relays/go-otelc/go.mod"}, []string{"otel-go-compiletime"}, false},
 		{"java app code", []string{"relays/java/src/main/java/Relay.java"}, []string{"otel-java", "datadog-java", "none-java"}, false},
 		{"one node tool", []string{"relays/node/tools/datadog/package.json"}, []string{"datadog-node", "datadog-node-defaults"}, false},
 		{"node shared dockerfile is an ancestor of the tool sources", []string{"relays/node/Dockerfile"}, []string{"otel-node", "datadog-node", "datadog-node-defaults", "none-node"}, false},
@@ -102,7 +111,11 @@ func TestPaths(t *testing.T) {
 func TestRegistryDiff(t *testing.T) {
 	base, head := fixture(), fixture()
 	head.Variants[0].Attach = "-javaagent -Dotel.propagators=b3" // otel-java
-	head.Variants[7].Tracer = &registry.Package{Name: "otel-rust", Registry: "r", Package: "otel-rust", TagPrefix: "v"}
+	for _, v := range head.Variants {
+		if v.ID == "otel-rust" {
+			v.Tracer = &registry.Package{Name: "otel-rust", Registry: "r", Package: "otel-rust", TagPrefix: "v"}
+		}
+	}
 	head.Variants = append(head.Variants, &registry.Variant{
 		ID: "otel-php", Tool: "otel", Language: "php", Flavour: "default", SetupTier: str("zero_code"), Source: "relays/php",
 	})
