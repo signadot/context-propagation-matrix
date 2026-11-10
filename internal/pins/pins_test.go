@@ -1,6 +1,7 @@
 package pins
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,20 @@ import (
 
 	"github.com/signadot/context-propagation-matrix/internal/registry"
 )
+
+// stubCargo puts a `cargo` on PATH that only records its arguments in
+// dir/cargo.args, so cargo write paths can be tested without a toolchain or
+// the network.
+func stubCargo(t *testing.T, dir string) string {
+	t.Helper()
+	args := filepath.Join(dir, "cargo.args")
+	bin := write(t, dir, "bin/cargo", "#!/bin/sh\nprintf '%s\\n' \"$*\" > '"+args+"'\n")
+	if err := os.Chmod(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return args
+}
 
 func write(t *testing.T, dir, name, body string) string {
 	t.Helper()
@@ -41,7 +56,7 @@ func roundTrip(t *testing.T, p *Pin, wantBefore, to, wantFile string) {
 	if got != wantBefore {
 		t.Fatalf("%s: Read = %q, want %q", p.ID, got, wantBefore)
 	}
-	files, err := p.Write(to)
+	files, err := p.Write(context.Background(), to, nil)
 	if err != nil {
 		t.Fatalf("%s: Write: %v", p.ID, err)
 	}
@@ -158,6 +173,69 @@ func TestCargoTwoCopies(t *testing.T) {
 	}
 }
 
+// A pin with follow: Write sets the pinned crate exact, gives the followed
+// crates the requirement the release declares on their dependency, and
+// moves them all in one `cargo update`; Check covers the followed crates.
+func TestCargoFollow(t *testing.T) {
+	dir := t.TempDir()
+	toml := write(t, dir, "Cargo.toml", "[dependencies]\ndatadog-opentelemetry = \"=0.6.0\"\nopentelemetry = \"=0.33.0\"\nopentelemetry-http = { version = \"=0.33.0\", default-features = false }\n")
+	write(t, dir, "Cargo.lock", "[[package]]\nname = \"datadog-opentelemetry\"\nversion = \"0.6.0\"\n\n[[package]]\nname = \"opentelemetry\"\nversion = \"0.33.0\"\n\n[[package]]\nname = \"opentelemetry-http\"\nversion = \"0.33.0\"\n")
+	argsFile := stubCargo(t, dir)
+	p := &Pin{
+		ID: "datadog-rust", Kind: KindCargo, Dir: dir,
+		Packages: []string{"datadog-opentelemetry"},
+		Follow:   map[string][]string{"opentelemetry": {"opentelemetry", "opentelemetry-http"}},
+		Source:   registry.Package{Registry: "crates", Package: "datadog-opentelemetry"},
+	}
+	if err := p.Check(); err != nil {
+		t.Fatalf("Check with one copy of each: %v", err)
+	}
+
+	var asked []string
+	reqs := func(_ context.Context, pkg registry.Package, version string) (map[string]string, error) {
+		asked = append(asked, pkg.Registry+"/"+pkg.Package+"@"+version)
+		return map[string]string{"opentelemetry": "^0.32.0", "opentelemetry_sdk": "^0.32.1"}, nil
+	}
+	files, err := p.Write(context.Background(), "v0.5.4", reqs)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if want := []string{"crates/datadog-opentelemetry@0.5.4"}; strings.Join(asked, ",") != strings.Join(want, ",") {
+		t.Fatalf("requirements asked for %v, want %v", asked, want)
+	}
+	if len(files) != 2 || files[0] != toml {
+		t.Fatalf("Write files = %v", files)
+	}
+	if got, want := read(t, toml), "[dependencies]\ndatadog-opentelemetry = \"=0.5.4\"\nopentelemetry = \"^0.32.0\"\nopentelemetry-http = { version = \"^0.32.0\", default-features = false }\n"; got != want {
+		t.Fatalf("Cargo.toml after write:\n%s\nwant:\n%s", got, want)
+	}
+	if got, want := strings.TrimSpace(read(t, argsFile)), "update -p datadog-opentelemetry@0.6.0 -p opentelemetry@0.33.0 -p opentelemetry-http@0.33.0"; got != want {
+		t.Fatalf("cargo ran with %q, want %q", got, want)
+	}
+
+	// No lookup, or a release that does not depend on the followed crate:
+	// an error before anything is written.
+	before := read(t, toml)
+	if _, err := p.Write(context.Background(), "0.5.3", nil); err == nil || !strings.Contains(err.Error(), "follow") {
+		t.Fatalf("Write without a lookup: got %v, want an error about follow", err)
+	}
+	none := func(context.Context, registry.Package, string) (map[string]string, error) {
+		return map[string]string{"serde": "^1"}, nil
+	}
+	if _, err := p.Write(context.Background(), "0.5.3", none); err == nil || !strings.Contains(err.Error(), "does not depend on opentelemetry") {
+		t.Fatalf("Write for a release without the dependency: got %v", err)
+	}
+	if read(t, toml) != before {
+		t.Fatal("a failed Write changed Cargo.toml")
+	}
+
+	// A second copy of a followed crate fails Check like a pinned one.
+	write(t, dir, "Cargo.lock", "[[package]]\nname = \"datadog-opentelemetry\"\nversion = \"0.6.0\"\n\n[[package]]\nname = \"opentelemetry\"\nversion = \"0.33.0\"\n\n[[package]]\nname = \"opentelemetry-http\"\nversion = \"0.32.0\"\n\n[[package]]\nname = \"opentelemetry-http\"\nversion = \"0.33.0\"\n")
+	if err := p.Check(); err == nil || !strings.Contains(err.Error(), "opentelemetry-http: Cargo.lock holds 0.32.0 and 0.33.0") {
+		t.Fatalf("Check with two copies of a followed crate: got %v", err)
+	}
+}
+
 func TestLoadAndForVariant(t *testing.T) {
 	dir := t.TempDir()
 	f := write(t, dir, "pins.yaml", `
@@ -180,13 +258,24 @@ pins:
     arg: OTEL_DOTNET_AUTO_VERSION
     source: { registry: github-releases, package: open-telemetry/opentelemetry-dotnet-instrumentation, tag_prefix: v }
     variants: [otel-dotnet]
+  - id: datadog-rust
+    kind: cargo
+    dir: relays/rust/datadog
+    packages: [datadog-opentelemetry]
+    follow:
+      opentelemetry: [opentelemetry, opentelemetry-http]
+    source: { registry: crates, package: datadog-opentelemetry }
+    variants: [datadog-rust]
 `)
 	m, err := Load(f)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(m.Pins) != 3 || m.Pins[2].Source.TagPrefix != "v" {
+	if len(m.Pins) != 4 || m.Pins[2].Source.TagPrefix != "v" {
 		t.Fatalf("Load = %+v", m.Pins)
+	}
+	if got := m.Pins[3].cargoCrates(); strings.Join(got, " ") != "datadog-opentelemetry opentelemetry opentelemetry-http" {
+		t.Fatalf("cargoCrates = %v", got)
 	}
 	p, err := m.ForVariant("datadog-java-defaults", registry.Package{Registry: "maven", Package: "com.datadoghq:dd-java-agent"})
 	if err != nil || p.ID != "dd-java-agent" {
@@ -207,6 +296,10 @@ pins:
 		"nosource": "pins:\n  - {id: a, kind: arg, file: f, arg: X}\n",
 		"group":    "pins:\n  - {id: a, kind: arg, file: f, pattern: 'x-(\\d+)', source: {registry: r, package: p}}\n",
 		"gomod":    "pins:\n  - {id: a, kind: gomod, dir: d, source: {registry: r, package: p}}\n",
+		// follow is cargo-only, needs crates, and cannot name a pinned package.
+		"follow-kind":    "pins:\n  - {id: a, kind: arg, file: f, arg: X, follow: {x: [y]}, source: {registry: r, package: p}}\n",
+		"follow-empty":   "pins:\n  - {id: a, kind: cargo, dir: d, packages: [x], follow: {y: []}, source: {registry: r, package: p}}\n",
+		"follow-overlap": "pins:\n  - {id: a, kind: cargo, dir: d, packages: [x, y], follow: {z: [y]}, source: {registry: r, package: p}}\n",
 	} {
 		f := write(t, dir, name+".yaml", body)
 		if _, err := Load(f); err == nil {

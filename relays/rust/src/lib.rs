@@ -126,13 +126,26 @@ pub fn info_json(tool: &Tool) -> serde_json::Value {
             "grpc": concat!("tonic ", env!("VER_TONIC")),
             "kafka": concat!("rust-rdkafka ", env!("VER_RDKAFKA")),
             "rabbitmq": concat!("lapin ", env!("VER_LAPIN")),
-            "propagation": concat!(
-                "opentelemetry ", env!("VER_OPENTELEMETRY"),
-                " + opentelemetry_sdk ", env!("VER_OPENTELEMETRY_SDK"),
-                " + opentelemetry-http ", env!("VER_OPENTELEMETRY_HTTP")
-            ),
+            "propagation": propagation_libs(),
         },
     })
+}
+
+/// The OpenTelemetry crates this binary links, from its own Cargo.lock:
+/// `opentelemetry 0.33.0 + opentelemetry_sdk 0.33.0 + opentelemetry-http
+/// 0.33.0` for the otel relay; the datadog and baseline relays have no
+/// opentelemetry_sdk of their own and list the two they do link.
+fn propagation_libs() -> String {
+    [
+        ("opentelemetry", env!("VER_OPENTELEMETRY")),
+        ("opentelemetry_sdk", env!("VER_OPENTELEMETRY_SDK")),
+        ("opentelemetry-http", env!("VER_OPENTELEMETRY_HTTP")),
+    ]
+    .iter()
+    .filter(|(_, v)| *v != "unknown")
+    .map(|(name, v)| format!("{name} {v}"))
+    .collect::<Vec<_>>()
+    .join(" + ")
 }
 
 // --- inbound -> outbound glue --------------------------------------------------

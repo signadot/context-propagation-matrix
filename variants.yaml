@@ -261,7 +261,7 @@ variants:
     setup_tier: in-code
     attach: "opentelemetry propagator API + hand-written carriers"
     tracer: { name: opentelemetry, registry: crates, package: opentelemetry, github: open-telemetry/opentelemetry-rust }
-    source: relays/rust
+    source: relays/rust/otel
 
   # ---- Datadog ------------------------------------------------------------
   - id: datadog-java
@@ -408,7 +408,7 @@ variants:
     setup_tier: in-code
     attach: "datadog-opentelemetry crate + opentelemetry propagator API"
     tracer: { name: datadog-opentelemetry, registry: crates, package: datadog-opentelemetry, github: DataDog/libdatadog }
-    source: relays/rust
+    source: relays/rust/datadog
 
   # ---- Elastic APM (classic agents) ---------------------------------------
   - id: elastic-java
@@ -548,4 +548,4 @@ variants:
   - { id: none-dotnet, tool: none, language: dotnet, flavour: default, display_name: .NET,    setup_tier: null, source: relays/dotnet }
   - { id: none-ruby,   tool: none, language: ruby,   flavour: default, display_name: Ruby,    setup_tier: null, source: relays/ruby/gemfiles/none }
   - { id: none-php,    tool: none, language: php,    flavour: default, display_name: PHP,     setup_tier: null, source: relays/php }
-  - { id: none-rust,   tool: none, language: rust,   flavour: default, display_name: Rust,    setup_tier: null, source: relays/rust }
+  - { id: none-rust,   tool: none, language: rust,   flavour: default, display_name: Rust,    setup_tier: null, source: relays/rust/none }

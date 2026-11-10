@@ -390,13 +390,15 @@ Two bots move versions, and they do not overlap:
 The same `cpm pins` write path serves `backtest.yml`, which runs `cpm pins
 set` to move any pin *backwards* in a scratch checkout, and `verify.yml`
 runs `cpm pins check` so every instrumented variant has exactly one pin and
-every cargo crate has one copy in `Cargo.lock`. That last rule is the Rust
-relay's safety net: `datadog-opentelemetry` requires an exact `opentelemetry`
-version, and a bump of either pin that outruns the other gives the two relay
-binaries different copies of the API crate — the build, boot and delivery
-checks all pass while the datadog relay injects nothing. `otel-rust` is
-therefore pinned to the version `datadog-opentelemetry` requires, and the
-two move together.
+every pinned or followed cargo crate has one copy in its `Cargo.lock`. That
+last rule is the Rust relays' safety net: `datadog-opentelemetry` requires an
+exact `opentelemetry` version, and a second copy of the API crate in the
+datadog relay's lock means the SDK's propagator and the relay's calls live in
+different crates — the build, boot and delivery checks all pass while the
+relay injects nothing. Each Rust tool is therefore its own crate with its own
+lock (`relays/rust/<tool>`), and the datadog pin `follow`s its SDK: moving
+`datadog-opentelemetry` sets the relay's `opentelemetry` requirement to the
+one that release declares.
 `cpm discover` lists the older versions a back-test should cover, from the
 same registry clients (`internal/versions`), counting back from each
 variant's `tracer.pinned` and leaving out what a pin's

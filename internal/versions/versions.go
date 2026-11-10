@@ -371,6 +371,35 @@ func fetchCrates(ctx context.Context, c *Client, p registry.Package) ([]string, 
 	return out, nil
 }
 
+// Requirements returns the version requirement one release of p declares on
+// each of its regular (non-dev, non-build) dependencies, by package name —
+// "=0.33.0", "^0.31.0" — as the registry records it. Only crates.io is
+// supported: it is what `cpm pins` needs to move a crate's exact dependency
+// alongside it (pins.yaml `follow`).
+func (c *Client) Requirements(ctx context.Context, p registry.Package, version string) (map[string]string, error) {
+	if p.Registry != "crates" {
+		return nil, fmt.Errorf("%s/%s: dependency requirements are only known for crates", p.Registry, p.Package)
+	}
+	var meta struct {
+		Dependencies []struct {
+			Crate string `json:"crate_id"`
+			Req   string `json:"req"`
+			Kind  string `json:"kind"`
+		} `json:"dependencies"`
+	}
+	url := fmt.Sprintf("https://crates.io/api/v1/crates/%s/%s/dependencies", p.Package, Strip(version))
+	if err := c.GetJSON(ctx, url, nil, &meta); err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for _, d := range meta.Dependencies {
+		if d.Kind == "normal" {
+			out[d.Crate] = d.Req
+		}
+	}
+	return out, nil
+}
+
 // github-releases: pkg = "owner/repo"; TagPrefix is stripped from tag names
 // and tags without it are ignored. Three pages of 100, newest first.
 func fetchGitHubReleases(ctx context.Context, c *Client, p registry.Package) ([]string, error) {

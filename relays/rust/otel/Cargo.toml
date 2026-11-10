@@ -1,0 +1,54 @@
+# The OpenTelemetry Rust relay. One manifest per tool under relays/rust/<tool>
+# (as relays/ruby/gemfiles/<tool> and relays/node/tools/<tool>), all building
+# the shared source in ../src: each tool's tracer crates resolve in their own
+# Cargo.lock, so a tracer's exact requirement on the OpenTelemetry API crate
+# (datadog-opentelemetry 0.6.0 → opentelemetry =0.33.0) never constrains what
+# another tool's relay can be measured at. See ../README.md.
+[package]
+name = "cpmatrix-relay-otel"
+version = "0.1.0"
+edition = "2021"
+publish = false
+build = "../build.rs"
+
+[lib]
+name = "relay"
+path = "../src/lib.rs"
+
+[[bin]]
+name = "relay-otel"
+path = "../src/bin/relay-otel.rs"
+
+[dependencies]
+# Transports (deliberately naive application libraries).
+axum = "0.8"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time", "sync"] }
+# No TLS backend: the sink is plain http, and this keeps the build image lean.
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
+tonic = "0.14"
+tonic-prost = "0.14"
+prost = "0.14"
+# cmake-build: compile the vendored librdkafka with cmake (no system lib).
+# libz-static: statically link zlib so the runtime image needs nothing extra.
+rdkafka = { version = "0.39", features = ["cmake-build", "libz-static", "tokio"] }
+# tokio runtime only; no TLS backend needed for plain amqp://.
+lapin = { version = "4", default-features = false, features = ["tokio"] }
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+http = "1"
+
+# The tracer: the OpenTelemetry API, SDK (propagators, tracer provider) and
+# the HTTP carrier crate, one release train. Pinned exactly and moved
+# together by `cpm pins` (pins.yaml: otel-rust); the Dockerfile builds with
+# --locked, so Cargo.lock is what the relay reports.
+opentelemetry = "=0.33.0"
+opentelemetry_sdk = "=0.33.0"
+opentelemetry-http = "=0.33.0"
+
+[build-dependencies]
+# tonic 0.14 moved protobuf codegen out of tonic-build into tonic-prost-build.
+tonic-prost-build = "0.14"
+
+[profile.release]
+strip = true

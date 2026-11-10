@@ -3,17 +3,20 @@
 // (go.mod, package.json, requirements-*.txt, Gemfile, Cargo.toml, Dockerfile
 // ARGs); pins.yaml only says where they are, and this package writes them
 // the way each ecosystem expects: `go get` + `go mod tidy`, `cargo update`
-// behind an exact requirement, a JSON key, every `pkg==` line, a `gem` line,
-// an `ARG`.
+// behind an exact requirement (with the crates the pin `follow`s given the
+// requirement the pinned release declares), a JSON key, every `pkg==` line,
+// a `gem` line, an `ARG`.
 package pins
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -49,6 +52,14 @@ type Pin struct {
 	Modules []string `yaml:"modules,omitempty" json:"modules,omitempty"`
 	// kind: npm, pip, bundler (File) and cargo (Dir)
 	Packages []string `yaml:"packages,omitempty" json:"packages,omitempty"`
+	// kind: cargo. Follow maps a dependency of the pinned crate to crates in
+	// Cargo.toml that take its requirement: writing datadog-opentelemetry
+	// 0.6.0, which declares `opentelemetry = "=0.33.0"`, with
+	// `follow: {opentelemetry: [opentelemetry, opentelemetry-http]}` sets
+	// those two requirements to "=0.33.0" too, so the lock resolves one
+	// copy of the API crate and the tracer's propagator is the one the
+	// relay calls.
+	Follow map[string][]string `yaml:"follow,omitempty" json:"follow,omitempty"`
 
 	// Source is the registry coordinate, equal to the variant's `tracer` in
 	// variants.yaml — that equality is how a variant finds its pin.
@@ -150,10 +161,23 @@ func Load(path string) (*Manifest, error) {
 			if p.Dir == "" || len(p.Packages) == 0 {
 				return nil, fmt.Errorf("%s: %s: kind cargo needs dir and packages", path, p.ID)
 			}
+			for dep, crates := range p.Follow {
+				if dep == "" || len(crates) == 0 {
+					return nil, fmt.Errorf("%s: %s: follow needs a dependency and the crates that take its requirement", path, p.ID)
+				}
+				for _, c := range crates {
+					if contains(p.Packages, c) {
+						return nil, fmt.Errorf("%s: %s: follow: %s is already a pinned package", path, p.ID, c)
+					}
+				}
+			}
 		default:
 			if p.File == "" || len(p.Packages) == 0 {
 				return nil, fmt.Errorf("%s: %s: kind %s needs file and packages", path, p.ID, p.Kind)
 			}
+		}
+		if len(p.Follow) > 0 && p.Kind != KindCargo {
+			return nil, fmt.Errorf("%s: %s: follow is only for kind cargo", path, p.ID)
 		}
 	}
 	return &m, nil
@@ -186,9 +210,9 @@ func (p *Pin) Read() (string, error) {
 }
 
 // Check enforces what a pin's manifest must satisfy on main beyond
-// resolving: for cargo, one copy of every listed crate in Cargo.lock. Other
-// kinds have nothing to add. `cpm pins check` runs it; `cpm pins set`
-// (back-test checkouts) does not.
+// resolving: for cargo, one copy of every pinned and followed crate in
+// Cargo.lock. Other kinds have nothing to add. `cpm pins check` runs it;
+// `cpm pins set` (back-test checkouts) does not.
 func (p *Pin) Check() error {
 	if p.Kind != KindCargo {
 		return nil
@@ -212,14 +236,20 @@ func (p *Pin) Files() []string {
 	return []string{p.File}
 }
 
+// Requirements returns the version requirement a release of a package
+// declares on each of its dependencies, by name (versions.Client has one
+// for crates.io). Write needs it for a cargo pin with Follow and for
+// nothing else; nil is fine otherwise.
+type Requirements func(ctx context.Context, p registry.Package, version string) (map[string]string, error)
+
 // Write sets the pin to version and returns the files it touched. Kinds
 // gomod and cargo run `go` and `cargo` in the module directory.
-func (p *Pin) Write(version string) ([]string, error) {
+func (p *Pin) Write(ctx context.Context, version string, reqs Requirements) ([]string, error) {
 	version = versions.Strip(version)
 	if version == "" {
 		return nil, fmt.Errorf("%s: empty version", p.ID)
 	}
-	files, err := p.write(version)
+	files, err := p.write(ctx, version, reqs)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", p.ID, err)
 	}
@@ -244,7 +274,7 @@ func (p *Pin) read() (string, error) {
 	return "", fmt.Errorf("unknown kind %q", p.Kind)
 }
 
-func (p *Pin) write(version string) ([]string, error) {
+func (p *Pin) write(ctx context.Context, version string, reqs Requirements) ([]string, error) {
 	switch p.Kind {
 	case KindArg:
 		return p.writeArg(version)
@@ -257,7 +287,7 @@ func (p *Pin) write(version string) ([]string, error) {
 	case KindBundler:
 		return p.writeBundler(version)
 	case KindCargo:
-		return p.writeCargo(version)
+		return p.writeCargo(ctx, version, reqs)
 	}
 	return nil, fmt.Errorf("unknown kind %q", p.Kind)
 }
@@ -486,14 +516,26 @@ func (p *Pin) writeBundler(version string) ([]string, error) {
 // then applies unchanged.
 //
 // A crate can be in Cargo.lock twice: another dependency requires a version
-// the relay's own requirement does not admit (datadog-opentelemetry pins the
-// opentelemetry API crate exactly), and cargo links both. The relay's code
-// builds against the copy Cargo.toml names, so reading resolves through the
-// requirement, and `cargo update -p` is given `crate@version` (a bare name
-// is ambiguous). Two copies of the API crate also mean a tool's globally
-// installed propagator and the relay's calls land in different crates and
-// nothing propagates — `cpm pins check` refuses that (Check), since the
-// smoke gate only asserts delivery.
+// the relay's own requirement does not admit, and cargo links both. For the
+// OpenTelemetry API crate that is fatal and silent: a tracer that installs
+// its propagator in one copy's `global` and a relay that calls the other's
+// builds, boots and delivers — with nothing propagated. So a pin whose
+// crate requires the API crate exactly (datadog-opentelemetry) `follow`s
+// it: Write gives the relay's own requirement on the followed crates the
+// requirement the pinned release declares (crates.io reports it), and
+// Check requires one copy of every pinned and followed crate in the lock.
+// Reading resolves through the requirement when two copies are present,
+// and `cargo update -p` is given `crate@version` (a bare name is ambiguous).
+
+// cargoCrates lists the crates a pin writes: its packages, then the
+// followed ones, in pins.yaml order.
+func (p *Pin) cargoCrates() []string {
+	crates := append([]string(nil), p.Packages...)
+	for _, dep := range sortedKeys(p.Follow) {
+		crates = append(crates, p.Follow[dep]...)
+	}
+	return crates
+}
 
 func cargoReqRegexp(crate string) *regexp.Regexp {
 	return regexp.MustCompile(`(?m)^(` + regexp.QuoteMeta(crate) + `\s*=\s*(?:\{[^}]*?version\s*=\s*)?")([^"]+)(")`)
@@ -543,7 +585,7 @@ func (p *Pin) cargoLocked(crate, req string) (string, error) {
 }
 
 // cargoReqs returns Cargo.toml's source and the requirement of every crate
-// of the pin.
+// the pin writes (pinned and followed).
 func (p *Pin) cargoReqs() (string, map[string]string, error) {
 	path := filepath.Join(p.Dir, "Cargo.toml")
 	b, err := os.ReadFile(path)
@@ -552,7 +594,7 @@ func (p *Pin) cargoReqs() (string, map[string]string, error) {
 	}
 	src := string(b)
 	reqs := map[string]string{}
-	for _, crate := range p.Packages {
+	for _, crate := range p.cargoCrates() {
 		m := cargoReqRegexp(crate).FindStringSubmatch(src)
 		if m == nil {
 			return "", nil, fmt.Errorf("%s not in %s", crate, path)
@@ -570,13 +612,12 @@ func (p *Pin) readCargo() (string, error) {
 	return p.cargoLocked(p.Packages[0], reqs[p.Packages[0]])
 }
 
-// checkCargo requires one copy of every crate of the pin in Cargo.lock: a
-// second copy, pulled in by another dependency's requirement, means the
-// relay binaries no longer share the API crate (see the package comment).
-// Run by `cpm pins check`, not in back-test checkouts, where moving one
-// pin away from the version its neighbour requires is the point.
+// checkCargo requires one copy of every pinned and followed crate in
+// Cargo.lock: a second copy, pulled in by another dependency's requirement,
+// means the tracer and the relay no longer share the API crate (see the
+// section comment). Run by `cpm pins check`.
 func (p *Pin) checkCargo() error {
-	for _, crate := range p.Packages {
+	for _, crate := range p.cargoCrates() {
 		vs, err := p.cargoLockVersions(crate)
 		if err != nil {
 			return err
@@ -589,21 +630,46 @@ func (p *Pin) checkCargo() error {
 	return nil
 }
 
-func (p *Pin) writeCargo(version string) ([]string, error) {
+// writeCargo sets every pinned crate to `=version`, every followed crate
+// to the requirement the pinned release declares on its dependency, and
+// moves them all in Cargo.lock in one `cargo update`.
+func (p *Pin) writeCargo(ctx context.Context, version string, reqs Requirements) ([]string, error) {
 	path := filepath.Join(p.Dir, "Cargo.toml")
-	src, reqs, err := p.cargoReqs()
+	src, current, err := p.cargoReqs()
 	if err != nil {
 		return nil, err
 	}
-	args := []string{"update"}
+	want := map[string]string{}
 	for _, crate := range p.Packages {
-		// Name the lock entry being moved: once a second copy of the crate
-		// is in the lock, a bare `-p crate` is ambiguous.
-		locked, err := p.cargoLocked(crate, reqs[crate])
+		want[crate] = "=" + version
+	}
+	if len(p.Follow) > 0 {
+		if reqs == nil {
+			return nil, fmt.Errorf("follow needs a registry lookup for %s %s's requirements", p.Source.Package, version)
+		}
+		declared, err := reqs(ctx, p.Source, version)
 		if err != nil {
 			return nil, err
 		}
-		src = cargoReqRegexp(crate).ReplaceAllString(src, "${1}="+version+"${3}")
+		for _, dep := range sortedKeys(p.Follow) {
+			req, ok := declared[dep]
+			if !ok {
+				return nil, fmt.Errorf("%s %s does not depend on %s (follow)", p.Source.Package, version, dep)
+			}
+			for _, crate := range p.Follow[dep] {
+				want[crate] = req
+			}
+		}
+	}
+	args := []string{"update"}
+	for _, crate := range p.cargoCrates() {
+		// Name the lock entry being moved: once a second copy of the crate
+		// is in the lock, a bare `-p crate` is ambiguous.
+		locked, err := p.cargoLocked(crate, current[crate])
+		if err != nil {
+			return nil, err
+		}
+		src = cargoReqRegexp(crate).ReplaceAllString(src, "${1}"+want[crate]+"${3}")
 		args = append(args, "-p", crate+"@"+locked)
 	}
 	if err := writeFile(path, src); err != nil {
@@ -653,4 +719,13 @@ func contains(xs []string, x string) bool {
 		}
 	}
 	return false
+}
+
+func sortedKeys(m map[string][]string) []string {
+	ks := make([]string, 0, len(m))
+	for k := range m {
+		ks = append(ks, k)
+	}
+	sort.Strings(ks)
+	return ks
 }

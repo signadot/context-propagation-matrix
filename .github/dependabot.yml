@@ -163,23 +163,40 @@ updates:
       app-deps:
         patterns: ["*"]
 
-  # Rust: Cargo.toml + committed Cargo.lock (includes both tracer crates).
+  # Rust: one crate per tool (Cargo.toml + committed Cargo.lock) over the
+  # shared source, relays/rust/README.md. The tracer crates are pins.yaml
+  # `packages:` (and `follow`) — moved by bump-agents.yml (`cargo update`
+  # for the whole family at once, which single-crate PRs cannot do).
   - package-ecosystem: cargo
-    directory: /relays/rust
+    directory: /relays/rust/otel
     schedule: { interval: weekly }
     groups:
       app-deps:
         patterns: ["*"]
-        exclude-patterns:
-          - "opentelemetry*"              # opentelemetry, opentelemetry_sdk, opentelemetry-http
-          - "datadog-opentelemetry"
-    # pins.yaml `packages:` — moved by bump-agents.yml (`cargo update` for
-    # the whole family at once, which single-crate PRs cannot do).
+        exclude-patterns: ["opentelemetry*"]  # opentelemetry, opentelemetry_sdk, opentelemetry-http
     ignore:
       - dependency-name: "opentelemetry"          # otel-rust
       - dependency-name: "opentelemetry_sdk"      # otel-rust
       - dependency-name: "opentelemetry-http"     # otel-rust
+  - package-ecosystem: cargo
+    directory: /relays/rust/datadog
+    schedule: { interval: weekly }
+    groups:
+      app-deps:
+        patterns: ["*"]
+        exclude-patterns: ["datadog-opentelemetry", "opentelemetry", "opentelemetry-http"]
+    ignore:
       - dependency-name: "datadog-opentelemetry"  # datadog-rust
+      - dependency-name: "opentelemetry"          # datadog-rust (follow)
+      - dependency-name: "opentelemetry-http"     # datadog-rust (follow)
+  # The baseline installs no tracer; its opentelemetry crates are plain
+  # application dependencies.
+  - package-ecosystem: cargo
+    directory: /relays/rust/none
+    schedule: { interval: weekly }
+    groups:
+      app-deps:
+        patterns: ["*"]
 
   # Base images in every Dockerfile. Language toolchain images are checked
   # against their manifests by scripts/check-toolchains.sh. Two toolchains are

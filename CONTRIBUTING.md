@@ -239,7 +239,8 @@ page uses it to say what was broken in which release. Release notes for each
 - Version bumps come from Dependabot and `bump-agents.yml`; if you bump
   manually, keep one agent per PR so cell changes stay attributable.
 - Merging a change runs only the variants it can affect (`cpm affected`):
-  a file under `relays/rust/` re-runs the Rust variants, `relays/node/Dockerfile`
+  a file under `relays/rust/src/` re-runs every Rust variant and one under
+  `relays/rust/otel/` only `otel-rust`, `relays/node/Dockerfile`
   every Node variant, a changed `relay-<id>` service or variant definition that
   variant; anything under `driver/`, `sink/`, `proto/`, `gen/`, `docker/`,
   `go.mod`/`go.sum` or `matrix.yml` itself re-runs everything. Cells not
