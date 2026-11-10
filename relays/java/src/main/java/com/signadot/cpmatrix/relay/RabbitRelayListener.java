@@ -1,6 +1,7 @@
 package com.signadot.cpmatrix.relay;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +18,7 @@ import org.springframework.stereotype.Component;
 public class RabbitRelayListener {
 
     private final Forwarder forwarder;
-    private final ObjectMapper om = new ObjectMapper();
+    private final ObjectMapper om = JsonMapper.builder().build();
 
     public RabbitRelayListener(Forwarder forwarder) {
         this.forwarder = forwarder;
