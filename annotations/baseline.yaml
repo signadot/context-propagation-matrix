@@ -44,7 +44,7 @@
   status: by-design
 
 - id: baseline-dotnet-baggage-reemitted-as-correlation-context
-  title: "Baseline .NET 8: the runtime reads W3C baggage but re-emits it as Correlation-Context"
+  title: "Baseline .NET 8/9: the runtime reads W3C baggage but re-emits it as Correlation-Context (fixed by .NET 10)"
   match:
     - tool: none
       language: dotnet
@@ -63,7 +63,11 @@
     Version dependence: .NET 10 switches the default to a strict W3C propagator
     (`baggage` header out, strict encoding, `CreatePreW3CPropagator()` to opt
     back) — an uninstrumented .NET service changes its propagation behaviour on
-    a runtime upgrade. Harness runs used .NET 8.
-  status: by-design
+    a runtime upgrade. Harness runs used .NET 8 until 2026-11-10 and .NET 10
+    since (the relay image moved with dotnet/sdk and dotnet/aspnet 10.0); on
+    .NET 10 every cell above passes, so this is recorded as fixed in the
+    runtime rather than in any agent.
+  status: fixed
+  fixed_in: ".NET 10"
   links:
     - { title: ".NET 10 breaking change: default trace context propagator", url: "https://learn.microsoft.com/en-us/dotnet/core/compatibility/core-libraries/10.0/default-trace-context-propagator" }
