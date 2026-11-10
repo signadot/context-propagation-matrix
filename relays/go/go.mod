@@ -15,7 +15,7 @@ require (
 	github.com/IBM/sarama v1.61.1
 	github.com/newrelic/go-agent/v3 v3.45.0
 	github.com/newrelic/go-agent/v3/integrations/nramqp v1.0.4
-	github.com/newrelic/go-agent/v3/integrations/nrgrpc v1.4.10
+	github.com/newrelic/go-agent/v3/integrations/nrgrpc v1.4.11
 	github.com/newrelic/go-agent/v3/integrations/nrsarama v1.0.2
 	github.com/rabbitmq/amqp091-go v1.16.0
 	github.com/signadot/context-propagation-matrix v0.0.0-00010101000000-000000000000
