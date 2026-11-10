@@ -6,7 +6,7 @@
 # refuses. `auto` lets `go` fetch the toolchain go.mod asks for instead.
 # scripts/check-toolchains.sh still requires the image tag to be at or above
 # the directive, so the download is a safety net, not the steady state.
-FROM golang:1.26 AS build
+FROM golang:1.27 AS build
 ENV GOTOOLCHAIN=auto
 WORKDIR /src
 COPY go.mod go.sum ./
