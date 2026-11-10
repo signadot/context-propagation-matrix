@@ -2,11 +2,11 @@
 # Versions pinned exactly for repeatability (Dependabot bumps them).
 source 'https://rubygems.org'
 
-gem 'bunny', '3.3.0'
-gem 'grpc', '1.83.1'
+gem 'bunny', '3.5.0'
+gem 'grpc', '1.85.0'
 gem 'puma', '8.0.2'
 gem 'rackup', '2.3.1'
-gem 'rdkafka', '0.29.1'
+gem 'rdkafka', '0.31.0'
 gem 'sinatra', '4.2.1'
 
 gem 'opentelemetry-sdk', '1.13.1'
