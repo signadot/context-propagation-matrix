@@ -14,7 +14,7 @@
 
 # go.mod is the source of truth for the Go version; the image is a bootstrap
 # (see docker/go.Dockerfile and scripts/check-toolchains.sh).
-FROM golang:1.26 AS build
+FROM golang:1.27 AS build
 ENV GOTOOLCHAIN=auto
 WORKDIR /src
 # Both modules' manifests first, for layer-cached dependency downloads. The
