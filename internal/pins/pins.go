@@ -50,6 +50,15 @@ type Pin struct {
 	// kind: gomod, cargo
 	Dir     string   `yaml:"dir,omitempty" json:"dir,omitempty"`
 	Modules []string `yaml:"modules,omitempty" json:"modules,omitempty"`
+	// kind: gomod. Companions are modules on the same version line that are
+	// `go get` with the family but are not required to appear in go.mod.
+	// They exist for one failure mode: a dependency's tests import a package
+	// from a module the dependency's go.mod does not require (kotel 1.5.0
+	// imports go.opentelemetry.io/otel/sdk/metric this way), so `go mod tidy`
+	// resolves that package to the module's *latest* version, which drags the
+	// pinned family back up with it. Getting the companion at the pinned
+	// version first gives tidy a module to find the package in.
+	Companions []string `yaml:"companions,omitempty" json:"companions,omitempty"`
 	// kind: npm, pip, bundler (File) and cargo (Dir)
 	Packages []string `yaml:"packages,omitempty" json:"packages,omitempty"`
 	// kind: cargo. Follow maps a dependency of the pinned crate to crates in
@@ -157,6 +166,11 @@ func Load(path string) (*Manifest, error) {
 			if p.Dir == "" || len(p.Modules) == 0 {
 				return nil, fmt.Errorf("%s: %s: kind gomod needs dir and modules", path, p.ID)
 			}
+			for _, c := range p.Companions {
+				if contains(p.Modules, c) {
+					return nil, fmt.Errorf("%s: %s: companions: %s is already a pinned module", path, p.ID, c)
+				}
+			}
 		case KindCargo:
 			if p.Dir == "" || len(p.Packages) == 0 {
 				return nil, fmt.Errorf("%s: %s: kind cargo needs dir and packages", path, p.ID)
@@ -178,6 +192,9 @@ func Load(path string) (*Manifest, error) {
 		}
 		if len(p.Follow) > 0 && p.Kind != KindCargo {
 			return nil, fmt.Errorf("%s: %s: follow is only for kind cargo", path, p.ID)
+		}
+		if len(p.Companions) > 0 && p.Kind != KindGoMod {
+			return nil, fmt.Errorf("%s: %s: companions is only for kind gomod", path, p.ID)
 		}
 	}
 	return &m, nil
@@ -361,11 +378,27 @@ func (p *Pin) writeGoMod(version string) ([]string, error) {
 	for _, mod := range p.Modules {
 		args = append(args, mod+"@v"+version)
 	}
+	for _, mod := range p.Companions {
+		args = append(args, mod+"@v"+version)
+	}
 	if err := run(p.Dir, "go", args...); err != nil {
 		return nil, err
 	}
 	if err := run(p.Dir, "go", "mod", "tidy"); err != nil {
 		return nil, err
+	}
+	// `go get` honours the version; `go mod tidy` need not. When a package
+	// the graph needs lives in a module nothing requires yet, tidy adds that
+	// module at its *latest* version, and if it requires a newer copy of the
+	// pinned module MVS moves the pin right back up (see Companions). A pin
+	// that did not take must fail here, before anything is built and filed
+	// under a version that was never run.
+	got, err := p.readGoMod()
+	if err != nil {
+		return nil, err
+	}
+	if got != version {
+		return nil, fmt.Errorf("pinned %s to %s but after `go mod tidy` %s has %s — a module tidy added requires the newer version (`go mod why -m` names it; list it under companions if it shares the version line)", p.Modules[0], version, filepath.Join(p.Dir, "go.mod"), got)
 	}
 	return p.Files(), nil
 }

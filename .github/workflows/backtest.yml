@@ -166,10 +166,19 @@ jobs:
           mkdir -p /tmp/raw && cp "results/raw/$V.json" /tmp/raw/
           go run ./cmd/cpm aggregate -raw /tmp/raw -out /tmp/out -kind backtest -commit "$GITHUB_SHA" \
             -run-id "backtest-$V-$VER" -notes "pinned $(jq -r .id /tmp/pin.json) to $VER via cpm pins set"
-          reported=$(jq -r --arg v "$V" '.variants[] | select(.id==$v) | .tracer.version' /tmp/out/results.json)
+          # The relay must have run the version we asked for: the document is
+          # filed under $VER, so a mismatch would publish cells under a version
+          # they did not measure (shared Go modules once built otel-go 1.40–1.43
+          # at 1.44.0; `go mod tidy` pulled 1.27.0–1.30.0 back to 1.47.0 — the
+          # 2026-11-10 back-tests of those four were filed wrong, and this check
+          # was only a warning). The reported string may carry a `v`
+          # prefix or extra words (`open-telemetry/sdk 1.15.0 (ext-opentelemetry
+          # 1.5.0)`); the requested version has to be one of its tokens.
+          reported=$(jq -r --arg v "$V" '.variants[] | select(.id==$v) | .tracer.version // "unknown"' /tmp/out/results.json)
           echo "relay reported tracer version: $reported (requested $VER)"
-          if [[ "$reported" != "$VER" && "$reported" != "v$VER" && "$reported" != "unknown" ]]; then
-            echo "::warning::relay reported $reported, requested $VER — check the pins.yaml entry for $V"
+          if ! tr ' ()' '\n\n\n' <<<"$reported" | sed 's/^v//' | grep -qxF -- "$VER"; then
+            echo "::error::relay reported tracer version \"$reported\", requested $VER — the build did not pin $V's tracer (check the pins.yaml entry and the relay's module manifest); not publishing"
+            exit 1
           fi
       - name: Publish release backtest-${{ env.V }}-${{ env.VER }}
         env:

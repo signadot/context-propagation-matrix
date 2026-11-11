@@ -32,7 +32,12 @@ COPY relays/go-otelc ./relays/go-otelc
 # instrumentation packages), which is fine inside the image.
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     cd relays/go-otelc && \
-    CGO_ENABLED=0 GOFLAGS=-buildvcs=false go tool otelc go build -o /relay . && \
+    # Stamp the otelc version into the binary: otelc is a `tool` dependency,
+    # not a dependency of the binary, so debug.ReadBuildInfo cannot see it;
+    # /info reports it via this ldflag (the SDK it weaves in is visible and
+    # goes under libs). This is the version the variant is filed under.
+    OTELC=$(go list -m -f '{{.Version}}' go.opentelemetry.io/otelc) && \
+    CGO_ENABLED=0 GOFLAGS=-buildvcs=false go tool otelc go build -ldflags "-X main.tracerVersion=$OTELC" -o /relay . && \
     # Fail the build if weaving silently did not happen: the woven binary must
     # contain OTel SDK + kafka-go instrumentation symbols (injected at link
     # time; they do NOT appear in `go version -m` output).

@@ -32,7 +32,13 @@
 #   kind: gomod    dir + modules: the vendor's version-locked family, `go get`
 #                  together then `go mod tidy`. Modules with their own version
 #                  line (otelhttp/otelgrpc, New Relic integrations, OTel Ruby
-#                  instrumentation gems) are deliberately not listed.
+#                  instrumentation gems) are deliberately not listed. `set`
+#                  fails if go.mod does not hold the version after tidy (tidy
+#                  can pull the family back up: a dependency's tests import a
+#                  package from a module nothing requires, so tidy adds that
+#                  module at latest). Optional companions [modules]: same
+#                  version line, `go get` with the family so tidy finds the
+#                  package at the pinned version, but not required in go.mod.
 #   kind: npm      file (package.json) + packages
 #   kind: pip      file (requirements-*.txt) + packages (globs; every `pkg==`)
 #   kind: bundler  file (Gemfile) + packages (gem names)
@@ -168,6 +174,13 @@ pins:
       - go.opentelemetry.io/otel
       - go.opentelemetry.io/otel/sdk
       - go.opentelemetry.io/otel/trace
+    # kotel 1.5.0 (the plugin version otel 1.27.0–1.30.0 resolve to) imports
+    # otel/sdk/metric in its tests without requiring it, so `go mod tidy`
+    # fetched sdk/metric at latest and that dragged the family back to
+    # 1.47.0: back-tests 1.27.0–1.30.0 in run-2026-11-10.17 measured 1.47.0.
+    # Getting sdk/metric at the pinned version first keeps the pin.
+    companions:
+      - go.opentelemetry.io/otel/sdk/metric
     source: { registry: goproxy, package: go.opentelemetry.io/otel }
     variants: [otel-go]
     # The relay's gRPC legs use the otelgrpc stats handlers

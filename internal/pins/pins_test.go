@@ -300,6 +300,9 @@ pins:
 		"follow-kind":    "pins:\n  - {id: a, kind: arg, file: f, arg: X, follow: {x: [y]}, source: {registry: r, package: p}}\n",
 		"follow-empty":   "pins:\n  - {id: a, kind: cargo, dir: d, packages: [x], follow: {y: []}, source: {registry: r, package: p}}\n",
 		"follow-overlap": "pins:\n  - {id: a, kind: cargo, dir: d, packages: [x, y], follow: {z: [y]}, source: {registry: r, package: p}}\n",
+		// companions is gomod-only and cannot name a pinned module.
+		"companions-kind":    "pins:\n  - {id: a, kind: cargo, dir: d, packages: [x], companions: [y], source: {registry: r, package: p}}\n",
+		"companions-overlap": "pins:\n  - {id: a, kind: gomod, dir: d, modules: [x, y], companions: [y], source: {registry: r, package: p}}\n",
 	} {
 		f := write(t, dir, name+".yaml", body)
 		if _, err := Load(f); err == nil {
