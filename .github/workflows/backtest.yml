@@ -110,7 +110,7 @@ jobs:
       # no baseline.
       - id: baseline
         name: Keep that results.json as the baseline for every pair
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: latest-run-results
           path: results/latest/results.json
@@ -215,7 +215,7 @@ jobs:
           retention-days: 30
       - name: Latest run's results.json (the uninstrumented baseline to judge this agent against)
         if: env.BASELINE != ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: latest-run-results
           path: /tmp/baseline
