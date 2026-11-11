@@ -120,6 +120,19 @@ jobs:
       # `cpm pins set` moves Cargo.lock with `cargo update` for the Rust relays.
       - uses: dtolnay/rust-toolchain@stable
         if: endsWith(env.V, '-rust')
+      # ... and Gemfile.lock with `bundle lock` for the Ruby relays, under the
+      # Ruby of the relay image (its FROM tag, so the two cannot drift): the
+      # lock is resolved by the Ruby and Bundler that install it. Keyed on
+      # the tracer's registry because not every Ruby variant ends in -ruby
+      # (datadog-ruby-defaults).
+      - name: Ruby version of the relay image
+        id: ruby
+        if: matrix.pair.registry == 'rubygems'
+        run: sed -nE 's/^FROM ruby:([0-9.]+).*/version=\1/p' relays/ruby/Dockerfile >> "$GITHUB_OUTPUT"
+      - uses: ruby/setup-ruby@v1
+        if: matrix.pair.registry == 'rubygems'
+        with:
+          ruby-version: ${{ steps.ruby.outputs.version }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:

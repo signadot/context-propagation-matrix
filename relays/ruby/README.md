@@ -103,15 +103,48 @@ Expected matrix outcome: only `http -> http` has a documented propagation
 path; everything else measures what actually happens with no elastic
 instrumentation on at least one side of the hop.
 
-## Library versions at time of writing
+## Library versions
 
-Resolved fresh at image build (`bundle install`, pessimistic constraints):
-sinatra 4.2.x, puma 8.0.x, rackup 2.3.x, grpc 1.83.x, rdkafka 0.29.x,
-karafka 2.6.x, waterdrop 2.10.x, bunny 3.3.x, opentelemetry-sdk 1.13.x
-(instrumentation: rack 0.31.x, sinatra 0.30.x, net_http 0.29.x, grpc 0.5.x,
-rdkafka 0.10.x, bunny 0.25.x), datadog 2.42.x, newrelic_rpm 10.7.x,
-elastic-apm 4.9.x. Exact versions are reported at runtime by `GET /info`
-(`tracer_version`, `libs`) via `Gem.loaded_specs`.
+Each `gemfiles/<tool>/Gemfile` pins the gems the relay uses directly, and the
+`Gemfile.lock` beside it pins everything they pull in (see
+[Gem locks](#gem-locks)). The versions a running relay loaded are reported by
+`GET /info` (`tracer_version`, `libs`) via `Gem.loaded_specs`.
+
+## Gem locks
+
+Each `gemfiles/<tool>/Gemfile` pins its gems exactly and has a `Gemfile.lock`
+beside it that pins everything those gems pull in. The image installs with
+`BUNDLE_FROZEN=true`: `bundle install` installs exactly the lock, and the
+build fails if the lock does not satisfy the Gemfile. The tracer gem is in
+the lock too, because Bundler resolves a Gemfile as a whole, so the lock
+moves whenever the tracer does:
+
+- `cpm pins set` and `cpm pins latest -apply` (`backtest.yml`,
+  `bump-agents.yml`) rewrite the tracer's `gem` line and run `bundle lock
+  --update <tracer gem>`. That resolves the tracer and what it depends on
+  again and leaves the other gems where the lock has them, unless one
+  conflicts with the tracer. `cpm pins check` fails when a lock does not hold
+  the tracer version its Gemfile pins.
+- Dependabot updates a Gemfile and its lock in the same PR.
+
+The locks cover the two platforms the image is built for, `aarch64-linux`
+and `x86_64-linux`, with a gem's precompiled build for each where it ships
+one (grpc, google-protobuf, ffi, rdkafka, libdatadog, libddwaf). Run Bundler
+in the image the relay is built from, so the lock is written by the Ruby and
+Bundler that install it and the host's platform is not added to it:
+
+```sh
+# After editing a Gemfile by hand: resolves what changed, keeps the rest.
+docker run --rm -v "$PWD/relays/ruby/gemfiles/<tool>:/w" -w /w ruby:3.3 bundle lock
+
+# Every gem again, at the newest version the Gemfile allows.
+docker run --rm -v "$PWD/relays/ruby/gemfiles/<tool>:/w" -w /w ruby:3.3 bundle lock --update
+
+# A new Gemfile. Starting from an empty lock keeps Bundler from adding every
+# platform the gems ship for.
+docker run --rm -v "$PWD/relays/ruby/gemfiles/<tool>:/w" -w /w ruby:3.3 \
+  sh -c ': > Gemfile.lock && bundle lock --add-platform aarch64-linux x86_64-linux'
+```
 
 ## Process model
 

@@ -379,6 +379,14 @@ their transitive packages are fixed too. The tracer installed on top of it
 (and whatever the tracer pulls in) is not locked: it resolves at build time,
 because the tracer version is the variable being measured.
 
+The Ruby relay is locked differently. It commits a `Gemfile.lock` beside
+each tool's Gemfile (`relays/ruby/gemfiles/<tool>/`), installed with
+`BUNDLE_FROZEN`. That lock holds the tracer and what it pulls in as well,
+because the tracer is a line of the same Gemfile and Bundler resolves a
+Gemfile as a whole. Whatever moves the tracer moves the lock with it:
+`cpm pins` runs `bundle lock --update <tracer gem>`, which leaves the
+application's gems where the lock has them.
+
 Two bots move versions, and they do not overlap:
 
 - **Dependabot** (`.github/dependabot.yml`) keeps the *application*
@@ -402,7 +410,8 @@ Two bots move versions, and they do not overlap:
   for each pin that is behind, `cpm pins latest -only <id> -apply` writes it
   the way the ecosystem expects (`go get` + `go mod tidy` for the whole
   module family, `cargo update` for the crate family, a JSON key, every
-  `==` line, a `gem` line, an `ARG`). There is exactly one PR per pin: branch
+  `==` line, a `gem` line with `bundle lock`, an `ARG`). There is exactly
+  one PR per pin: branch
   `bump/<id>`, title `bump(<id>): <from> → <to>`, labels `dependencies` +
   `tracer-bump` + `auto-merge`, squash auto-merge requested. A newer
   upstream release rewrites that branch (current `main` + one commit) and
@@ -418,7 +427,8 @@ Two bots move versions, and they do not overlap:
 
 The same `cpm pins` write path serves `backtest.yml`, which runs `cpm pins
 set` to move any pin *backwards* in a scratch checkout, and `verify.yml`
-runs `cpm pins check` so every instrumented variant has exactly one pin and
+runs `cpm pins check` so every instrumented variant has exactly one pin,
+every `Gemfile.lock` holds the tracer version its Gemfile pins, and
 every pinned or followed cargo crate has one copy in its `Cargo.lock`. That
 last rule is the Rust relays' safety net: `datadog-opentelemetry` requires an
 exact `opentelemetry` version, and a second copy of the API crate in the
