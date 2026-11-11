@@ -56,12 +56,100 @@ type VersionEntry struct {
 // space or a leading dot.
 var safeVersion = regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z.+_-]*$`)
 
+// Release assets that are not per-version documents.
+const (
+	IndexAsset  = "index.json"
+	BundleAsset = "versions.json"
+)
+
 // AssetName is the per-version document's file name for a version.
 func AssetName(version string) (string, error) {
 	if !safeVersion.MatchString(version) {
 		return "", fmt.Errorf("version %q cannot name a release asset", version)
 	}
+	if n := version + ".json"; n == IndexAsset || n == BundleAsset {
+		return "", fmt.Errorf("version %q would collide with the release's %s", version, n)
+	}
 	return version + ".json", nil
+}
+
+// VersionBundleSchema is the schema_version of versions.json.
+const VersionBundleSchema = 1
+
+// VersionBundle is versions.json: the index and every per-version document
+// of one variant in a single asset, so that a consumer rebuilding the whole
+// history (the site, on every build) needs one download per variant rather
+// than one per version. Documents are kept as written, keyed by version,
+// and always agree with Index: Sync enforces it.
+type VersionBundle struct {
+	SchemaVersion int                        `json:"schema_version"`
+	Index         *VersionIndex              `json:"index"`
+	Documents     map[string]json.RawMessage `json:"documents"`
+}
+
+// LoadVersionBundle reads versions.json for the variant described by v; a
+// missing file yields an empty bundle, which Sync then reports as lacking
+// every document the index lists.
+func LoadVersionBundle(path string, v *Variant) (*VersionBundle, error) {
+	b := &VersionBundle{SchemaVersion: VersionBundleSchema, Documents: map[string]json.RawMessage{}}
+	raw, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return b, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(raw, b); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	if b.SchemaVersion != VersionBundleSchema {
+		return nil, fmt.Errorf("%s: schema_version %d, want %d", path, b.SchemaVersion, VersionBundleSchema)
+	}
+	if b.Index != nil && b.Index.Variant != v.ID {
+		return nil, fmt.Errorf("%s: is for %s, not %s", path, b.Index.Variant, v.ID)
+	}
+	if b.Documents == nil {
+		b.Documents = map[string]json.RawMessage{}
+	}
+	return b, nil
+}
+
+// Put stores the document for a version, as written to its asset.
+func (b *VersionBundle) Put(version string, doc []byte) {
+	b.Documents[version] = json.RawMessage(doc)
+}
+
+// Sync makes the bundle follow idx: documents for versions the index no
+// longer lists are dropped, and the versions the index lists without a
+// document in the bundle are returned (the caller must supply them before
+// writing, or the bundle would be incomplete).
+func (b *VersionBundle) Sync(idx *VersionIndex) (missing []string) {
+	listed := map[string]bool{}
+	for _, e := range idx.Versions {
+		listed[e.Version] = true
+		if _, ok := b.Documents[e.Version]; !ok {
+			missing = append(missing, e.Version)
+		}
+	}
+	for v := range b.Documents {
+		if !listed[v] {
+			delete(b.Documents, v)
+		}
+	}
+	b.Index = idx
+	return missing
+}
+
+// Write serialises the bundle compactly (it is machine-read and large).
+func (b *VersionBundle) Write(path string) error {
+	if b.Index == nil {
+		return fmt.Errorf("bundle has no index")
+	}
+	raw, err := json.Marshal(b)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(raw, '\n'), 0o644)
 }
 
 // MeasuredHere reports whether v's hops ran in r's own run, as opposed to

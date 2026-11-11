@@ -286,6 +286,7 @@ release per instrumented variant, `variant-{id}`:
 |---|---|
 | `{version}.json` | a single-variant schema v2 document for that tracer version: the variant, the run manifest it was measured in, the dimensions, the annotations that touch it and a summary for it alone |
 | `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts |
+| `versions.json` | the bundle: `{schema_version, index, documents}` — `index` is `index.json`, `documents` maps each listed version to its `{version}.json` byte for byte. One download gives a consumer the variant's whole history; the site reads only this asset |
 
 `{version}` is the *pinned* tracer version (`tracer.pinned`: what `cpm pins`
 reads from the manifest the relay was built from, the value a bump PR names
@@ -295,8 +296,11 @@ Every matrix run files the variants it measured and every back-test files
 its one pair (`scripts/publish-versions.sh`, wrapping `cpm versions`); when
 a version is measured again the latest measurement replaces the earlier one.
 `scripts/rebuild-versions.sh` recreates all of them from the run and
-back-test releases. The site reads `index.json` per variant and one
-`{version}.json` per page instead of every run release.
+back-test releases; `scripts/publish-versions.sh -rebuild` re-derives
+`index.json` and `versions.json` from the documents already on a release.
+The site reads one `versions.json` per variant — ~50 downloads per build,
+each of which must succeed for the build to pass — instead of every run
+release or every per-version document.
 A back-test does not build differently: `backtest.yml` rewrites the pin
 behind the variant in its checkout (`cpm pins set -variant V -version X`,
 the edit a Dependabot PR would make, pointed backwards) and builds the

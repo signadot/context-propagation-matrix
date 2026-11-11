@@ -16,7 +16,7 @@ import (
 // touches files; scripts/publish-versions.sh moves them to and from the
 // release.
 //
-//	cpm versions -variant ID -out DIR [-index DIR/index.json]
+//	cpm versions -variant ID -out DIR [-index DIR/index.json] [-bundle DIR/versions.json]
 //	             [-results results.json [-version X]] [-present a.json,b.json] [doc.json ...]
 //
 // With -results, the variant's measurement is written to DIR/{version}.json
@@ -26,13 +26,21 @@ import (
 // existing per-version files (named {version}.json) to (re)index, which is
 // how a release is rebuilt and how an index that lost a race catches up.
 // -present lists the asset names on the release; entries for assets not in
-// it and not written now are dropped. Prints one JSON line per document
-// written or indexed.
+// it and not written now are dropped.
+//
+// DIR/versions.json, the bundle of the index and every document, is
+// rewritten as well: the existing bundle is read, the documents written or
+// given now are put in, and what the index no longer lists is dropped. The
+// bundle must end up holding a document for every indexed version, so when
+// it does not (first bundle, or a document only on the release) the missing
+// versions are reported and the caller passes their documents as
+// positionals. Prints one JSON line per document written or indexed.
 func cmdVersions(args []string) error {
 	fs := flag.NewFlagSet("versions", flag.ExitOnError)
 	variant := fs.String("variant", "", "variant id (required)")
-	outDir := fs.String("out", "", "directory for {version}.json and index.json (required)")
+	outDir := fs.String("out", "", "directory for {version}.json, index.json and versions.json (required)")
 	indexPath := fs.String("index", "", "existing index.json to update (default: <out>/index.json if present)")
+	bundlePath := fs.String("bundle", "", "existing versions.json to update (default: <out>/versions.json if present)")
 	resultsPath := fs.String("results", "", "results.json to take the variant's measurement from")
 	version := fs.String("version", "", "canonical version for -results (default: the document's tracer.pinned)")
 	present := fs.String("present", "", "comma-separated asset names on the release; prune entries for any other asset")
@@ -42,7 +50,10 @@ func cmdVersions(args []string) error {
 		return fmt.Errorf("versions: -variant and -out are required")
 	}
 	if *indexPath == "" {
-		*indexPath = filepath.Join(*outDir, "index.json")
+		*indexPath = filepath.Join(*outDir, results.IndexAsset)
+	}
+	if *bundlePath == "" {
+		*bundlePath = filepath.Join(*outDir, results.BundleAsset)
 	}
 
 	type written struct {
@@ -52,17 +63,53 @@ func cmdVersions(args []string) error {
 		Source  string `json:"source"`
 	}
 	var (
-		idx   *results.VersionIndex
-		wrote []written
-		enc   = json.NewEncoder(os.Stdout)
+		idx    *results.VersionIndex
+		bundle *results.VersionBundle
+		wrote  []written
+		enc    = json.NewEncoder(os.Stdout)
 	)
 	ensureIndex := func(v *results.Variant) error {
 		if idx != nil {
 			return nil
 		}
 		var err error
-		idx, err = results.LoadVersionIndex(*indexPath, v)
+		if idx, err = results.LoadVersionIndex(*indexPath, v); err != nil {
+			return err
+		}
+		bundle, err = results.LoadVersionBundle(*bundlePath, v)
 		return err
+	}
+
+	// Existing documents first, the fresh measurement last: when -results
+	// files a version that is also given as a document (the release copy of
+	// the version being re-measured), the measurement made now must win.
+	for _, path := range fs.Args() {
+		doc, err := results.Load(path)
+		if err != nil {
+			return err
+		}
+		if len(doc.Variants) != 1 || doc.Variants[0].ID != *variant || doc.Variants[0].Missing {
+			return fmt.Errorf("versions: %s is not a single-variant document for %s", path, *variant)
+		}
+		v := doc.Variants[0]
+		ver := strings.TrimSuffix(filepath.Base(path), ".json")
+		if cv := v.CanonicalVersion(); cv != "" && cv != ver {
+			return fmt.Errorf("versions: %s is filed as %s but records version %s", path, ver, cv)
+		}
+		if err := ensureIndex(v); err != nil {
+			return err
+		}
+		e, err := doc.Entry(ver)
+		if err != nil {
+			return err
+		}
+		idx.Upsert(e)
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		bundle.Put(ver, raw)
+		wrote = append(wrote, written{*variant, ver, e.Asset, path})
 	}
 
 	if *resultsPath != "" {
@@ -102,7 +149,8 @@ func cmdVersions(args []string) error {
 		if err := os.MkdirAll(*outDir, 0o755); err != nil {
 			return err
 		}
-		if err := doc.Write(filepath.Join(*outDir, asset)); err != nil {
+		assetPath := filepath.Join(*outDir, asset)
+		if err := doc.Write(assetPath); err != nil {
 			return err
 		}
 		if err := ensureIndex(v); err != nil {
@@ -113,31 +161,12 @@ func cmdVersions(args []string) error {
 			return err
 		}
 		idx.Upsert(e)
+		raw, err := os.ReadFile(assetPath) // the bundle carries the asset byte for byte
+		if err != nil {
+			return err
+		}
+		bundle.Put(ver, raw)
 		wrote = append(wrote, written{*variant, ver, asset, *resultsPath})
-	}
-
-	for _, path := range fs.Args() {
-		doc, err := results.Load(path)
-		if err != nil {
-			return err
-		}
-		if len(doc.Variants) != 1 || doc.Variants[0].ID != *variant || doc.Variants[0].Missing {
-			return fmt.Errorf("versions: %s is not a single-variant document for %s", path, *variant)
-		}
-		v := doc.Variants[0]
-		ver := strings.TrimSuffix(filepath.Base(path), ".json")
-		if cv := v.CanonicalVersion(); cv != "" && cv != ver {
-			return fmt.Errorf("versions: %s is filed as %s but records version %s", path, ver, cv)
-		}
-		if err := ensureIndex(v); err != nil {
-			return err
-		}
-		e, err := doc.Entry(ver)
-		if err != nil {
-			return err
-		}
-		idx.Upsert(e)
-		wrote = append(wrote, written{*variant, ver, e.Asset, path})
 	}
 
 	if idx == nil {
@@ -157,10 +186,20 @@ func cmdVersions(args []string) error {
 			fmt.Fprintf(os.Stderr, "versions: dropped %s from the index: not on the release\n", a)
 		}
 	}
+	if missing := bundle.Sync(idx); len(missing) > 0 {
+		return fmt.Errorf("versions: %s lacks the document for %s; pass %s as positional documents",
+			results.BundleAsset, strings.Join(missing, ", "), assetList(missing))
+	}
 	if err := os.MkdirAll(filepath.Dir(*indexPath), 0o755); err != nil {
 		return err
 	}
 	if err := idx.Write(*indexPath); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(*bundlePath), 0o755); err != nil {
+		return err
+	}
+	if err := bundle.Write(*bundlePath); err != nil {
 		return err
 	}
 	for _, w := range wrote {
@@ -169,4 +208,13 @@ func cmdVersions(args []string) error {
 		}
 	}
 	return nil
+}
+
+// assetList renders versions as the asset names a caller would download.
+func assetList(versions []string) string {
+	names := make([]string, len(versions))
+	for i, v := range versions {
+		names[i] = v + ".json"
+	}
+	return strings.Join(names, " ")
 }
