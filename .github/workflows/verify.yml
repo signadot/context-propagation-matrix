@@ -129,6 +129,11 @@ jobs:
           PUSH_BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
+          # setup-go registers a problem matcher for `<file>.go: <message>`
+          # lines. `cpm affected` prints its reasons in that shape (`affected:
+          # cmd/cpm/main.go: aggregation/tooling only, no variants`), and the
+          # matcher would file each one as an error annotation on this job.
+          echo "::remove-matcher owner=go::"
           case "$GITHUB_EVENT_NAME" in
             pull_request)
               # Diff from where the branch forked, not from the base branch's

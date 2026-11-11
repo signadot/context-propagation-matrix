@@ -90,6 +90,11 @@ jobs:
           GH_TOKEN: ${{ github.token }} # scripts/fetch-latest.sh
         run: |
           set -euo pipefail
+          # setup-go registers a problem matcher for `<file>.go: <message>`
+          # lines. `cpm affected` prints its reasons in that shape (`affected:
+          # cmd/cpm/main.go: aggregation/tooling only, no variants`), and the
+          # matcher would file each one as an error annotation on this job.
+          echo "::remove-matcher owner=go::"
           # Variants whose inputs changed since their own latest published
           # measurement (plus, with `-base REV`, those a change since REV can
           # alter). This is what lets a run make up for one that was
