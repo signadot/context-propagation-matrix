@@ -59,10 +59,10 @@ env:
 jobs:
   go:
     name: "Go: gofmt, vet, test"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -75,10 +75,10 @@ jobs:
 
   consistency:
     name: "Registry, pins, annotations and scripts consistent"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -102,17 +102,22 @@ jobs:
         run: go run ./cmd/cpm pins check >/dev/null
       - name: shell scripts parse
         run: for f in run.sh scripts/*.sh; do bash -n "$f" || exit 1; done
+      # matrix.yml carries results over from the release this names and diffs
+      # against it, and republish.yml rewrites it. The releases API does not
+      # list runs newest first, so the choice is tested. Offline.
+      - name: fetch-latest.sh names the newest run
+        run: scripts/test-fetch-latest.sh
 
   plan:
     name: "Which relays does this change affect?"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       variants: ${{ steps.plan.outputs.variants }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # cpm affected diffs two revisions
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -124,6 +129,11 @@ jobs:
           PUSH_BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
+          # setup-go registers a problem matcher for `<file>.go: <message>`
+          # lines. `cpm affected` prints its reasons in that shape (`affected:
+          # cmd/cpm/main.go: aggregation/tooling only, no variants`), and the
+          # matcher would file each one as an error annotation on this job.
+          echo "::remove-matcher owner=go::"
           case "$GITHUB_EVENT_NAME" in
             pull_request)
               # Diff from where the branch forked, not from the base branch's
@@ -168,7 +178,7 @@ jobs:
     name: "Boot and propagate: ${{ matrix.variant }}"
     needs: plan
     if: needs.plan.outputs.variants != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -178,11 +188,11 @@ jobs:
       V: ${{ matrix.variant }}
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Log in to GHCR (cache read/write; skipped for forks)
         if: github.event.pull_request.head.repo.fork != true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -250,7 +260,7 @@ jobs:
     name: "Affected relays build, boot and propagate"
     needs: [plan, smoke]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - env:
           PLAN: ${{ needs.plan.result }}

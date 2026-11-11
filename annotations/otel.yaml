@@ -250,3 +250,85 @@
     - { title: "opentelemetry-php-contrib instrumentation tree", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/tree/main/src/Instrumentation" }
     - { title: "ExtAmqp README (ext-amqp only)", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/blob/main/src/Instrumentation/ExtAmqp/README.md" }
     - { title: "opentelemetry-php #937 (cannot hook closures)", url: "https://github.com/open-telemetry/opentelemetry-php/issues/937" }
+
+# ---- otel-node: version history ------------------------------------------
+# otel-node is 16/16 on the current auto-instrumentations-node. These two
+# notes explain the back-tests: which legs an older version loses and why.
+
+- id: otel-node-amqplib-2-outside-supported-range
+  title: "OTel Node 0.48.0–0.77.0: instrumentation-amqplib's version cap excludes the app's amqplib 2.x, so RabbitMQ legs carry nothing"
+  match:
+    - variant: otel-node
+      header: [baggage, tracestate, traceparent]
+      boundary: ["*->rabbitmq", "rabbitmq->*"]
+  cause: "@opentelemetry/instrumentation-amqplib 0.39.0–0.66.0 declare supportedVersions '>=0.5.5 <1' (later '<2'); against the relay's amqplib 2.2.1 the module is never patched, so nothing is injected on publish and nothing extracted on consume. 0.67.0 (auto-instrumentations-node 0.78.0) raised the cap to '<3'."
+  explanation: |
+    Back-tests: auto-instrumentations-node 0.47.0–0.47.1 pass every RabbitMQ
+    leg; 0.48.0 through 0.77.0 pass none of them (`*->rabbitmq` absent,
+    `rabbitmq->http/grpc` a new trace, `rabbitmq->rabbitmq` absent); 0.78.0
+    and later pass all seven again. Every other leg is unaffected.
+
+    The relay's AMQP client is amqplib 2.2.1 (2.0.0 shipped 10 May 2026). An
+    OTel JS instrumentation patches a module only if its version satisfies
+    the instrumentation's `supportedVersions`. instrumentation-amqplib 0.38.0
+    (in auto-instrumentations-node 0.47.x) declared `>=0.5.5` with no upper
+    bound, so it patched 2.x and happened to work. opentelemetry-js-contrib
+    PR #2196 "standardize supported versions and set upper bound limit"
+    (merged 20 June 2024) capped it at `>=0.5.5 <1` — a guard against
+    patching an untested major, long before amqplib 1.0 (March 2026)
+    existed — shipped in instrumentation-amqplib 0.39.0 /
+    auto-instrumentations-node 0.48.0 on 4 July 2024. PR #3491 raised it to
+    `<2` for amqplib 1.x (April 2026), and PR #3573 "support amqplib@2"
+    (merged 17 June 2026) to `<3`, shipped in 0.67.0 /
+    auto-instrumentations-node 0.78.0 on 3 July 2026.
+
+    This is the harness measuring each tracer version against the
+    application's *current* library: paired with amqplib 0.10.x, the line
+    they were released against, 0.48.0–0.77.0 instrument RabbitMQ. A user on
+    one of those tracer versions with amqplib ≥1 gets no RabbitMQ
+    propagation and no warning; the fix is auto-instrumentations-node
+    ≥0.78.0 (or instrumentation-amqplib ≥0.67.0 registered directly). The two
+    mixed legs (`kafka->rabbitmq`, `rabbitmq->kafka`) also need Kafka
+    instrumented, see `otel-node-kafkajs-added-0.49.0`.
+  status: fixed
+  fixed_in: "0.78.0"
+  links:
+    - { title: "opentelemetry-js-contrib PR #2196 (upper bounds on supportedVersions; amqplib '<1')", url: "https://github.com/open-telemetry/opentelemetry-js-contrib/pull/2196" }
+    - { title: "opentelemetry-js-contrib PR #3491 (amqplib 1.x, '<2')", url: "https://github.com/open-telemetry/opentelemetry-js-contrib/pull/3491" }
+    - { title: "opentelemetry-js-contrib PR #3573 (support amqplib@2, '<3')", url: "https://github.com/open-telemetry/opentelemetry-js-contrib/pull/3573" }
+    - { title: "instrumentation-amqplib README (supported versions)", url: "https://github.com/open-telemetry/opentelemetry-js-contrib/blob/main/packages/instrumentation-amqplib/README.md" }
+    - { title: "auto-instrumentations-node 0.78.0 release", url: "https://github.com/open-telemetry/opentelemetry-js-contrib/releases/tag/auto-instrumentations-node-v0.78.0" }
+
+- id: otel-node-kafkajs-added-0.49.0
+  title: "OTel Node before 0.49.0: auto-instrumentations-node had no kafkajs instrumentation, so Kafka legs carry nothing"
+  match:
+    - variant: otel-node
+      header: [baggage, tracestate, traceparent]
+      boundary: ["*->kafka", "kafka->*"]
+  cause: "@opentelemetry/instrumentation-kafkajs joined the auto-instrumentations-node meta-package in 0.49.0 (opentelemetry-js-contrib PR #2340); earlier versions patch nothing in kafkajs, so no headers are injected on produce and consumed context is not extracted."
+  explanation: |
+    Back-tests: auto-instrumentations-node 0.47.0–0.48.0 pass no Kafka leg
+    (`*->kafka` absent, `kafka->http/grpc` a new trace, `kafka->kafka`
+    absent); 0.49.0 and later pass all of them, apart from the
+    baggage-only regression at 0.57.0–0.58.1, which is not Kafka-specific.
+
+    `@opentelemetry/instrumentation-kafkajs` was created in
+    opentelemetry-js-contrib PR #2089 (merged 17 May 2024) and added to the
+    `getNodeAutoInstrumentations()` set by PR #2340 "enable
+    auto-instrumentation for KafkaJS" (merged 23 July 2024), shipped in
+    auto-instrumentations-node 0.49.0 on 29 July 2024. Before that a Node
+    service relying on the meta-package had no Kafka coverage at all unless
+    it registered the instrumentation itself.
+
+    What a user on 0.47.x–0.48.0 can do: register
+    `@opentelemetry/instrumentation-kafkajs` explicitly alongside the
+    meta-package, or upgrade to ≥0.49.0. The two mixed legs
+    (`kafka->rabbitmq`, `rabbitmq->kafka`) also need RabbitMQ instrumented,
+    see `otel-node-amqplib-2-outside-supported-range`.
+  status: fixed
+  fixed_in: "0.49.0"
+  links:
+    - { title: "opentelemetry-js-contrib PR #2089 (kafkajs instrumentation)", url: "https://github.com/open-telemetry/opentelemetry-js-contrib/pull/2089" }
+    - { title: "opentelemetry-js-contrib PR #2340 (enable KafkaJS in auto-instrumentations-node)", url: "https://github.com/open-telemetry/opentelemetry-js-contrib/pull/2340" }
+    - { title: "auto-instrumentations-node README (supported instrumentations)", url: "https://github.com/open-telemetry/opentelemetry-js-contrib/blob/main/packages/auto-instrumentations-node/README.md" }
+    - { title: "auto-instrumentations-node 0.49.0 release", url: "https://github.com/open-telemetry/opentelemetry-js-contrib/releases/tag/auto-instrumentations-node-v0.49.0" }
