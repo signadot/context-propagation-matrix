@@ -71,9 +71,9 @@ would make every cell green and every cell meaningless.
    `latest`). Add the tracer's pin to `pins.yaml` (which file holds it and
    how it is written); `cpm pins check` in `verify.yml` fails until every
    instrumented variant has one. If an agent is fetched by URL, make the
-   version a Dockerfile `ARG` (`kind: arg`) so `bump-agents.yml` can bump it;
-   the other kinds are Dependabot's, and `backtest.yml` moves any of them
-   backwards through the same entry.
+   version a Dockerfile `ARG` (`kind: arg`); `bump-agents.yml` moves every
+   kind of pin and Dependabot ignores them, and `backtest.yml` moves any of
+   them backwards through the same entry.
 3. **`docker-compose.yml`** — one `relay-{tool}-{lang}` service per target:
    `<<: *relay-common-env`, `profiles: [{variant}]`, `restart: on-failure`,
    `depends_on: *relay-depends`, plus the tool's environment (copy another
@@ -231,8 +231,8 @@ page uses it to say what was broken in which release. Release notes for each
 ## Pull requests
 
 - CI (`verify.yml`) runs `go vet`, `cpm validate -strict` against the latest
-  published `results.json`, and two smoke variants; it needs no secrets, so
-  fork PRs work.
+  published `results.json`, and boots the relays the change affects; it needs
+  no secrets, so fork PRs work.
 - Include the relevant rows from your local `results/latest/MATRIX.md` in
   the PR description. Results themselves are gitignored and cannot be
   committed; CI measures and publishes on merge.
