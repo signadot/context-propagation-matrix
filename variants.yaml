@@ -435,7 +435,7 @@ variants:
     flavour: default
     display_name: Python
     setup_tier: init-only
-    attach: "ElasticAPM(app) Flask middleware + instrument()"
+    attach: "python boot_elastic.py (instrument() + ElasticAPM(app) Flask middleware)"
     tracer: { name: elastic-apm, registry: pypi, package: elastic-apm, github: elastic/apm-agent-python }
     source: relays/python
   - id: elastic-go
