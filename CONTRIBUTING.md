@@ -245,9 +245,14 @@ page uses it to say what was broken in which release. Release notes for each
   variant; anything under `driver/`, `sink/`, `proto/`, `gen/`, `docker/`,
   `go.mod`/`go.sum` or `matrix.yml` itself re-runs everything. Cells not
   re-measured are carried over from the previous release, and the new release
-  records `run.partial` / `run.reran`. Annotation-only merges go through
-  `republish.yml` instead. The Monday schedule and `workflow_dispatch` always
-  run the full matrix. Try it locally: `go run ./cmd/cpm affected -base origin/main`.
+  records `run.partial` / `run.reran`. The same run also measures any variant
+  whose inputs changed since it was last measured (`cpm affected -since
+  results/latest/results.json`), which covers a run that was cancelled or
+  failed and merges that start no run, such as the bot's tracer bumps; a
+  6-hourly schedule does only that. Annotation-only merges go through
+  `republish.yml` instead. The Monday schedule and `workflow_dispatch` run
+  the full matrix by default. Try it locally:
+  `go run ./cmd/cpm affected -base origin/main`.
 
 ### Repository secrets (maintainers)
 

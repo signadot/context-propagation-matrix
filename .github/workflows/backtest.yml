@@ -61,13 +61,13 @@ env:
 
 jobs:
   plan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       pairs: ${{ steps.plan.outputs.pairs }}
       count: ${{ steps.plan.outputs.count }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -98,7 +98,7 @@ jobs:
   run:
     needs: plan
     if: needs.plan.outputs.count != '0'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -113,21 +113,26 @@ jobs:
       VER: ${{ matrix.pair.version }}
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
       # `cpm pins set` moves Cargo.lock with `cargo update` for the Rust relays.
       - uses: dtolnay/rust-toolchain@stable
         if: endsWith(env.V, '-rust')
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Pin ${{ env.V }}'s tracer to ${{ env.VER }} in this checkout
+        env:
+          # setup-go sets GOTOOLCHAIN=local for the job. A Go pin is moved
+          # with `go get` and `go mod tidy` on the runner, which may need a
+          # newer Go than go.mod names: let them fetch it.
+          GOTOOLCHAIN: auto
         run: |
           set -euo pipefail
           go run ./cmd/cpm pins set -variant "$V" -version "$VER" > /tmp/pin.json
@@ -221,7 +226,7 @@ jobs:
               "${assets[@]}"
           fi
       - name: Keep the document for the filing job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backtest-${{ env.V }}-${{ env.VER }}
           path: /tmp/out/results.json
@@ -236,14 +241,14 @@ jobs:
     name: File each back-test under its tracer version (variant-* releases)
     needs: run
     if: always() && needs.run.result != 'skipped'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: backtest-*
           path: docs
