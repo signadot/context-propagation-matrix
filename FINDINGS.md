@@ -540,7 +540,10 @@ the SDK bootstrap that honors `OTEL_PROPAGATORS`).
   compile-time weaver.
 - **RabbitMQ legs: no instrumentation exists.** otelc's supported list has
   no AMQP client, so all rabbitmq cells are dark — same coverage-allowlist
-  economics as every runtime agent (§14.3).
+  economics as every runtime agent (§14.3). (True of otelc 1.1.0 and earlier.
+  otelc 1.2.0 instruments amqp091-go: `http->rabbitmq` and `grpc->rabbitmq`
+  now pass, and `rabbitmq->*` starts a new trace. The annotation
+  `go-weavers-no-amqp-instrumentation` has the current behaviour.)
 
 **datadog-go-orchestrion** —
 [Orchestrion](https://github.com/DataDog/orchestrion) v1.13.0 weaving

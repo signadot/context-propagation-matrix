@@ -207,9 +207,11 @@
     `results/experiments/otel-php-allow-stack-extension.json`). Neither the
     argument requirement nor the ini setting is mentioned in the ExtRdKafka README.
 
-    Consume-side rdkafka extraction is correct (`kafka->http` passes) — this
-    asymmetry is outbound-only. No upstream issue exists — filing candidate
-    against open-telemetry/opentelemetry-php.
+    This asymmetry is outbound-only. (`kafka->http` passed until
+    run-2026-11-09.5 and has started a new trace since run-2026-11-09.6. That
+    is a separate regression on the consume side with no annotation yet: four
+    OpenTelemetry PHP packages moved between the two measurements.) No upstream
+    issue exists — filing candidate against open-telemetry/opentelemetry-php.
   status: config
   links:
     - { title: "ExtRdKafkaInstrumentation.php", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/blob/main/src/Instrumentation/ExtRdKafka/src/ExtRdKafkaInstrumentation.php" }

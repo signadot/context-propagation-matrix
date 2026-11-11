@@ -400,7 +400,7 @@ func cmdValidate(args []string) error {
 	composePath := fs.String("compose", "docker-compose.yml", "compose file")
 	annDir := fs.String("annotations", "annotations", "annotations directory")
 	resPath := fs.String("results", "results/latest/results.json", "results.json to validate annotations against (skipped if missing)")
-	strict := fs.Bool("strict", false, "treat annotation warnings as errors")
+	strict := fs.Bool("strict", false, "treat annotation warnings as errors (partially resolved annotations and failing cells without an annotation stay warnings)")
 	fs.Parse(args)
 
 	reg, err := registry.Load(*regPath)
@@ -442,12 +442,8 @@ func cmdValidate(args []string) error {
 	fmt.Printf("annotations: %d loaded\n", len(anns))
 	if res, err := results.Load(*resPath); err == nil {
 		problems := annotations.Apply(res, anns)
-		for _, p := range problems {
-			fmt.Println("  " + p.String())
-			if p.Fatal || (*strict && !p.Info) {
-				errs = append(errs, p.String())
-			}
-		}
+		gh := os.Getenv("GITHUB_ACTIONS") == "true"
+		errs = append(errs, reportProblems(os.Stdout, gh, *strict, problems)...)
 		fmt.Printf("annotations: matched against %s (%d problems)\n", *resPath, len(problems))
 		resolved := 0
 		for _, a := range res.Annotations {
@@ -458,17 +454,12 @@ func cmdValidate(args []string) error {
 		if resolved > 0 {
 			fmt.Printf("annotations: %d resolved (every described cell now passes)\n", resolved)
 		}
-		// Coverage: failing cells nobody has explained yet. Informational —
-		// a new variant legitimately arrives unexplained — but surfaced here
-		// and in the Slack summary so an explanation gets written.
-		if un := annotations.Unexplained(res); len(un) > 0 {
-			fmt.Printf("annotations: %d non-pass cell(s) have no annotation:\n", len(un))
-			for _, line := range unexplainedLines(un, 20) {
-				fmt.Println("  " + line)
-			}
-		} else {
-			fmt.Println("annotations: every non-pass cell is explained")
-		}
+		// Coverage: failing cells nobody has explained yet. A warning that
+		// never fails validation, strict or not — a new upstream regression
+		// or a new variant legitimately arrives unexplained and must not block
+		// publishing — surfaced here and in the Slack summary so an
+		// explanation gets written.
+		reportUnexplained(os.Stdout, gh, annotations.Unexplained(res))
 	} else if !os.IsNotExist(err) {
 		return err
 	} else {

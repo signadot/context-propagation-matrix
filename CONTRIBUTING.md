@@ -165,9 +165,9 @@ attach mechanism — `datadog-python-kafkaprop` (a feature flag),
 
 `annotations/*.yaml` is where root causes live as data. Every non-pass cell
 should be matched by at least one annotation. `cpm validate` lists the
-failing cells nobody has explained yet; `cpm aggregate` and the Slack summary
-of the weekly run repeat that list so a new regression gets an explanation
-written.
+failing cells nobody has explained yet as a warning (a GitHub annotation in CI)
+that never fails the check, with or without `-strict`; the Slack summary of the
+weekly run repeats that list so a new regression gets an explanation written.
 
 ```yaml
 - id: datadog-java-baggage-non-http
@@ -217,6 +217,7 @@ the cell exist?) and then by **outcome** (default: every non-pass outcome).
 | Run shows… | `cpm aggregate` | `cpm validate` (PR CI, `-strict`) | Site |
 |---|---|---|---|
 | some described cells still fail | attaches to those cells | ok | Explanations card |
+| some described cells now pass in a variant while others still fail (partially resolved) | attaches to the failing cells only; **warns** once per variant, naming the cells that now pass | warns (a GitHub annotation in CI) and never fails: narrow the selector, or split the annotation, so it claims only what still fails | Explanations card on the failing cells |
 | every described cell now passes | attaches to the green cells with `resolved: true`; fills `fixed_in` from the variant's reported tracer version if the YAML has none; **warns** | fails until you record `status: fixed` and `fixed_in` | "resolved" card, kept for history |
 | a selector names a cell that does not exist (variant, header or boundary removed) | **fails** — the selector is stale or mistyped | fails | — |
 | a selector names only variants that are registered but have no results in this release (e.g. the New Relic variants when `NEW_RELIC_LICENSE_KEY` is unset, before any release carried their cells over) | notes it, attaches nothing | ok — nothing to check yet | — |
