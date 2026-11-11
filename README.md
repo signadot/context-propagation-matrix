@@ -22,7 +22,8 @@ GitHub Release (`run-YYYY-MM-DD[.N]`) carrying `results.json`, `MATRIX.md`,
 [latest release](https://github.com/signadot/context-propagation-matrix/releases/latest)
 or browse them at **https://contextpropagation.io**. The same measurements
 are also filed by tracer version, one rolling release per variant
-(`variant-otel-java`: `2.33.1.json`, `2.32.0.json`, …, `index.json`), so a
+(`variant-otel-java`: `2.33.1.json`, `2.32.0.json`, …, `index.json`, and
+`versions.json` bundling them all), so a
 result can be looked up by the version it was measured at. Nothing is committed to
 the tree by the harness; the design/contract is in [`DESIGN.md`](DESIGN.md).
 

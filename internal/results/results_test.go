@@ -220,6 +220,42 @@ func TestExtractAndVersionIndex(t *testing.T) {
 	if _, err := LoadVersionIndex(dir+"/index.json", res.Variant("otel-java")); err == nil {
 		t.Error("an index for another variant must be rejected")
 	}
+
+	// The bundle follows the index: a missing file is an empty bundle that
+	// lacks every listed document, documents are stored byte for byte, and
+	// Sync drops what the index no longer lists.
+	if _, err := AssetName("versions"); err == nil {
+		t.Error(`a version named "versions" would collide with the bundle asset`)
+	}
+	b, err := LoadVersionBundle(dir+"/versions.json", doc.Variants[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if missing := b.Sync(again); len(missing) != 2 {
+		t.Errorf("empty bundle: missing %v, want both listed versions", missing)
+	}
+	b.Put("2.33.1", []byte(`{"schema_version":2,"n":1}`))
+	b.Put("2.31.1", []byte(`{"schema_version":2,"n":2}`))
+	b.Put("2.30.0", []byte(`{"schema_version":2,"n":3}`)) // not in the index any more
+	if missing := b.Sync(again); len(missing) != 0 {
+		t.Errorf("complete bundle: missing %v", missing)
+	}
+	if _, stale := b.Documents["2.30.0"]; stale || len(b.Documents) != 2 {
+		t.Errorf("sync kept documents %v, want exactly the indexed ones", b.Documents)
+	}
+	if err := b.Write(dir + "/versions.json"); err != nil {
+		t.Fatal(err)
+	}
+	b2, err := LoadVersionBundle(dir+"/versions.json", doc.Variants[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b2.Documents["2.31.1"]) != `{"schema_version":2,"n":2}` || b2.Index == nil || len(b2.Index.Versions) != 2 {
+		t.Errorf("bundle round trip: %+v", b2)
+	}
+	if _, err := LoadVersionBundle(dir+"/versions.json", res.Variant("otel-java")); err == nil {
+		t.Error("a bundle for another variant must be rejected")
+	}
 }
 
 func rawString(r *json.RawMessage) string {
