@@ -74,10 +74,10 @@ jobs:
       variants: ${{ steps.plan.outputs.variants }}
       publish: ${{ steps.plan.outputs.publish }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # cpm affected diffs against earlier commits
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -158,9 +158,9 @@ jobs:
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
       V: ${{ matrix.variant }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -214,7 +214,7 @@ jobs:
       - name: Relay + sink logs
         if: always()
         run: docker compose logs --no-color "relay-$V" sink > "relay-$V.log" 2>&1 || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: raw-${{ matrix.variant }}
@@ -232,10 +232,10 @@ jobs:
       run_id: ${{ steps.ids.outputs.run_id }}
       changed: ${{ steps.agg.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -262,7 +262,7 @@ jobs:
             echo "::warning::$prev has no raw.tar.gz; variants not measured in this run will show as not run"
           fi
       - name: Collect this run's raw results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: raw-*
           path: artifacts
@@ -314,7 +314,7 @@ jobs:
           go run ./cmd/cpm summary ${prev:+-changes results/latest/changes.json} results/latest/results.json | tee summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Package raw evidence
         run: tar czf raw.tar.gz -C results raw && tar czf logs.tar.gz logs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: aggregated
           path: |

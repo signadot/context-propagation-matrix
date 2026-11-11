@@ -61,8 +61,8 @@ jobs:
     outputs:
       bumps: ${{ steps.find.outputs.bumps }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -102,7 +102,7 @@ jobs:
       # Always branch from current main, whatever ref dispatched the run.
       # The token is persisted for `git push`, so pushes come from BUMP_PAT
       # when it is set (and so trigger `pull_request: synchronize`).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           token: ${{ secrets.BUMP_PAT || github.token }}
@@ -127,7 +127,7 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         if: steps.existing.outputs.skip != 'true'
         with:
           go-version-file: go.mod
@@ -142,6 +142,10 @@ jobs:
         id: apply
         env:
           GITHUB_TOKEN: ${{ github.token }} # github-releases lookups
+          # setup-go sets GOTOOLCHAIN=local for the job. A Go pin is moved
+          # with `go get` and `go mod tidy` on the runner, which may need a
+          # newer Go than go.mod names: let them fetch it.
+          GOTOOLCHAIN: auto
         run: |
           set -euo pipefail
           go run ./cmd/cpm pins latest -only "$ID" -apply > /tmp/bump.json
