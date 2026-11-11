@@ -42,9 +42,12 @@ wanted() { # variant id → 0 if selected
 }
 
 echo "listing releases…"
+# Oldest first by publication time. created_at is the tagged commit's date:
+# releases cut from the same commit share it, and the tag name then decides
+# (run-D.10 before run-D.9, every backtest-* before every run-*).
 gh api --paginate "repos/$repo/releases?per_page=100" \
-  --jq '.[] | select(.draft | not) | select(.tag_name | test("^(run|backtest)-")) | "\(.created_at)\t\(.tag_name)"' \
-  | sort >"$work/releases"
+  --jq '.[] | select(.draft | not) | select(.tag_name | test("^(run|backtest)-")) | "\(.published_at)\t\(.tag_name)"' \
+  | LC_ALL=C sort >"$work/releases"
 echo "$(wc -l <"$work/releases" | tr -d ' ') run/back-test releases"
 
 skipped=()

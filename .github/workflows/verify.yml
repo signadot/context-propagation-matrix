@@ -102,6 +102,11 @@ jobs:
         run: go run ./cmd/cpm pins check >/dev/null
       - name: shell scripts parse
         run: for f in run.sh scripts/*.sh; do bash -n "$f" || exit 1; done
+      # matrix.yml carries results over from the release this names and diffs
+      # against it, and republish.yml rewrites it. The releases API does not
+      # list runs newest first, so the choice is tested. Offline.
+      - name: fetch-latest.sh names the newest run
+        run: scripts/test-fetch-latest.sh
 
   plan:
     name: "Which relays does this change affect?"
