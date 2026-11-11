@@ -125,10 +125,14 @@ docs and the 0.5.2 source):
 - Docs discrepancy, recorded deliberately: the
   [Trace Context Propagation](https://docs.datadoghq.com/tracing/trace_collection/trace_context_propagation/?tab=rust)
   page's Rust tab lists only `datadog` and `tracecontext` and footnotes
-  "`baggage` is not supported in Rust", but datadog-opentelemetry 0.5.2
-  implements baggage extract/inject (`src/propagation/baggage.rs`) and
-  defaults it on. The matrix run measures what actually happens, so the
-  empirical result stands either way.
+  "`baggage` is not supported in Rust", but datadog-opentelemetry has
+  implemented baggage extract/inject (`src/propagation/baggage.rs`) and
+  defaulted it on since 0.4.0 —
+  [dd-trace-rs PR #200](https://github.com/DataDog/dd-trace-rs/pull/200),
+  merged 12 May 2026, shipped 11 June 2026. Back-tests agree: 0.3.0–0.3.3
+  drop `baggage` on all 16 boundaries, 0.4.0+ carry it on all 16
+  (annotation `datadog-rust-baggage-since-0.4.0`). The matrix run measures
+  what actually happens, so the empirical result stands either way.
 - `ot-baggage-*` (OpenTracing legacy): no support in the Rust SDK — there is
   no OpenTracing style in the enum, so these headers are expected to drop.
 

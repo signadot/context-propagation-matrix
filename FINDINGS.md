@@ -499,9 +499,13 @@ carriers over tonic `MetadataMap`, rdkafka headers, lapin `FieldTable`).
 - **datadog-rust** ([datadog-opentelemetry](https://docs.datadoghq.com/tracing/trace_collection/automatic_instrumentation/dd_libraries/rust/)
   0.5.2, "Preview"): all 16 boundaries — `x-datadog-*`, traceparent,
   tracestate, and W3C baggage. Notable: Datadog's docs footnote claims baggage
-  is unsupported in Rust, but 0.5.2's source implements it (delegating to the
-  OTel `BaggagePropagator`) and enables it by default — the docs lag the code.
-  No `ot-baggage-*` style exists in this SDK.
+  is unsupported in Rust, but the SDK has implemented it (delegating to the
+  OTel `BaggagePropagator`) and enabled it by default since 0.4.0
+  ([dd-trace-rs PR #200](https://github.com/DataDog/dd-trace-rs/pull/200),
+  merged 12 May 2026) — the docs lag the code. Back-tests draw the line
+  exactly there: 0.3.0–0.3.3 drop baggage on all 16 boundaries, 0.4.0+ carry
+  it on all 16 (annotation `datadog-rust-baggage-since-0.4.0`). No
+  `ot-baggage-*` style exists in this SDK.
 
 The catch: none of it happens unless the developer wires the carriers at
 every hop — "supported" here means "the API exists", not "your service is
