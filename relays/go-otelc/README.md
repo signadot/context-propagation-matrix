@@ -34,3 +34,11 @@ Gotchas encoded in the Dockerfile:
   binary fails the image build.
 - otelc's dependency sync edits `go.mod`/`go.sum` during the build (inside
   the image only). Its local scratch directory `.otelc-build/` is gitignored.
+- otelc is a `tool` dependency, not a dependency of the binary, so
+  `debug.ReadBuildInfo` cannot see its version. The Dockerfile stamps it with
+  `-ldflags "-X main.tracerVersion=$(go list -m -f '{{.Version}}' go.opentelemetry.io/otelc)"`
+  and `/info` reports **that** as `tracer_version` — the version this variant
+  is pinned by and filed under (`pins.yaml` `otelc`). The OTel SDK otelc
+  weaves in is visible in build info and is reported under `libs.sdk`.
+  `backtest.yml` fails a back-test whose relay reports a version other than
+  the one requested, so the two must not drift apart.

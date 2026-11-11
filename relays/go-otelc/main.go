@@ -199,6 +199,14 @@ func (s *grpcRelay) Handle(ctx context.Context, req *cpmatrix.RelayRequest) (*cp
 
 // ---- /info ----
 
+// tracerVersion is stamped by the Dockerfile via
+// -ldflags "-X main.tracerVersion=...": the version of go.opentelemetry.io/otelc,
+// the package this variant pins and is versioned by (pins.yaml `otelc`). otelc
+// is a `tool` dependency, so it is not among the binary's build-info deps and
+// moduleVersion() cannot see it. The OTel SDK it weaves in is visible there
+// and is reported under libs.
+var tracerVersion = "unknown"
+
 func moduleVersion(path string) string {
 	bi, ok := debug.ReadBuildInfo()
 	if !ok {
@@ -241,11 +249,12 @@ func infoHandler() http.HandlerFunc {
 			"variant":         variant(),
 			"tool":            envOr("TOOL", "otel"),
 			"language":        "go",
-			"tracer_version":  moduleVersion("go.opentelemetry.io/otel"),
+			"tracer_version":  tracerVersion,
 			"runtime_version": runtime.Version(),
 			"config":          config,
 			"libs": map[string]string{
 				"weaver":   "otelc (compile-time, no source changes)",
+				"sdk":      "go.opentelemetry.io/otel " + moduleVersion("go.opentelemetry.io/otel") + " (woven in by otelc)",
 				"http":     "net/http (plain source, woven)",
 				"grpc":     "google.golang.org/grpc (plain source, woven)",
 				"kafka":    "segmentio/kafka-go " + moduleVersion("github.com/segmentio/kafka-go") + " (plain source, woven)",

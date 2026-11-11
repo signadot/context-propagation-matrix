@@ -305,7 +305,18 @@ A back-test does not build differently: `backtest.yml` rewrites the pin
 behind the variant in its checkout (`cpm pins set -variant V -version X`,
 the edit a Dependabot PR would make, pointed backwards) and builds the
 unchanged Dockerfile, so the measured image is produced exactly the way the
-matrix produces it.
+matrix produces it. Two checks make sure the pin took, because a document
+filed under a version its relay did not run is worse than no document
+(shared Go modules once built otel-go 1.40–1.43 all at 1.44.0; `go mod tidy`
+once pulled otel-go 1.27.0–1.30.0 back to 1.47.0, see `companions` in
+`pins.yaml`). `cpm pins set` reads the manifest back after writing it and
+fails if it does not hold the requested version. Then, before publishing,
+the job checks that the version the relay reported contains the requested
+one as a token (`v1.5.0` and `open-telemetry/sdk 1.15.0 (ext-opentelemetry
+1.5.0)` both satisfy `1.5.0`) and fails otherwise. This is why every relay
+must report the version of the package it is pinned by — the compile-time
+Go relays stamp it with `-ldflags "-X main.tracerVersion=…"` at build, since
+a weaver's module is not among the binary's build-info dependencies.
 `scripts/fetch-latest.sh` (or `./run.sh fetch [-raw]`) restores a release
 into `results/latest` and `results/raw`, and `republish.yml` re-renders the
 latest release in place when `annotations/` changes.
