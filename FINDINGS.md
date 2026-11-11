@@ -499,9 +499,13 @@ carriers over tonic `MetadataMap`, rdkafka headers, lapin `FieldTable`).
 - **datadog-rust** ([datadog-opentelemetry](https://docs.datadoghq.com/tracing/trace_collection/automatic_instrumentation/dd_libraries/rust/)
   0.5.2, "Preview"): all 16 boundaries — `x-datadog-*`, traceparent,
   tracestate, and W3C baggage. Notable: Datadog's docs footnote claims baggage
-  is unsupported in Rust, but 0.5.2's source implements it (delegating to the
-  OTel `BaggagePropagator`) and enables it by default — the docs lag the code.
-  No `ot-baggage-*` style exists in this SDK.
+  is unsupported in Rust, but the SDK has implemented it (delegating to the
+  OTel `BaggagePropagator`) and enabled it by default since 0.4.0
+  ([dd-trace-rs PR #200](https://github.com/DataDog/dd-trace-rs/pull/200),
+  merged 12 May 2026) — the docs lag the code. Back-tests draw the line
+  exactly there: 0.3.0–0.3.3 drop baggage on all 16 boundaries, 0.4.0+ carry
+  it on all 16 (annotation `datadog-rust-baggage-since-0.4.0`). No
+  `ot-baggage-*` style exists in this SDK.
 
 The catch: none of it happens unless the developer wires the carriers at
 every hop — "supported" here means "the API exists", not "your service is
@@ -620,6 +624,15 @@ a runtime upgrade. Harness runs used .NET 8.
   propagator plumbing), otel-rust 0.32, dd-trace-js 6.14.0, dd-trace-go
   v2.10.1, dd-trace-dotnet 3.52.0, datadog-rust 0.5.2, and (trace context +
   baggage) Elastic Java 1.56.0.
+- **OTel Node's 16/16 is recent, and library-dependent.** Back-tests of
+  auto-instrumentations-node against the relay's current libraries: Kafka
+  legs pass only from 0.49.0 (kafkajs instrumentation joined the
+  meta-package, contrib PR #2340); RabbitMQ legs pass on 0.47.x, fail on
+  0.48.0–0.77.0 and pass again from 0.78.0, because instrumentation-amqplib's
+  `supportedVersions` cap (`<1` from contrib PR #2196) excluded the relay's
+  amqplib 2.x until PR #3573 raised it to `<3`. 0.48.0 is the trough: 4/16.
+  Annotations `otel-node-kafkajs-added-0.49.0` and
+  `otel-node-amqplib-2-outside-supported-range`.
 - **New Relic Go** ships an official amqp091 integration
   ([nramqp](https://pkg.go.dev/github.com/newrelic/go-agent/v3/integrations/nramqp))
   that both inserts and accepts DT headers per delivery — unlike its Kafka
