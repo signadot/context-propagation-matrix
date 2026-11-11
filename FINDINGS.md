@@ -624,6 +624,15 @@ a runtime upgrade. Harness runs used .NET 8.
   propagator plumbing), otel-rust 0.32, dd-trace-js 6.14.0, dd-trace-go
   v2.10.1, dd-trace-dotnet 3.52.0, datadog-rust 0.5.2, and (trace context +
   baggage) Elastic Java 1.56.0.
+- **OTel Node's 16/16 is recent, and library-dependent.** Back-tests of
+  auto-instrumentations-node against the relay's current libraries: Kafka
+  legs pass only from 0.49.0 (kafkajs instrumentation joined the
+  meta-package, contrib PR #2340); RabbitMQ legs pass on 0.47.x, fail on
+  0.48.0–0.77.0 and pass again from 0.78.0, because instrumentation-amqplib's
+  `supportedVersions` cap (`<1` from contrib PR #2196) excluded the relay's
+  amqplib 2.x until PR #3573 raised it to `<3`. 0.48.0 is the trough: 4/16.
+  Annotations `otel-node-kafkajs-added-0.49.0` and
+  `otel-node-amqplib-2-outside-supported-range`.
 - **New Relic Go** ships an official amqp091 integration
   ([nramqp](https://pkg.go.dev/github.com/newrelic/go-agent/v3/integrations/nramqp))
   that both inserts and accepts DT headers per delivery — unlike its Kafka
