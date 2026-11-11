@@ -57,7 +57,7 @@ permissions:
 
 jobs:
   discover:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       bumps: ${{ steps.find.outputs.bumps }}
     steps:
@@ -81,7 +81,7 @@ jobs:
   apply:
     needs: discover
     if: needs.discover.outputs.bumps != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       max-parallel: 3

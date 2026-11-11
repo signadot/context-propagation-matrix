@@ -59,7 +59,7 @@ env:
 jobs:
   go:
     name: "Go: gofmt, vet, test"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -75,7 +75,7 @@ jobs:
 
   consistency:
     name: "Registry, pins, annotations and scripts consistent"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -110,7 +110,7 @@ jobs:
 
   plan:
     name: "Which relays does this change affect?"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       variants: ${{ steps.plan.outputs.variants }}
     steps:
@@ -178,7 +178,7 @@ jobs:
     name: "Boot and propagate: ${{ matrix.variant }}"
     needs: plan
     if: needs.plan.outputs.variants != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -260,7 +260,7 @@ jobs:
     name: "Affected relays build, boot and propagate"
     needs: [plan, smoke]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - env:
           PLAN: ${{ needs.plan.result }}

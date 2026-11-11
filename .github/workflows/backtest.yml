@@ -60,7 +60,7 @@ env:
 
 jobs:
   plan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       pairs: ${{ steps.plan.outputs.pairs }}
       count: ${{ steps.plan.outputs.count }}
@@ -97,7 +97,7 @@ jobs:
   run:
     needs: plan
     if: needs.plan.outputs.count != '0'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -219,7 +219,7 @@ jobs:
     name: File each back-test under its tracer version (variant-* releases)
     needs: run
     if: always() && needs.run.result != 'skipped'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
