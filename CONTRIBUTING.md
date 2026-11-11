@@ -259,7 +259,7 @@ degrades rather than fails without them:
 | Secret | Used by | Without it |
 |---|---|---|
 | `NEW_RELIC_LICENSE_KEY` | New Relic relays (`tool:newrelic`) | New Relic variants are skipped (they appear in `results.json` as registered but not run); every other cell is unaffected. A free-tier key is sufficient. |
-| `NETLIFY_BUILD_HOOK_URL` | `matrix.yml` and `republish.yml` after publishing | contextpropagation.io is not rebuilt until its next scheduled build; the release itself is unaffected. |
+| `NETLIFY_BUILD_HOOK_URL` | `matrix.yml`, `republish.yml` and `backtest.yml` after publishing | contextpropagation.io is not rebuilt until its next scheduled build; the release itself is unaffected. |
 | `SLACK_WEBHOOK_URL` | `matrix.yml` summary step | No Slack summary is posted. |
 
 The step that opens a PR marking resolved annotations fixed also needs
