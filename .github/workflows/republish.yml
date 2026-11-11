@@ -4,8 +4,11 @@
 # merge that only touches annotations/** needs the latest release re-rendered,
 # not re-run: download that release's raw.tar.gz, aggregate it again at this
 # commit, replace results.json and MATRIX.md on the same release, and fire the
-# Netlify build hook. Measurements and the run id are unchanged, so the site's
-# history sees one run with better explanations rather than a new run.
+# Netlify build hook. Measurements, the run id and every variant's provenance
+# (the run and commit that measured it, the tracer version pinned then) are
+# unchanged, so the site's history sees one run with better explanations
+# rather than a new run, and matrix.yml still knows what each variant was
+# last measured at.
 #
 # Also useful by hand (workflow_dispatch) after an aggregator change in
 # cmd/cpm or internal/ that alters results.json without new measurements.
@@ -29,10 +32,10 @@ permissions:
 
 jobs:
   republish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -59,11 +62,14 @@ jobs:
           TAG: ${{ steps.fetch.outputs.tag }}
         run: |
           set -euo pipefail
-          # Keep the previous run's provenance (partial/reran) by passing the same
-          # measured set back in; only the annotations and this commit sha change.
-          reran=$(jq -r '.run.reran // [] | join(" ")' prev/results.json)
-          go run ./cmd/cpm aggregate -kind matrix -run-id "$TAG" -commit "$GITHUB_SHA" \
-            -notes "annotations republished from $TAG" -ignore-unknown -reran "$reran"
+          # -republish: nothing is measured here, so the run keeps its commit,
+          # partial and reran, and each variant its measured_in /
+          # measured_commit / tracer.pinned, all read from the release's own
+          # results.json. This commit only goes into the notes.
+          notes=$(jq -r '.run.notes // ""' prev/results.json)
+          notes="${notes%%annotations republished*}"; notes="${notes%; }"
+          go run ./cmd/cpm aggregate -kind matrix -run-id "$TAG" -republish prev/results.json \
+            -notes "${notes:+$notes; }annotations republished at ${GITHUB_SHA::7}" -ignore-unknown
           # Safety net, not a gate: PR CI already ran validate -strict on this
           # tree, so a resolved-but-unmarked annotation here means the matrix
           # moved under the PR. Report it and still publish the better text.

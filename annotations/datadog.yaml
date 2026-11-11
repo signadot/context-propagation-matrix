@@ -203,6 +203,45 @@
     - { title: "dd-trace-rb PR #4505", url: "https://github.com/DataDog/dd-trace-rb/pull/4505" }
     - { title: "dd-trace-php #3614", url: "https://github.com/DataDog/dd-trace-php/issues/3614" }
 
+- id: datadog-rust-baggage-since-0.4.0
+  title: "datadog-opentelemetry (Rust) propagates W3C baggage since 0.4.0; the Datadog docs still say it cannot"
+  match:
+    - variant: datadog-rust
+      header: baggage
+  cause: "W3C baggage joined the Rust SDK's composite propagator in dd-trace-rs PR #200 (merged 12 May 2026, first shipped in datadog-opentelemetry 0.4.0 on 11 June 2026); 0.3.x had no baggage style, so the seeded header was dropped on every boundary."
+  explanation: |
+    Measured: datadog-opentelemetry 0.3.0–0.3.3 drop `baggage` on all 16
+    boundaries while `traceparent` and `tracestate` cross every one; 0.4.0 and
+    every later version carry `baggage` across all 16 with no configuration.
+    The change is PR #200 "feat(baggage)!: add support for w3c baggage": it adds
+    `TracePropagationStyle::Baggage`, delegates to the OTel SDK
+    `BaggagePropagator`, and puts `baggage` into the default style list
+    (`datadog,tracecontext,baggage`, matching the other Datadog SDKs). PR #223
+    (merged 28 May 2026, also first in 0.4.0) added `DD_TRACE_BAGGAGE_TAG_KEYS`,
+    which promotes baggage entries to span tags.
+
+    As of 11 November 2026 the Datadog docs are out of date on this point: the
+    [Trace Context Propagation](https://docs.datadoghq.com/tracing/trace_collection/trace_context_propagation/?tab=rust)
+    page footnotes its propagation-styles table with "Note: `baggage` is not
+    supported in Rust", and its baggage-as-span-tags table lists Rust as "Not
+    supported". Both have been wrong since PR #200 merged on 12 May 2026 and
+    0.4.0 shipped on 11 June 2026. The harness measures propagation, not span
+    tags, so the cells here contradict the first claim directly; the second is
+    contradicted by the merged PR #223.
+
+    What a user can do: on 0.4.0+ nothing — baggage is on by default (set
+    `DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext` to turn it off). On 0.3.x
+    there is no flag to enable it; upgrade. The legacy `ot-baggage-*` headers
+    are a separate matter (`datadog-ot-baggage-not-implemented`).
+  status: fixed
+  fixed_in: "0.4.0"
+  links:
+    - { title: "dd-trace-rs PR #200 (W3C baggage, merged 12 May 2026)", url: "https://github.com/DataDog/dd-trace-rs/pull/200" }
+    - { title: "datadog-opentelemetry 0.4.0 on crates.io (11 June 2026)", url: "https://crates.io/crates/datadog-opentelemetry/0.4.0" }
+    - { title: "Datadog trace context propagation reference, Rust tab (still says baggage is unsupported)", url: "https://docs.datadoghq.com/tracing/trace_collection/trace_context_propagation/?tab=rust" }
+    - { title: "TracePropagationStyle (docs.rs) lists Baggage", url: "https://docs.rs/datadog-opentelemetry/latest/datadog_opentelemetry/configuration/enum.TracePropagationStyle.html" }
+    - { title: "dd-trace-rs PR #223 (baggage span tags, merged 28 May 2026)", url: "https://github.com/DataDog/dd-trace-rs/pull/223" }
+
 - id: datadog-ruby-bunny-not-instrumented
   title: "dd-trace-rb has no bunny integration; RabbitMQ legs lose everything"
   match:

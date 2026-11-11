@@ -9,8 +9,13 @@
 # tracer-bump + auto-merge + dependencies, with squash auto-merge requested.
 # A newer upstream release rewrites that branch (main + one commit) and the
 # PR in place; any older PR for the same pin is closed as superseded.
-# Merging touches relays/**, which triggers matrix.yml → new release → site
-# rebuild → changelog entry.
+# Merging touches relays/**, and matrix.yml measures the bumped variants →
+# new release → site rebuild → changelog entry. How soon depends on the
+# token: a merge made with the workflow's own GITHUB_TOKEN starts no push run
+# (GitHub does not create workflow runs for its pushes), so the bump is
+# picked up by the next matrix run of any kind, at the latest the 6-hourly
+# one that measures whatever changed since it was last measured. With
+# BUMP_PAT the merge is the PAT user's and starts matrix.yml straight away.
 #
 # Tokens. For a PR opened (or a branch pushed) with the workflow's own
 # GITHUB_TOKEN, GitHub creates the `pull_request` run of verify.yml but holds
@@ -52,12 +57,12 @@ permissions:
 
 jobs:
   discover:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       bumps: ${{ steps.find.outputs.bumps }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -76,7 +81,7 @@ jobs:
   apply:
     needs: discover
     if: needs.discover.outputs.bumps != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -97,7 +102,7 @@ jobs:
       # Always branch from current main, whatever ref dispatched the run.
       # The token is persisted for `git push`, so pushes come from BUMP_PAT
       # when it is set (and so trigger `pull_request: synchronize`).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           token: ${{ secrets.BUMP_PAT || github.token }}
@@ -122,7 +127,7 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         if: steps.existing.outputs.skip != 'true'
         with:
           go-version-file: go.mod
@@ -148,6 +153,10 @@ jobs:
         id: apply
         env:
           GITHUB_TOKEN: ${{ github.token }} # github-releases lookups
+          # setup-go sets GOTOOLCHAIN=local for the job. A Go pin is moved
+          # with `go get` and `go mod tidy` on the runner, which may need a
+          # newer Go than go.mod names: let them fetch it.
+          GOTOOLCHAIN: auto
         run: |
           set -euo pipefail
           go run ./cmd/cpm pins latest -only "$ID" -apply > /tmp/bump.json
@@ -209,7 +218,7 @@ jobs:
             "- Variants re-measured: " + (.variants | map("`" + . + "`") | join(", ")) + "\n" +
             "- Source: `\(.source.registry)` / `\(.source.package)`" + (if .url then " — [registry](\(.url))" else "" end) +
             (if .releases_url then " · [releases](\(.releases_url))" else "" end) + "\n\n" +
-            "Merging this re-measures the listed variants in the next matrix run and publishes a new release.\n\n" +
+            "Once merged, the next matrix run measures the listed variants and publishes a new release (within 6 hours; a bot merge does not start a run by itself).\n\n" +
             "_Opened by `bump-agents.yml` (`cpm pins latest -only \(.id) -apply`). A newer upstream release rewrites this branch and PR in place; older PRs for the same pin are closed as superseded._"
           ' /tmp/bump.json)
 
