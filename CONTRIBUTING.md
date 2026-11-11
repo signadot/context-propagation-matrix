@@ -83,6 +83,9 @@ would make every cell green and every cell meaningless.
    display name, `setup_tier`, one-line `attach`, `tracer` coordinates,
    `source`). The baseline `none-{lang}` variant has `setup_tier: null` and
    no tracer.
+   An `in-code` variant also needs `legs`: for every protocol, whether the
+   inbound and the outbound side are wired through a `library` or by the
+   relay's own code (`app`). No other variant may have them.
 5. **Dependabot** — add the manifest directory to `.github/dependabot.yml`
    for the language's ecosystem, and the relay directory to the `docker`
    list.
@@ -141,6 +144,7 @@ commercial-only agent is not.
    and to `matrix.yml` as a repository secret.
 4. One `variants:` entry per tool × language, with `setup_tier` honestly
    classified (see the tier definitions in `variants.yaml`).
+   An `in-code` variant also needs `legs` (see the `wirings:` definitions).
 5. `annotations/{tool}.yaml` for the cells that do not pass.
 
 ## Adding a variant flavour

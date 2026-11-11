@@ -1,7 +1,9 @@
 package affected
 
 import (
+	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -140,6 +142,40 @@ func TestRegistryDiff(t *testing.T) {
 	got = Compute(Inputs{Paths: []string{"variants.yaml"}, Head: head2, Base: nil})
 	if !got.All {
 		t.Fatalf("nil base should re-run everything: %v", got.Reasons)
+	}
+}
+
+// Adding the wirings block and the legs of the in-code variants to the
+// registry re-measures those variants and no others. The base revision is
+// the checked-in registry with that block and those legs stripped: if it
+// failed to parse, Compute would re-run every variant.
+func TestRegistryDiff_Legs(t *testing.T) {
+	b, err := os.ReadFile("../../variants.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	head, err := registry.Parse(b, "head")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := regexp.MustCompile(`(?m)^wirings:\n(  .*\n)+|^    legs:\n(      .*\n)+`).ReplaceAll(b, nil)
+	if len(old) == len(b) {
+		t.Fatal("nothing stripped from the registry")
+	}
+	base, err := registry.Parse(old, "base")
+	if err != nil {
+		t.Fatalf("a revision without legs must still parse: %v", err)
+	}
+
+	var want []string
+	for _, v := range head.SortedVariants() {
+		if v.SetupTier != nil && *v.SetupTier == "in-code" {
+			want = append(want, v.ID)
+		}
+	}
+	got := Compute(Inputs{Paths: []string{"variants.yaml"}, Head: head, Base: base})
+	if got.All || !reflect.DeepEqual(got.Variants, want) {
+		t.Fatalf("got all=%v %v, want %v\n%s", got.All, got.Variants, want, strings.Join(got.Reasons, "\n"))
 	}
 }
 
