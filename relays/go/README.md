@@ -4,9 +4,22 @@ Go has no *runtime* auto-instrumentation for any of the four tools, so this
 directory holds four separate relay programs, one per tool, each built
 exclusively from that vendor's documented contrib/instrumentation libraries
 with idiomatic `context.Context` plumbing (the one language where explicit
-context plumbing is allowed — see DESIGN.md). No relay constructs or copies
-propagation headers by hand; header injection/extraction is always done by
-the vendor's propagator or instrumentation API.
+context plumbing is allowed — see DESIGN.md). Where a vendor ships an
+integration for a leg, the relay uses it. Where it does not, the relay follows
+the vendor's documented manual pattern, so some legs are wired by hand:
+
+- `otel` and `datadog` pass a small carrier over the AMQP header table to the
+  vendor's propagator.
+- `datadog` also calls `tracer.Inject` / `tracer.Extract` on the Kafka legs,
+  with the sarama contrib's carrier types.
+- `elastic` builds and parses the Kafka and RabbitMQ headers with `apmhttp`'s
+  formatting helpers and header-name constants.
+- `newrelic` copies the record headers into an `http.Header` on Kafka consume
+  and passes it to `AcceptDistributedTraceHeaders`.
+
+No relay makes up a header name or value: both always come from the vendor's
+propagator, helpers or constants. The per-tool sections below describe each
+manual path.
 
 Go's *build-time* weavers are measured separately, as naive apps whose build
 command is wrapped by the weaver: `relays/go-orchestrion/` (Datadog
@@ -21,7 +34,9 @@ They share `./internal/common` (env handling, JSON types, `/info` assembly,
 tracing-related), which is its own small module (`relays/go/internal/go.mod`),
 and the pre-generated gRPC stubs at `gen/cpmatrix`, also their own module
 (`gen/go.mod`). Each tool module `replace`s those two with their in-repo
-directories and depends on nothing else from the repository.
+directories and depends on nothing else from the repository. Library and
+tracer versions are pinned in those `go.mod` files and are deliberately not
+repeated in this README.
 
 The point of the split is that pinning one tracer to an old release
 (back-tests, `cpm pins set`) must never have to move another module's
@@ -33,10 +48,11 @@ shared modules therefore declare *floors* (grpc 1.68.1, the last release
 without an otel requirement) and stay out of Dependabot; the tool modules
 carry the current versions and MVS takes the maximum.
 
-RabbitMQ client for all four relays: `github.com/rabbitmq/amqp091-go`
-v1.14.0. Queues are declared idempotently on startup with the contract's
-properties (durable=false, auto-delete=false, exclusive=false); outbound
-messages go to the sink queue via the default exchange.
+RabbitMQ client for all four relays: `github.com/rabbitmq/amqp091-go` (the
+version is in each tool's `go.mod`). Queues are declared idempotently on
+startup with the contract's properties (durable=false, auto-delete=false,
+exclusive=false); outbound messages go to the sink queue via the default
+exchange.
 
 Build: `relays/go/Dockerfile` with build context = repo root and
 `--build-arg TOOL=otel|datadog|newrelic|elastic|none` (single Dockerfile,
@@ -46,10 +62,10 @@ Build: `relays/go/Dockerfile` with build context = repo root and
 
 | leg | library |
 |---|---|
-| HTTP server / client | `otelhttp` v0.71.0 (`NewHandler` / `NewTransport`) |
-| gRPC server / client | `otelgrpc` v0.71.0 (`NewServerHandler` / `NewClientHandler` stats handlers) |
-| Kafka | `franz-go` v1.21.6 + `kotel` plugin v1.7.0 (SDK `go.opentelemetry.io/otel` v1.46.0) |
-| RabbitMQ | `amqp091-go` v1.14.0 + global propagator inject/extract (no official contrib, see below) |
+| HTTP server / client | `otelhttp` (`NewHandler` / `NewTransport`) |
+| gRPC server / client | `otelgrpc` (`NewServerHandler` / `NewClientHandler` stats handlers) |
+| Kafka | `franz-go` + `kotel` plugin (SDK `go.opentelemetry.io/otel`) |
+| RabbitMQ | `amqp091-go` + global propagator inject/extract (no official contrib, see below) |
 
 The global propagator is set explicitly to
 `propagation.NewCompositeTextMapPropagator(TraceContext{}, Baggage{})` and the
@@ -77,12 +93,12 @@ Caveats:
 
 | leg | library |
 |---|---|
-| HTTP server / client | `github.com/DataDog/dd-trace-go/contrib/net/http/v2` v2.10.1 (`NewServeMux` / `WrapClient`) |
-| gRPC server / client | `github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2` v2.10.1 (unary interceptors) |
-| Kafka | `github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2` v2.10.1 (`WrapSyncProducer` / `WrapConsumerGroupHandler`) on `github.com/IBM/sarama` v1.60.2 |
-| RabbitMQ | `amqp091-go` v1.14.0 + `tracer.Inject`/`tracer.Extract` (no dd contrib, see below) |
+| HTTP server / client | `github.com/DataDog/dd-trace-go/contrib/net/http/v2` (`NewServeMux` / `WrapClient`) |
+| gRPC server / client | `github.com/DataDog/dd-trace-go/contrib/google.golang.org/grpc/v2` (unary interceptors) |
+| Kafka | `github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2` (`WrapSyncProducer` / `WrapConsumerGroupHandler`) on `github.com/IBM/sarama` |
+| RabbitMQ | `amqp091-go` + `tracer.Inject`/`tracer.Extract` (no dd contrib, see below) |
 
-Tracer: `github.com/DataDog/dd-trace-go/v2` v2.10.1, started with plain
+Tracer: `github.com/DataDog/dd-trace-go/v2`, started with plain
 `tracer.Start()`; all configuration (`DD_TRACE_PROPAGATION_STYLE`, …) comes
 from the environment. dd-trace-go **v2 worked fine — no v1 fallback needed.**
 
@@ -117,10 +133,10 @@ Caveats:
 
 | leg | library |
 |---|---|
-| HTTP server / client | `go-agent/v3` v3.44.2 (`newrelic.WrapHandleFunc` / `newrelic.NewRoundTripper`) |
-| gRPC server / client | `nrgrpc` v1.4.10 (`UnaryServerInterceptor(app)` / `UnaryClientInterceptor`) |
-| Kafka | `nrsarama` v1.0.2 on `github.com/Shopify/sarama` v1.38.1, plus manual `AcceptDistributedTraceHeaders` on consume (see below) |
-| RabbitMQ | `nramqp` v1.0.3 (official integration) on `amqp091-go` v1.14.0 |
+| HTTP server / client | `go-agent/v3` (`newrelic.WrapHandleFunc` / `newrelic.NewRoundTripper`) |
+| gRPC server / client | `nrgrpc` (`UnaryServerInterceptor(app)` / `UnaryClientInterceptor`) |
+| Kafka | `nrsarama` on `github.com/Shopify/sarama`, plus manual `AcceptDistributedTraceHeaders` on consume (see below) |
+| RabbitMQ | `nramqp` (official integration) on `amqp091-go` |
 
 Caveats:
 
@@ -130,8 +146,11 @@ Caveats:
   to IBM/sarama whose tags declare the IBM module path, hence the pin in
   `go.mod`. The Datadog relay independently uses `github.com/IBM/sarama`.
 - Producer: `nrsarama.NewProducerWrapper(producer, txn).SendMessage(...)` —
-  the integration calls `txn.InsertDistributedTraceHeaders` and copies the
-  headers onto the Kafka record.
+  as of v1.0.2 (`producer.go`), the integration calls
+  `txn.InsertDistributedTraceHeaders` on the `http.Header` embedded in its
+  carrier and never appends those headers to the record's `Headers` (the
+  carrier's `Set`, which would, is bypassed), so the Kafka record is sent
+  without distributed-trace headers.
 - Consumer: `nrsarama.NewConsumerHandlerFromApp` starts one transaction per
   message and passes a transaction-bearing context to the message handler —
   but (as of v1.0.2) **it never accepts the inbound record's distributed
@@ -145,8 +164,8 @@ Caveats:
   is the documented approach; the relay never writes headers itself.
 - **RabbitMQ needed no manual pattern**: unlike Kafka, New Relic ships an
   official amqp091 integration,
-  [`nramqp`](https://pkg.go.dev/github.com/newrelic/go-agent/v3/integrations/nramqp)
-  v1.0.3. `nramqp.PublishWithContext` reads the transaction from ctx,
+  [`nramqp`](https://pkg.go.dev/github.com/newrelic/go-agent/v3/integrations/nramqp).
+  `nramqp.PublishWithContext` reads the transaction from ctx,
   creates a producer segment and injects the DT headers
   (`newrelic`/`traceparent`/`tracestate`) into the message header table;
   `nramqp.Consume` starts one transaction per delivery and — unlike
@@ -162,12 +181,12 @@ Caveats:
 
 | leg | library |
 |---|---|
-| HTTP server / client | `apmhttp` v2.7.12 (`Wrap` / `WrapClient`) |
-| gRPC server / client | `apmgrpc` v2.7.12 (`NewUnaryServerInterceptor` / `NewUnaryClientInterceptor`) |
-| Kafka | `franz-go` v1.21.6 (plain) + documented manual trace-context pattern (see below) |
-| RabbitMQ | `amqp091-go` v1.14.0 (plain) + the same documented manual pattern |
+| HTTP server / client | `apmhttp` (`Wrap` / `WrapClient`) |
+| gRPC server / client | `apmgrpc` (`NewUnaryServerInterceptor` / `NewUnaryClientInterceptor`) |
+| Kafka | `franz-go` (plain) + documented manual trace-context pattern (see below) |
+| RabbitMQ | `amqp091-go` (plain) + the same documented manual pattern |
 
-Tracer: `go.elastic.co/apm/v2` v2.7.12 via `apm.DefaultTracer()`, configured
+Tracer: `go.elastic.co/apm/v2` via `apm.DefaultTracer()`, configured
 entirely from the environment. `DefaultTracer` initializes with
 continue-on-error semantics (`TracerOptions.initDefaults(true)` in
 `tracer.go`), and an unreachable `ELASTIC_APM_SERVER_URL` only affects the
