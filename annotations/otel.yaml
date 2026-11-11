@@ -207,9 +207,13 @@
     `results/experiments/otel-php-allow-stack-extension.json`). Neither the
     argument requirement nor the ini setting is mentioned in the ExtRdKafka README.
 
-    Consume-side rdkafka extraction is correct (`kafka->http` passes) — this
-    asymmetry is outbound-only. No upstream issue exists — filing candidate
-    against open-telemetry/opentelemetry-php.
+    This asymmetry is outbound-only: with the packages of that run (2026-09-06),
+    consume-side extraction worked and `kafka->http` passed. It has failed
+    since run-2026-11-09.6 for a separate reason,
+    `otel-php-rdkafka-sem-conv-constants`: both hooks of the instrumentation
+    now throw before they reach the propagator. The ini setting has not been
+    re-measured with those packages. No upstream issue exists — filing
+    candidate against open-telemetry/opentelemetry-php.
   status: config
   links:
     - { title: "ExtRdKafkaInstrumentation.php", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/blob/main/src/Instrumentation/ExtRdKafka/src/ExtRdKafkaInstrumentation.php" }
@@ -220,6 +224,66 @@
     - { title: "ExtRdKafka README", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/blob/main/src/Instrumentation/ExtRdKafka/README.md" }
     - { title: "opentelemetry-php-contrib PR #284 (instrumentation origin)", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/pull/284" }
     - { title: "php-rdkafka topic.stub.php ($headers optional)", url: "https://github.com/arnaud-lb/php-rdkafka/blob/6.x/topic.stub.php" }
+
+- id: otel-php-rdkafka-sem-conv-constants
+  title: "OTel PHP: the rdkafka instrumentation throws on every message with sem-conv 1.45.0, so a consumed message's context is never extracted"
+  match:
+    - tool: otel
+      language: php
+      header: [baggage, tracestate, traceparent]
+      boundary: ["kafka->http"]
+  cause: "opentelemetry-auto-ext-rdkafka 0.1.0 reads constants that open-telemetry/sem-conv 1.45.0 no longer defines, so its consume() hook throws before it extracts the incoming context."
+  explanation: |
+    `opentelemetry-auto-ext-rdkafka` 0.1.0 sets its span attributes from
+    `MessagingIncubatingAttributes::MESSAGING_SYSTEM`,
+    `MESSAGING_SYSTEM_VALUE_KAFKA`, `MESSAGING_KAFKA_MESSAGE_KEY` and
+    `MESSAGING_KAFKA_OFFSET` (since opentelemetry-php-contrib PR #689, which
+    moved the instrumentations off the deprecated `TraceAttributes`). In
+    `open-telemetry/sem-conv` 1.45.0 (2026-11-03) that class defines none of
+    the four; in 1.44.0 it defines all of them. The package requires
+    `open-telemetry/sem-conv: ^1.36`, which 1.45.0 satisfies, and a fresh
+    `composer require` installs 1.45.0.
+
+    Both hooks read the constants while they build the span, before they touch
+    the propagator. The extension catches the error and logs a warning; the
+    relay log has `RdKafka\KafkaConsumer::consume(): OpenTelemetry: post hook
+    threw exception ... Undefined constant
+    OpenTelemetry\SemConv\Incubating\Attributes\MessagingIncubatingAttributes::MESSAGING_SYSTEM`.
+    `consume()` still returns the message and the relay forwards it, with no
+    context attached, so the curl instrumentation starts a new trace: a new
+    `traceparent`, no `tracestate`, no `baggage`. The `producev()` pre-hook
+    throws the same error, on the two boundaries that already fail for
+    another reason (`otel-php-rdkafka-producev-headers-argument`).
+
+    Measured 2026-11-11 with ext-opentelemetry 1.5.0 and `open-telemetry/sdk`
+    1.15.0, one package changed per build. With 0.1.0 and sem-conv 1.45.0, what
+    a fresh install resolves to, the three headers fail. With 0.0.5 and
+    sem-conv 1.45.0 they pass: 0.0.5 reads the `TraceAttributes` constants,
+    which 1.45.0 still defines. With 0.1.0 and sem-conv 1.44.0 they pass. The
+    other 61 cells are the same in all three builds, and putting the slim or
+    the curl instrumentation back to its previous release changes nothing.
+    Runs archived at `results/experiments/otel-php-kafka-http-current.json`,
+    `otel-php-kafka-http-rdkafka-0.0.5.json` and
+    `otel-php-kafka-http-sem-conv-1.44.0.json`; `info.libs` in each names the
+    packages installed.
+
+    This matrix moved from 0.0.5 to 0.1.0 on 2026-11-09. That, and not the
+    extension version, is why `kafka->http` passes in earlier runs, and why a
+    back-test of an older extension passes if it was built before that date
+    and fails if it was built after.
+
+    Workaround: require `open-telemetry/sem-conv:1.44.0` beside the
+    instrumentation, or stay on `opentelemetry-auto-ext-rdkafka` 0.0.5.
+    opentelemetry-php-contrib `main` still read the constants on 2026-11-11
+    and we found no upstream issue — filing candidate.
+  status: open
+  links:
+    - { title: "contrib-auto-ext-rdkafka 0.1.0 ExtRdKafkaInstrumentation.php", url: "https://github.com/opentelemetry-php/contrib-auto-ext-rdkafka/blob/0.1.0/src/ExtRdKafkaInstrumentation.php" }
+    - { title: "opentelemetry-php-contrib PR #689 (move to namespaced SemConv classes)", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/pull/689" }
+    - { title: "sem-conv 1.45.0 MessagingIncubatingAttributes.php", url: "https://github.com/opentelemetry-php/sem-conv/blob/1.45.0/Incubating/Attributes/MessagingIncubatingAttributes.php" }
+    - { title: "sem-conv 1.44.0 MessagingIncubatingAttributes.php", url: "https://github.com/opentelemetry-php/sem-conv/blob/1.44.0/Incubating/Attributes/MessagingIncubatingAttributes.php" }
+    - { title: "opentelemetry-php PR #2111 (generate SemConv 1.45.0)", url: "https://github.com/open-telemetry/opentelemetry-php/pull/2111" }
+    - { title: "opentelemetry-auto-ext-rdkafka on Packagist (requires sem-conv ^1.36)", url: "https://packagist.org/packages/open-telemetry/opentelemetry-auto-ext-rdkafka" }
 
 - id: otel-php-amqplib-not-instrumented
   title: "OTel PHP: no php-amqplib instrumentation exists, so every RabbitMQ leg loses context"
