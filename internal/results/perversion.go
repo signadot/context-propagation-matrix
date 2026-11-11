@@ -204,6 +204,11 @@ func (r *Results) Extract(id string) (*Results, error) {
 			s.CanaryLeaks = append(s.CanaryLeaks, l)
 		}
 	}
+	for _, p := range r.Summary.TraceparentPassthroughs {
+		if strings.HasPrefix(p, id+" ") {
+			s.TraceparentPassthroughs = append(s.TraceparentPassthroughs, p)
+		}
+	}
 	s.Scorecard = []Score{}
 	for _, sc := range r.Summary.Scorecard {
 		if sc.Variant == id {

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/signadot/context-propagation-matrix/internal/eval"
 	"github.com/signadot/context-propagation-matrix/internal/raw"
 	"github.com/signadot/context-propagation-matrix/internal/registry"
 )
@@ -133,9 +134,24 @@ type Hop struct {
 	Seeded     map[string]string   `json:"seeded_headers,omitempty"`
 	Observed   map[string][]string `json:"observed_headers,omitempty"`
 	Transport  string              `json:"observed_transport,omitempty"`
-	// VendorNative records the tool's own header continuity where the driver
-	// evaluates one (currently Datadog's x-datadog-* set).
+	// The three fields below are evaluated by the aggregator from Observed
+	// (internal/eval), not read from the driver's status, so re-aggregating
+	// raw results that predate them fills them in. They are informational:
+	// no cell outcome and no count depends on them.
+	//
+	// VendorNative says whether the tool's own (non-W3C) trace header
+	// carried the seeded trace: present_same_trace | present_new_trace |
+	// absent, judged on the tool's native_headers in variants.yaml (see
+	// eval.Native). Omitted for tools that have none.
 	VendorNative string `json:"vendor_native,omitempty"`
+	// TraceparentSpan and TraceparentFlags describe a traceparent that
+	// arrived on the seeded trace, and are omitted otherwise. Span is
+	// new_span when the relay put a span id of its own into it and same_span
+	// when the seeded one came back out, which is a relay passing the header
+	// through verbatim rather than a tracer propagating it. Flags is the
+	// observed trace-flags field; the driver seeds "01" (sampled).
+	TraceparentSpan  string `json:"traceparent_span,omitempty"`
+	TraceparentFlags string `json:"traceparent_flags,omitempty"`
 }
 
 type Cell struct {
@@ -252,6 +268,13 @@ type Summary struct {
 	CanaryLeaks    []string          `json:"canary_leaks"`
 	Scorecard      []Score           `json:"scorecard"`
 	TotalsByHeader map[string]*Count `json:"totals_by_header"`
+	// TraceparentPassthroughs lists the hops whose traceparent came out with
+	// the seeded span id (Hop.TraceparentSpan == same_span), as "variant
+	// boundary" like CanaryLeaks, so a check can read them without walking
+	// every hop. Their traceparent cells are still scored as passes. Unlike
+	// CanaryLeaks the key is absent when the list is empty: a field added to
+	// schema v2 after the fact has to be optional.
+	TraceparentPassthroughs []string `json:"traceparent_passthroughs,omitempty"`
 }
 
 type Results struct {
@@ -321,6 +344,10 @@ func Build(reg *registry.Registry, raws []*raw.VariantResult, run Run) (*Results
 			v.Weaver = &Package{Package: *rv.Weaver, Version: r.InfoString("weaver_version")}
 		}
 
+		var native []string
+		if t := reg.Tools[rv.Tool]; t != nil {
+			native = t.NativeHeaders
+		}
 		tests := map[string]raw.TestResult{}
 		for _, t := range r.Tests {
 			tests[t.Boundary] = t
@@ -340,9 +367,16 @@ func Build(reg *registry.Registry, raws []*raw.VariantResult, run Run) (*Results
 					hop.Observed = t.Observed.Headers
 					hop.Transport = t.Observed.Transport
 				}
+				if t.Observed != nil && t.Seeded != nil {
+					hop.VendorNative = eval.Native(hop.Observed, *t.Seeded, native)
+					hop.TraceparentSpan = eval.Span(hop.Observed, *t.Seeded)
+					hop.TraceparentFlags = eval.Flags(hop.Observed, *t.Seeded)
+					if hop.TraceparentSpan == eval.SameSpan {
+						res.Summary.TraceparentPassthroughs = append(res.Summary.TraceparentPassthroughs, rv.ID+" "+b)
+					}
+				}
 				if t.Status != nil {
 					hop.CanaryLeak = t.Status.CanaryLeak
-					hop.VendorNative = t.Status.DatadogNative
 					if t.Status.CanaryLeak {
 						res.Summary.CanaryLeaks = append(res.Summary.CanaryLeaks, rv.ID+" "+b)
 					}
