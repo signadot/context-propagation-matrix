@@ -71,6 +71,9 @@ merge to main (relays/**, variants.yaml, ...)  ──▶ matrix.yml: cpm affecte
                                                    the previous release's raw.tar.gz, aggregates
                                                    ──▶ Release run-YYYY-MM-DD[.N] ──▶ Netlify hook
 Monday 06:17 UTC / workflow_dispatch           ──▶ matrix.yml: every variant, same publish path
+every 6 hours                                  ──▶ matrix.yml: the variants whose inputs changed since
+                                                   they were last measured (a bot-merged tracer bump,
+                                                   a cancelled or failed run); nothing when up to date
 merge to main touching annotations/**          ──▶ republish.yml: re-aggregate the latest release's
                                                    raw.tar.gz at this commit, replace its
                                                    results.json + MATRIX.md ──▶ Netlify hook

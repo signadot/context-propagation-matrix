@@ -1,8 +1,10 @@
 # matrix.yml — run the matrix and publish a versioned result.
 #
-#   plan      → which variants: everything on schedule / dispatch; on a push to
-#               main only those the pushed change can affect (`cpm affected`),
-#               and New Relic ones only when the secret exists
+#   plan      → which variants: everything on the Monday schedule / dispatch;
+#               on a push to main those the pushed change can affect plus
+#               those whose inputs changed since they were last measured
+#               (`cpm affected -base … -since …`); on the 6-hourly schedule
+#               only the latter; New Relic ones only when the secret exists
 #   run       → one job per variant, all in parallel, each with its own brokers
 #   aggregate → this run's raw results over the previous release's raw.tar.gz
 #               → results.json (schema v2) + MATRIX.md + changes.json; publish a
@@ -13,16 +15,22 @@
 # results (scripts/fetch-latest.sh restores them locally; republish.yml
 # re-renders the latest release when annotations change).
 #
-# Triggers: weekly, manual, and any merge to main that can change a result.
+# Triggers: weekly, manual, any merge to main that can change a result, and
+# every 6 hours for whatever a merge left unmeasured. The last one exists
+# because not every merge starts a run: GitHub creates no push run for a
+# merge made with a workflow's own token, which is how bump-agents.yml lands
+# tracer bumps, and of several runs queued behind a running one only the
+# newest survives. That run starts nothing when everything is up to date.
 name: matrix
 
 on:
   schedule:
-    - cron: '17 6 * * 1' # Mondays 06:17 UTC
+    - cron: '17 6 * * 1' # Mondays 06:17 UTC: every variant
+    - cron: '53 */6 * * *' # every 6 hours: variants not measured since their inputs changed (keep in step with SELECTOR below)
   workflow_dispatch:
     inputs:
       variants:
-        description: 'Space-separated variant ids, or "all" / "public" / "tool:datadog" / "language:python"'
+        description: 'Space-separated variant ids, or "all" / "public" / "tool:datadog" / "language:python" / "stale" (not measured since their inputs changed)'
         default: all
         required: false
       publish:
@@ -68,7 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # cpm affected diffs against the commit before the push
+          fetch-depth: 0 # cpm affected diffs against earlier commits
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -76,14 +84,29 @@ jobs:
       - id: plan
         env:
           HAS_NR: ${{ secrets.NEW_RELIC_LICENSE_KEY != '' }}
-          SELECTOR: ${{ github.event.inputs.variants || 'all' }}
+          SELECTOR: ${{ github.event.inputs.variants || (github.event.schedule == '53 */6 * * *' && 'stale') || 'all' }}
           PUBLISH: ${{ github.event.inputs.publish || 'true' }}
           BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }} # scripts/fetch-latest.sh
         run: |
           set -euo pipefail
+          # Variants whose inputs changed since their own latest published
+          # measurement (plus, with `-base REV`, those a change since REV can
+          # alter). This is what lets a run make up for one that was
+          # cancelled in the queue, a job that failed, or a merge that
+          # started no run. Before the first release: every variant.
+          stale() {
+            scripts/fetch-latest.sh >&2
+            if [[ -f results/latest/results.json ]]; then
+              go run ./cmd/cpm affected -since results/latest/results.json -head "$GITHUB_SHA" "$@"
+            else
+              go run ./cmd/cpm list
+            fi
+          }
           list() {
             case "$1" in
               all)        go run ./cmd/cpm list ;;
+              stale)      stale ;;
               public)     go run ./cmd/cpm list -no-secret ;;
               tool:*)     go run ./cmd/cpm list -tool "${1#tool:}" ;;
               language:*) go run ./cmd/cpm list -language "${1#language:}" ;;
@@ -91,9 +114,10 @@ jobs:
             esac
           }
           if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
-            # Only the variants the pushed change can alter; every other cell is
-            # carried over from the previous release (reasons are printed to the log).
-            selected=$(go run ./cmd/cpm affected -base "$BEFORE" -head "$GITHUB_SHA" | sort -u)
+            # The variants the pushed change can alter and any others that are
+            # stale; every other cell is carried over from the previous
+            # release (reasons are printed to the log).
+            selected=$(stale -base "$BEFORE" | sort -u)
           else
             selected=$(for s in $SELECTOR; do list "$s"; done | sort -u)
           fi
@@ -105,7 +129,7 @@ jobs:
           echo "variants=$(echo "$selected" | jq -R . | jq -sc 'map(select(length > 0))')" >> "$GITHUB_OUTPUT"
           echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
           if [[ -z "$selected" ]]; then
-            echo "::notice::no variant is affected by this change; nothing to run or publish"
+            echo "::notice::every variant is measured at its current inputs; nothing to run or publish"
           else
             echo "Running: $(echo $selected)"
           fi
@@ -248,6 +272,13 @@ jobs:
           find artifacts -name '*.json' -exec cp {} results/raw/ \;
           find artifacts -name '*.log' -exec mv {} logs/ \; || true
           reran=$(find artifacts -name '*.json' -exec basename {} .json \; | sort | tr '\n' ' ')
+          # Every job failed. An empty -reran means "everything was measured
+          # here" to cpm aggregate, which would publish the carried-over
+          # results as this run's measurements at this commit.
+          if [[ -z "${reran// /}" ]]; then
+            echo "::error::no variant produced a result; nothing to aggregate or publish"
+            exit 1
+          fi
           echo "reran=$reran" >> "$GITHUB_OUTPUT"
           echo "measured now: $reran"
           echo "raw results to aggregate: $(ls results/raw | wc -l)"

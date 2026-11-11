@@ -430,7 +430,17 @@ the driver, sink, protobuf contract, shared images or the workflow re-run
 everything — carries every other variant's raw result over from the previous
 release, publishes a new Release with the resulting `results.json`, and
 diffs it against the previous release into `changes.json`. A Rust tracer
-bump therefore measures two variants in a few minutes rather than 47. The
+bump therefore measures two variants in a few minutes rather than 47.
+
+A push is not the only thing a run has to account for. A run queued behind
+another can be cancelled by a newer one, a job can fail, and a merge made
+with a workflow's own token (how `bump-agents.yml` lands tracer bumps) starts
+no run at all. So the same step also diffs from each variant's own
+`measured_commit` in the latest release (`cpm affected -since results.json`)
+and adds every variant whose inputs changed since then; a 6-hourly schedule
+runs just that selection, and starts nothing when every variant is measured
+at its current inputs. `republish.yml` re-renders a release without touching
+any variant's `measured_commit`, so that record stays true. The
 Monday schedule and manual dispatches run the full matrix. Locally:
 `./run.sh <variants>` re-runs and re-aggregates; update `annotations/` (and
 FINDINGS/REFERENCES) if a cell changed.
