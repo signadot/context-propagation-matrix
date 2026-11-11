@@ -89,7 +89,7 @@ func TestPaths(t *testing.T) {
 		{"go.mod", []string{"go.mod", "go.sum"}, allIDs(reg), true},
 		{"the workflow itself", []string{".github/workflows/matrix.yml"}, allIDs(reg), true},
 		{"annotations only", []string{"annotations/datadog.yaml", "annotations/otel.yaml"}, nil, false},
-		{"docs and aggregator", []string{"README.md", "relays/rust/README.md", "cmd/cpm/main.go", "internal/results/results.go", ".github/workflows/verify.yml", "scripts/fetch-latest.sh", "run.sh"}, nil, false},
+		{"docs and aggregator", []string{"README.md", "relays/rust/README.md", "cmd/cpm/main.go", "internal/results/results.go", ".github/workflows/verify.yml", "scripts/fetch-latest.sh", "run.sh", "examples/stacks/otel-go-older-sdk.yaml", "cmd/cpm/try.go"}, nil, false},
 		{"mixed: docs plus one relay", []string{"CONTRIBUTING.md", "relays/rust/datadog/Cargo.lock"}, []string{"datadog-rust"}, false},
 		{"unknown top-level path is conservative", []string{"tools/new-thing.sh"}, allIDs(reg), true},
 		{"relay path outside every source is conservative", []string{"relays/common/shared.txt"}, allIDs(reg), true},
