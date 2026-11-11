@@ -286,6 +286,19 @@ jobs:
             raw.tar.gz
             logs.tar.gz
             summary.md
+      # Nothing below may publish a measurement that is not one: a leaked
+      # canary, a hop that arrived over the wrong protocol, or an agent that
+      # never attached, which scores 0 of 64 exactly like a tool that
+      # propagates nothing. Any of these on a variant measured in this run
+      # fails the job here; on a carried-over variant it only warns, because
+      # the run that measured it was the one to judge it. Placed after the
+      # upload above so the document that was refused can still be
+      # downloaded. Every later step has the implicit success() in its `if:`,
+      # so none of them runs after a failure.
+      - name: Gate (a variant measured in this run must be a valid measurement)
+        env:
+          RERAN: ${{ steps.merge.outputs.reran }}
+        run: go run ./cmd/cpm gate -reran "$RERAN" results/latest/results.json
       # When an upstream fix lands, the affected annotation's cells all pass and
       # the aggregator marks it resolved (never an error). Open a PR that records
       # `status: fixed` / `fixed_in` so PR CI (`cpm validate -strict`) is green
@@ -327,7 +340,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ steps.ids.outputs.run_id }}" \
+          gh release create "${{ steps.ids.outputs.run_id }}" --target "$GITHUB_SHA" \
             --title "${{ steps.ids.outputs.run_id }}" \
             --notes-file summary.md \
             results/latest/results.json results/latest/MATRIX.md raw.tar.gz logs.tar.gz \

@@ -278,6 +278,58 @@ Back-tests of older tracer versions publish `backtest-{variant}-{version}`
 pre-releases with a single-variant `results.json`, `MATRIX.md` and the raw
 file.
 
+### What counts as a measurement: `invalid` and `cpm gate`
+
+A variant can run all its hops and still not be a measurement of its tool.
+`cpm aggregate` judges every measured variant from its hops and, when the
+measurement is not valid, records why on the variant in `results.json` as
+`invalid`, a list of `{kind, boundaries, detail}`. The field is absent on a
+valid variant and in documents written before it existed. The kinds:
+
+- `canary_leak`: `x-sd-canary` reached the sink on the listed `boundaries`,
+  so the relay copies inbound headers itself and a `pass` is not the tool's
+  doing.
+- `transport_mismatch`: on the listed `boundaries` the hop was delivered
+  over a protocol other than the boundary's outbound one.
+- `agent_inactive` (instrumented variants only, no `boundaries`): the relay
+  showed no sign of its tool, so its `fail` cells mean "did not attach", not
+  "does not propagate". An old agent on a runtime it does not support is the
+  usual cause.
+
+The `agent_inactive` rule: on every delivered hop, the tracing header names
+the sink observed are a subset of what the uninstrumented baseline of the
+same language (`none-{language}`) shows on the same boundary.
+
+- Tracing header names are each `headers[].wire_name`, anything starting
+  `ot-baggage-`, and every tool's `native_headers`, read from the document's
+  own dimensions. Any other header is ignored.
+- The baseline is needed because a runtime can send tracing headers with no
+  agent installed: .NET does, on its HTTP and gRPC clients. The comparison
+  is per boundary because on `http->http` a working OpenTelemetry .NET agent
+  sends the same names as the bare runtime.
+- The baseline is the document's own `none-{language}` or, for a back-test,
+  the one in the latest run (`cpm aggregate -baseline`). With neither, the
+  comparison is with nothing ("no tracing header at all") and `detail` says
+  so.
+- It is a floor, not a health check. An agent that half-works shows headers
+  and is not flagged: the New Relic Node agent without a licence key still
+  sends bare W3C headers on six boundaries (`results/nokey/`, FINDINGS.md
+  §9).
+
+Nothing is published until `cpm gate` has judged the document. It recomputes
+the verdict from the hops, so a document written before `invalid` existed is
+gated the same way.
+
+- A matrix run publishes nothing (no release, no per-version filing, no site
+  rebuild) when a variant measured in that run is `invalid` for any of the
+  three reasons. A variant carried over from an earlier release only warns,
+  because the run that measured it was the one to judge it.
+- A back-test publishes nothing for `canary_leak` or `transport_mismatch`.
+  For `agent_inactive` it is published and filed with a warning, carrying
+  the verdict. That a version does not attach on today's runtime is worth
+  recording once, and a pair with neither a release nor an index entry would
+  be proposed again by every `cpm discover -skip-published`.
+
 Runs and back-tests are the record of each *job*. The same measurements are
 also filed the way people look for them — by tracer version — in one rolling
 release per instrumented variant, `variant-{id}`:
@@ -285,7 +337,7 @@ release per instrumented variant, `variant-{id}`:
 | Asset | Contents |
 |---|---|
 | `{version}.json` | a single-variant schema v2 document for that tracer version: the variant, the run manifest it was measured in, the dimensions, the annotations that touch it and a summary for it alone |
-| `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts |
+| `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts, plus the document's `invalid` when the measurement is not valid (so an agent that never attached can be told from one that propagates nothing without opening the document) |
 | `versions.json` | the bundle: `{schema_version, index, documents}` — `index` is `index.json`, `documents` maps each listed version to its `{version}.json` byte for byte. One download gives a consumer the variant's whole history; the site reads only this asset |
 
 `{version}` is the *pinned* tracer version (`tracer.pinned`: what `cpm pins`
