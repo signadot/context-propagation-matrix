@@ -9,8 +9,13 @@
 # tracer-bump + auto-merge + dependencies, with squash auto-merge requested.
 # A newer upstream release rewrites that branch (main + one commit) and the
 # PR in place; any older PR for the same pin is closed as superseded.
-# Merging touches relays/**, which triggers matrix.yml → new release → site
-# rebuild → changelog entry.
+# Merging touches relays/**, and matrix.yml measures the bumped variants →
+# new release → site rebuild → changelog entry. How soon depends on the
+# token: a merge made with the workflow's own GITHUB_TOKEN starts no push run
+# (GitHub does not create workflow runs for its pushes), so the bump is
+# picked up by the next matrix run of any kind, at the latest the 6-hourly
+# one that measures whatever changed since it was last measured. With
+# BUMP_PAT the merge is the PAT user's and starts matrix.yml straight away.
 #
 # Tokens. For a PR opened (or a branch pushed) with the workflow's own
 # GITHUB_TOKEN, GitHub creates the `pull_request` run of verify.yml but holds
@@ -198,7 +203,7 @@ jobs:
             "- Variants re-measured: " + (.variants | map("`" + . + "`") | join(", ")) + "\n" +
             "- Source: `\(.source.registry)` / `\(.source.package)`" + (if .url then " — [registry](\(.url))" else "" end) +
             (if .releases_url then " · [releases](\(.releases_url))" else "" end) + "\n\n" +
-            "Merging this re-measures the listed variants in the next matrix run and publishes a new release.\n\n" +
+            "Once merged, the next matrix run measures the listed variants and publishes a new release (within 6 hours; a bot merge does not start a run by itself).\n\n" +
             "_Opened by `bump-agents.yml` (`cpm pins latest -only \(.id) -apply`). A newer upstream release rewrites this branch and PR in place; older PRs for the same pin are closed as superseded._"
           ' /tmp/bump.json)
 
