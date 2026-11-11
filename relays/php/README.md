@@ -139,6 +139,13 @@ as the python/ruby relays.
 `DD_*`/`OTEL_*`/`ELASTIC_*`/`NEW_RELIC_*` env var under `config`
 (`NEW_RELIC_LICENSE_KEY` is never echoed).
 
+In the `otel` image, the `libs` entry of each instrumented protocol
+(`server`, `http_client`, `kafka`) also names its Composer instrumentation
+package and the version installed. `libs.propagation` lists
+`open-telemetry/api`, `open-telemetry/context` and `open-telemetry/sem-conv`:
+the Dockerfile does not name those three and nothing locks them, so each
+build installs the newest release.
+
 ## Build
 
 ```
