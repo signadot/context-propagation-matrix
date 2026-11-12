@@ -119,6 +119,36 @@ func (b *VersionBundle) Put(version string, doc []byte) {
 	b.Documents[version] = json.RawMessage(doc)
 }
 
+// Each decodes every document in the bundle, oldest version first, hands it
+// to fn and stores it back as fn left it. It is how the bundle is
+// re-annotated: the cells of a document never change after it is filed, but
+// the annotations follow annotations/*.yaml and are re-derived on every
+// publish, so the bundle — what the site renders — always carries the
+// current explanation of each version, while the {version}.json asset keeps
+// the one it was filed with.
+func (b *VersionBundle) Each(fn func(version string, doc *Results) error) error {
+	vs := make([]string, 0, len(b.Documents))
+	for v := range b.Documents {
+		vs = append(vs, v)
+	}
+	sort.Slice(vs, func(i, j int) bool { return versions.Compare(vs[i], vs[j]) < 0 })
+	for _, v := range vs {
+		var doc Results
+		if err := json.Unmarshal(b.Documents[v], &doc); err != nil {
+			return fmt.Errorf("%s.json in bundle: %w", v, err)
+		}
+		if err := fn(v, &doc); err != nil {
+			return fmt.Errorf("%s.json: %w", v, err)
+		}
+		raw, err := doc.Encode()
+		if err != nil {
+			return err
+		}
+		b.Documents[v] = json.RawMessage(raw)
+	}
+	return nil
+}
+
 // Sync makes the bundle follow idx: documents for versions the index no
 // longer lists are dropped, and the versions the index lists without a
 // document in the bundle are returned (the caller must supply them before
