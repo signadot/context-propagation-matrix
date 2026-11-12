@@ -100,9 +100,7 @@ func usage() {
   discover [-depth N] [-variants a,b] [-include-secret] [-skip-published]
                                    (variant, older version) back-test candidates as JSON
   versions -variant V -out DIR [-results results.json [-version X]] [-present a.json,..] [doc.json ...]
-                                   write DIR/{version}.json for V and update DIR/index.json and
-                                   DIR/versions.json, re-annotating every bundled document from
-                                   annotations/; with nothing to file, just re-annotate the bundle
+                                   write DIR/{version}.json for V and update DIR/index.json
                                    (the variant-V release; see scripts/publish-versions.sh)`)
 	os.Exit(2)
 }

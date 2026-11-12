@@ -284,18 +284,20 @@ release per instrumented variant, `variant-{id}`:
 
 | Asset | Contents |
 |---|---|
-| `{version}.json` | a single-variant schema v2 document for that tracer version: the variant, the run manifest it was measured in, the dimensions, the annotations that touched it when it was filed and a summary for it alone |
+| `{version}.json` | a single-variant schema v2 document for that tracer version: the variant, the run manifest it was measured in, the dimensions, the annotations that touch it and a summary for it alone |
 | `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts |
-| `versions.json` | the bundle: `{schema_version, index, documents}` — `index` is `index.json`, `documents` maps each listed version to its document, re-annotated from `annotations/` at the last publish. One download gives a consumer the variant's whole history; the site reads only this asset |
+| `versions.json` | the bundle: `{schema_version, index, documents}` — `index` is `index.json`, `documents` maps each listed version to its `{version}.json` byte for byte. One download gives a consumer the variant's whole history; the site reads only this asset |
 
-Cells are the measurement and never change once filed; annotations are the
-explanation and belong to the YAML. So every publish of a variant — a run, a
-back-test, or `republish.yml` after a merge to `annotations/` — re-derives the
-annotations of every document in its bundle (`annotations.Reannotate`, the
-same evaluation a back-test aggregate makes, judged on that variant alone),
-and a note written or corrected after a version was measured reaches that
-version's page: attached to its failing cells on the versions before the fix,
-resolved with `fixed_in` on the versions from it.
+Byte for byte as filed, with one exception. Cells are the measurement and
+never change; annotations are the explanation and belong to the YAML. So
+every publish of a variant — a run, a back-test, or `republish.yml` after a
+merge to `annotations/` — re-derives the annotations of every document in the
+bundle from the current `annotations/` (`annotations.Reannotate`: the same
+evaluation a back-test aggregate makes, judged on that variant alone), while
+each `{version}.json` asset keeps the annotations it was filed with. A note
+written or corrected after a version was measured thus reaches that version's
+page: attached to its failing cells on the versions before the fix, resolved
+with `fixed_in` on the versions from it.
 
 `{version}` is the *pinned* tracer version (`tracer.pinned`: what `cpm pins`
 reads from the manifest the relay was built from, the value a bump PR names
