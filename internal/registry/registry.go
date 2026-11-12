@@ -78,6 +78,7 @@ type Variant struct {
 	DisplayName string   `yaml:"display_name" json:"display_name"`
 	SetupTier   *string  `yaml:"setup_tier" json:"setup_tier"`
 	Attach      string   `yaml:"attach,omitempty" json:"attach,omitempty"`
+	Docs        string   `yaml:"docs,omitempty" json:"docs,omitempty"`
 	Tracer      *Package `yaml:"tracer,omitempty" json:"tracer,omitempty"`
 	Weaver      *Package `yaml:"weaver,omitempty" json:"weaver,omitempty"`
 	Source      string   `yaml:"source" json:"source"`
@@ -238,6 +239,23 @@ func (r *Registry) Validate() error {
 		}
 		if v.Source == "" {
 			errs = append(errs, fmt.Sprintf("%s: source is required", v.ID))
+		}
+	}
+	// docs is the vendor's page for the variant's agent in this language, the
+	// one a reader of its results should open next (the site's per-language
+	// "Docs" link). Every instrumented variant has one; flavours of a tracer
+	// share their language's page. Baselines have no agent to document.
+	for _, v := range r.Variants {
+		if tool, ok := r.Tools[v.Tool]; ok && tool.IsBaseline {
+			if v.Docs != "" {
+				errs = append(errs, fmt.Sprintf("%s: baseline variants have no docs page", v.ID))
+			}
+			continue
+		}
+		if v.Docs == "" {
+			errs = append(errs, fmt.Sprintf("%s: docs is required (the vendor's page for this agent in this language)", v.ID))
+		} else if !strings.HasPrefix(v.Docs, "https://") {
+			errs = append(errs, fmt.Sprintf("%s: docs must be an https URL, got %q", v.ID, v.Docs))
 		}
 	}
 	for _, b := range r.Boundaries {
