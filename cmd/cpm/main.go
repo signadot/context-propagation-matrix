@@ -13,6 +13,7 @@
 //	cpm pins [list|check|set -variant V -version X|latest [-only id] [-apply]]
 //	cpm discover [-depth 5] [-variants a,b] [-include-secret] [-skip-published]
 //	cpm versions -variant V -out DIR [-results results.json [-version X]] [-present a.json,..] [doc.json ...]
+//	cpm try <stack.yaml> [-dry-run] [-baseline results.json] [-out dir] [-keep] [-fail-on-regression]
 package main
 
 import (
@@ -68,6 +69,8 @@ func main() {
 		err = cmdDiscover(os.Args[2:])
 	case "versions":
 		err = cmdVersions(os.Args[2:])
+	case "try":
+		err = cmdTry(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -81,7 +84,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|diff|summary|coords|annotations|pins|discover|versions> [flags]
+	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|diff|summary|coords|annotations|pins|discover|versions|try> [flags]
 
   list       print variant ids from variants.yaml (one per line, or -json)
   affected   variant ids to re-measure: -base <rev> (what a change could alter) and/or
@@ -101,7 +104,11 @@ func usage() {
                                    (variant, older version) back-test candidates as JSON
   versions -variant V -out DIR [-results results.json [-version X]] [-present a.json,..] [doc.json ...]
                                    write DIR/{version}.json for V and update DIR/index.json
-                                   (the variant-V release; see scripts/publish-versions.sh)`)
+                                   (the variant-V release; see scripts/publish-versions.sh)
+  try <stack.yaml> [-dry-run] [-baseline results.json] [-out dir] [-keep] [-fail-on-regression]
+                                   measure your stack (tracer + library versions + relay env on a
+                                   registered variant) in a throwaway worktree and compare it with
+                                   the latest published run; see examples/stacks/`)
 	os.Exit(2)
 }
 

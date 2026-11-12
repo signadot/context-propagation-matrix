@@ -62,6 +62,32 @@ the contract the website consumes; see DESIGN.md) and renders `MATRIX.md`.
 `results/raw`, `results/latest` and `results/MATRIX.md` are local, gitignored
 outputs; the published copy of every run is a release.
 
+## Test your own stack
+
+The matrix measures one pinned setup per variant. To measure the tracer
+version, client library versions and settings you actually run, describe them
+in a stack file and run `cpm try`:
+
+```yaml
+# mystack.yaml
+tool: datadog
+language: python
+tracer: 4.16.4
+libs: { confluent-kafka: 2.15.0 }
+env: { DD_KAFKA_PROPAGATION_ENABLED: "true" }
+```
+
+```sh
+go run ./cmd/cpm try mystack.yaml            # measure, then compare with the latest published run
+go run ./cmd/cpm try mystack.yaml -dry-run   # only show the edits it would make
+```
+
+It applies the stack to a throwaway git worktree (your checkout is not
+touched), measures that one relay on all 16 boundaries, and writes
+`results/try/<name>/report.md` listing every cell that differs from the
+published result. `-fail-on-regression` makes it usable in CI. See
+[examples/stacks/](examples/stacks/) for the fields and what it does not cover.
+
 ## How results reach the site
 
 ```

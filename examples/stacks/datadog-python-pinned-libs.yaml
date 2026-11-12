@@ -1,0 +1,10 @@
+# Datadog Python with the client libraries and settings a team actually runs.
+tool: datadog
+language: python
+tracer: 4.16.4
+libs:
+  confluent-kafka: 2.15.0
+  pika: 1.3.2
+env:
+  DD_KAFKA_PROPAGATION_ENABLED: "true"
+protocols: [http, kafka, rabbitmq]

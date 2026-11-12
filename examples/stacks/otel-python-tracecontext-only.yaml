@@ -1,0 +1,7 @@
+# A common production setting: W3C trace context only, no baggage propagator.
+# Expect baggage to fail on every boundary while traceparent keeps passing.
+# (OpenTelemetry Go ignores OTEL_PROPAGATORS: its SDK sets propagators in
+# code, so the same env on otel-go changes nothing — which cpm try shows.)
+variant: otel-python
+env:
+  OTEL_PROPAGATORS: tracecontext

@@ -15,3 +15,5 @@ results/raw/
 results/latest/
 results/data/
 results/MATRIX.md
+# cpm try output (report.md, results.json, raw result per stack).
+results/try/
