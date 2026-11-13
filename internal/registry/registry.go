@@ -58,6 +58,24 @@ type SetupTier struct {
 	Description string `yaml:"description" json:"description"`
 }
 
+// Wiring is one way an in-code variant's relay can be wired for a leg: whose
+// code moves the context, an instrumentation library's or the relay's own.
+type Wiring struct {
+	ID          string `yaml:"-" json:"id"`
+	DisplayName string `yaml:"display_name" json:"display_name"`
+	Description string `yaml:"description" json:"description"`
+}
+
+// Leg is how the relay is wired for one protocol: Inbound when it receives
+// (and extracts), Outbound when it sends (and injects). Both are Wiring ids.
+type Leg struct {
+	Inbound  string `yaml:"inbound" json:"inbound"`
+	Outbound string `yaml:"outbound" json:"outbound"`
+}
+
+// inCodeTier is the setup tier whose variants say how each leg is wired.
+const inCodeTier = "in-code"
+
 // Package identifies a tracer (or weaver) in a package registry so versions
 // can be discovered automatically.
 type Package struct {
@@ -82,6 +100,9 @@ type Variant struct {
 	Tracer      *Package `yaml:"tracer,omitempty" json:"tracer,omitempty"`
 	Weaver      *Package `yaml:"weaver,omitempty" json:"weaver,omitempty"`
 	Source      string   `yaml:"source" json:"source"`
+	// Legs says, per protocol, how an in-code variant's relay is wired for
+	// each direction. Required for the in-code tier, absent everywhere else.
+	Legs map[string]Leg `yaml:"legs,omitempty" json:"legs,omitempty"`
 }
 
 // ComposeService is the docker-compose service name for the variant.
@@ -103,6 +124,7 @@ type Registry struct {
 	Boundaries    []string              `yaml:"boundaries"`
 	Headers       map[string]*Header    `yaml:"headers"`
 	SetupTiers    map[string]*SetupTier `yaml:"setup_tiers"`
+	Wirings       map[string]*Wiring    `yaml:"wirings"`
 	Variants      []*Variant            `yaml:"variants"`
 
 	// HeaderOrder preserves the document order of the headers map.
@@ -113,6 +135,8 @@ type Registry struct {
 	ProtocolOrder []string `yaml:"-"`
 	// TierOrder preserves the document order of the setup_tiers map.
 	TierOrder []string `yaml:"-"`
+	// WiringOrder preserves the document order of the wirings map.
+	WiringOrder []string `yaml:"-"`
 }
 
 // Load reads and validates a registry file.
@@ -140,6 +164,7 @@ func Parse(b []byte, name string) (*Registry, error) {
 	r.HeaderOrder = mapKeyOrder(&doc, "headers")
 	r.ProtocolOrder = mapKeyOrder(&doc, "protocols")
 	r.TierOrder = mapKeyOrder(&doc, "setup_tiers")
+	r.WiringOrder = mapKeyOrder(&doc, "wirings")
 
 	for id, t := range r.Tools {
 		t.ID = id
@@ -155,6 +180,9 @@ func Parse(b []byte, name string) (*Registry, error) {
 	}
 	for id, s := range r.SetupTiers {
 		s.ID = id
+	}
+	for id, w := range r.Wirings {
+		w.ID = id
 	}
 	if r.MatrixVersion == 0 {
 		// Registries written before the field existed (historical revisions
@@ -188,7 +216,8 @@ func mapKeyOrder(doc *yaml.Node, key string) []string {
 
 // Validate checks referential integrity: every variant points at a known
 // tool, language and tier; ids are unique and follow the naming convention;
-// boundaries reference known protocols.
+// in-code variants wire every protocol in both directions and no other
+// variant has legs; boundaries reference known protocols.
 func (r *Registry) Validate() error {
 	var errs []string
 	if r.MatrixVersion < 1 {
@@ -240,6 +269,7 @@ func (r *Registry) Validate() error {
 		if v.Source == "" {
 			errs = append(errs, fmt.Sprintf("%s: source is required", v.ID))
 		}
+		errs = append(errs, r.legErrors(v, ok && tool.IsBaseline)...)
 	}
 	// docs is the vendor's page for the variant's agent in this language, the
 	// one a reader of its results should open next (the site's per-language
@@ -283,6 +313,63 @@ func (r *Registry) Validate() error {
 		return fmt.Errorf("invalid registry:\n  - %s", strings.Join(errs, "\n  - "))
 	}
 	return nil
+}
+
+// legErrors checks a variant's legs: the in-code tier says how every protocol
+// is wired in both directions, every other tier and the baseline says
+// nothing.
+//
+// The requirement applies to a registry that defines wirings. One without the
+// block is a revision older than the field; `cpm affected` reads those to tell
+// which variants changed, and a parse error there would re-run every variant.
+func (r *Registry) legErrors(v *Variant, baseline bool) []string {
+	var errs []string
+	inCode := v.SetupTier != nil && *v.SetupTier == inCodeTier
+	switch {
+	case baseline && len(v.Legs) > 0:
+		return []string{fmt.Sprintf("%s: baseline variants must not have legs", v.ID)}
+	case !inCode && len(v.Legs) > 0:
+		tier := "null"
+		if v.SetupTier != nil {
+			tier = *v.SetupTier
+		}
+		return []string{fmt.Sprintf("%s: legs are only for setup_tier %s, not %s", v.ID, inCodeTier, tier)}
+	case !inCode:
+		return nil
+	}
+
+	protocols := make([]string, 0, len(r.Protocols))
+	for p := range r.Protocols {
+		protocols = append(protocols, p)
+	}
+	sort.Strings(protocols)
+	if len(r.Wirings) > 0 {
+		for _, p := range protocols {
+			if _, ok := v.Legs[p]; !ok {
+				errs = append(errs, fmt.Sprintf("%s: legs: no entry for protocol %q (an in-code variant wires every protocol)", v.ID, p))
+			}
+		}
+	}
+	legged := make([]string, 0, len(v.Legs))
+	for p := range v.Legs {
+		legged = append(legged, p)
+	}
+	sort.Strings(legged)
+	for _, p := range legged {
+		if _, ok := r.Protocols[p]; !ok {
+			errs = append(errs, fmt.Sprintf("%s: legs: unknown protocol %q", v.ID, p))
+			continue
+		}
+		leg := v.Legs[p]
+		for _, d := range []struct{ name, wiring string }{{"inbound", leg.Inbound}, {"outbound", leg.Outbound}} {
+			if d.wiring == "" {
+				errs = append(errs, fmt.Sprintf("%s: legs.%s: %s is required", v.ID, p, d.name))
+			} else if _, ok := r.Wirings[d.wiring]; !ok {
+				errs = append(errs, fmt.Sprintf("%s: legs.%s: unknown wiring %q for %s", v.ID, p, d.wiring, d.name))
+			}
+		}
+	}
+	return errs
 }
 
 // Variant returns the variant with the given id.

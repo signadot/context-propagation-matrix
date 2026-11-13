@@ -293,6 +293,11 @@ from `results/raw/*.json` plus the registry (`variants.yaml`):
   pair resolves to the same measurement in every run that carries it. The
   site uses these to present results per tracer version and to say where
   and when each one was measured.
+
+  An `in-code` variant also carries `legs`, copied from the registry: per
+  protocol, `inbound` and `outbound`, each one of the `dimensions.wirings`
+  ids. Variants without legs have no `legs` key, and `dimensions.wirings` is
+  omitted when the registry defines none.
 - `results/latest/MATRIX.md` — the human-readable tables, rendered from the
   same document.
 - `results/latest/changes.json` — when a previous run is given
@@ -438,6 +443,14 @@ discovery reads) and the relay source directory. `go run ./cmd/cpm validate`
 enforces that docker-compose.yml has exactly one `relay-<id>` service with
 `profiles: [<id>]` per registered variant and no unregistered relays, and
 that every annotation selector matches at least one real cell.
+
+An `in-code` variant must also give `legs`: for each protocol, whose code
+moves the context on the relay's inbound and outbound side, a `library` the
+application wraps its client or server with, or `app` code that calls the
+tracer's API itself (the `wirings:` block defines both). Variants in any other
+tier, and baselines, must not have legs, because their application has no
+propagation code to describe. A leg records how the relay is wired, not
+whether it works; the cells measure that.
 
 ## Annotations: `annotations/*.yaml`
 

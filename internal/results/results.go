@@ -79,6 +79,9 @@ type Dimensions struct {
 	Boundaries []string              `json:"boundaries"`
 	Headers    []*registry.Header    `json:"headers"`
 	SetupTiers []*registry.SetupTier `json:"setup_tiers"`
+	// Wirings define the values of Variant.Legs; absent when the registry
+	// declares none.
+	Wirings []*registry.Wiring `json:"wirings,omitempty"`
 }
 
 // Package is a registry.Package plus the version the relay actually reported
@@ -226,6 +229,10 @@ type Variant struct {
 	Cells          []Cell            `json:"cells"`
 	Counts         map[string]*Count `json:"counts"`            // by header id
 	Missing        bool              `json:"missing,omitempty"` // registered but no raw result in this run
+
+	// Legs is how an in-code variant's relay is wired per protocol, by
+	// protocol id; absent for every other variant.
+	Legs map[string]registry.Leg `json:"legs,omitempty"`
 }
 
 // Annotation is an explanation attached to a set of cells (see
@@ -314,7 +321,7 @@ func Build(reg *registry.Registry, raws []*raw.VariantResult, run Run) (*Results
 	for _, rv := range reg.SortedVariants() {
 		v := &Variant{
 			ID: rv.ID, Tool: rv.Tool, Language: rv.Language, Flavour: rv.Flavour,
-			DisplayName: rv.DisplayName, SetupTier: rv.SetupTier, Attach: rv.Attach,
+			DisplayName: rv.DisplayName, SetupTier: rv.SetupTier, Attach: rv.Attach, Legs: rv.Legs,
 			Source: rv.Source, RequiresSecret: reg.RequiresSecret(rv),
 			Counts: map[string]*Count{},
 		}
@@ -534,6 +541,9 @@ func dimensions(reg *registry.Registry) Dimensions {
 	}
 	for _, id := range reg.TierOrder {
 		d.SetupTiers = append(d.SetupTiers, reg.SetupTiers[id])
+	}
+	for _, id := range reg.WiringOrder {
+		d.Wirings = append(d.Wirings, reg.Wirings[id])
 	}
 	return d
 }

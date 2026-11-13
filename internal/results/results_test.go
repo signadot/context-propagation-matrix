@@ -479,3 +479,85 @@ func rawString(r *json.RawMessage) string {
 	}
 	return string(*r)
 }
+
+// Legs and wirings are additive: an in-code variant carries its legs and the
+// dimensions define the values, while every other variant, and a registry
+// that declares no wirings, serialise without the keys at all.
+func TestBuild_LegsAreAdditive(t *testing.T) {
+	reg, err := registry.Load("../../variants.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys := func(reg *registry.Registry) (dims map[string]json.RawMessage, variants map[string]map[string]json.RawMessage) {
+		t.Helper()
+		res, err := Build(reg, nil, Run{RunID: "run-test"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := json.Marshal(res)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var doc struct {
+			Dimensions map[string]json.RawMessage   `json:"dimensions"`
+			Variants   []map[string]json.RawMessage `json:"variants"`
+		}
+		if err := json.Unmarshal(b, &doc); err != nil {
+			t.Fatal(err)
+		}
+		variants = map[string]map[string]json.RawMessage{}
+		for _, v := range doc.Variants {
+			var id string
+			if err := json.Unmarshal(v["id"], &id); err != nil {
+				t.Fatal(err)
+			}
+			variants[id] = v
+		}
+		return doc.Dimensions, variants
+	}
+
+	dims, variants := keys(reg)
+	var wirings []registry.Wiring
+	if err := json.Unmarshal(dims["wirings"], &wirings); err != nil || len(wirings) != len(reg.WiringOrder) || wirings[0].ID != reg.WiringOrder[0] {
+		t.Errorf("dimensions.wirings = %s (%v), want %v in document order", dims["wirings"], err, reg.WiringOrder)
+	}
+	inCode := 0
+	for _, rv := range reg.Variants {
+		raw, has := variants[rv.ID]["legs"]
+		if len(rv.Legs) == 0 {
+			if has {
+				t.Errorf("%s: serialised legs %s, want the key omitted", rv.ID, raw)
+			}
+			continue
+		}
+		inCode++
+		var legs map[string]registry.Leg
+		if err := json.Unmarshal(raw, &legs); err != nil {
+			t.Fatalf("%s: %v", rv.ID, err)
+		}
+		for p, want := range rv.Legs {
+			if legs[p] != want {
+				t.Errorf("%s: legs.%s = %+v, want %+v", rv.ID, p, legs[p], want)
+			}
+		}
+	}
+	if inCode == 0 {
+		t.Error("no variant carried legs")
+	}
+
+	// A registry without the block and without legs is what the base
+	// revision looks like: no new keys anywhere.
+	reg.Wirings, reg.WiringOrder = nil, nil
+	for _, v := range reg.Variants {
+		v.Legs = nil
+	}
+	dims, variants = keys(reg)
+	if _, has := dims["wirings"]; has {
+		t.Errorf("dimensions.wirings = %s, want the key omitted", dims["wirings"])
+	}
+	for id, v := range variants {
+		if _, has := v["legs"]; has {
+			t.Errorf("%s: legs present, want the key omitted", id)
+		}
+	}
+}
