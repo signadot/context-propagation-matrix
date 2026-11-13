@@ -266,6 +266,10 @@ page uses it to say what was broken in which release. Release notes for each
 - CI (`verify.yml`) runs `go vet`, `cpm validate -strict` against the latest
   published `results.json`, and boots the relays the change affects; it needs
   no secrets, so fork PRs work.
+- A run tests your branch merged with `main` as `main` was when the run was
+  created. One that starts later (held for approval, or run again) fails if
+  `main` has since changed a relay your PR changes: update the branch, and
+  the new run tests today's tree.
 - Include the relevant rows from your local `results/latest/MATRIX.md` in
   the PR description. Results themselves are gitignored and cannot be
   committed; CI measures and publishes on merge.

@@ -560,7 +560,10 @@ Two bots move versions, and they do not overlap:
   on the next run. For PRs made with the workflow's own token GitHub holds
   the `pull_request` run of `verify.yml` for a maintainer's approval
   ("Approve and run" on the PR); once approved it reports like any other
-  check and auto-merge completes after review. With the optional `BUMP_PAT`
+  check and auto-merge completes after review. A held run still tests the
+  `main` it was created for, so `verify.yml` fails one approved after
+  `main` has changed the relay the PR bumps; updating the branch starts a
+  run on today's tree. With the optional `BUMP_PAT`
   secret set, the bot pushes and opens PRs as that user instead and the
   runs start unprompted.
 
