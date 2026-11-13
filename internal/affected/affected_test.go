@@ -84,6 +84,8 @@ func TestPaths(t *testing.T) {
 		{"node shared code in a subdirectory", []string{"relays/node/lib/hop.js"}, []string{"otel-node", "datadog-node", "datadog-node-defaults", "none-node"}, false},
 		{"app code beside the per-tool sources", []string{"relays/ruby/app/relay.rb"}, []string{"otel-ruby", "none-ruby"}, false},
 		{"driver", []string{"driver/main.go"}, allIDs(reg), true},
+		{"packages the driver is built from", []string{"internal/eval/eval.go"}, allIDs(reg), true},
+		{"result types the driver writes", []string{"internal/raw/raw.go"}, allIDs(reg), true},
 		{"proto", []string{"proto/hop.proto", "gen/cpmatrix/hop.pb.go"}, allIDs(reg), true},
 		{"shared go image", []string{"docker/go.Dockerfile"}, allIDs(reg), true},
 		{"go.mod", []string{"go.mod", "go.sum"}, allIDs(reg), true},

@@ -256,7 +256,8 @@ page uses it to say what was broken in which release. Release notes for each
   a file under `relays/rust/src/` re-runs every Rust variant and one under
   `relays/rust/otel/` only `otel-rust`, `relays/node/Dockerfile`
   every Node variant, a changed `relay-<id>` service or variant definition that
-  variant; anything under `driver/`, `sink/`, `proto/`, `gen/`, `docker/`,
+  variant; anything under `driver/` (and `internal/eval/`, `internal/raw/`,
+  which it is built from), `sink/`, `proto/`, `gen/`, `docker/`,
   `go.mod`/`go.sum` or `matrix.yml` itself re-runs everything. Cells not
   re-measured are carried over from the previous release, and the new release
   records `run.partial` / `run.reran`. The same run also measures any variant
