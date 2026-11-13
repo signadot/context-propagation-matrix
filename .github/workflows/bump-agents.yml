@@ -136,6 +136,17 @@ jobs:
       # Rust relays (as backtest.yml does for `cpm pins set`).
       - uses: dtolnay/rust-toolchain@stable
         if: steps.existing.outputs.skip != 'true' && matrix.bump.kind == 'cargo'
+      # ... and Gemfile.lock with `bundle lock` for the Ruby relays, under the
+      # Ruby of the relay image (its FROM tag, so the two cannot drift): the
+      # lock is resolved by the Ruby and Bundler that install it.
+      - name: Ruby version of the relay image
+        id: ruby
+        if: steps.existing.outputs.skip != 'true' && matrix.bump.kind == 'bundler'
+        run: sed -nE 's/^FROM ruby:([0-9.]+).*/version=\1/p' relays/ruby/Dockerfile >> "$GITHUB_OUTPUT"
+      - uses: ruby/setup-ruby@v1
+        if: steps.existing.outputs.skip != 'true' && matrix.bump.kind == 'bundler'
+        with:
+          ruby-version: ${{ steps.ruby.outputs.version }}
 
       - name: Apply ${{ env.ID }} ${{ env.FROM }} → ${{ env.TO }}
         if: steps.existing.outputs.skip != 'true'

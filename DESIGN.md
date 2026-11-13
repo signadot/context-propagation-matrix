@@ -379,6 +379,19 @@ gated the same way.
   the verdict. That a version does not attach on today's runtime is worth
   recording once, and a pair with neither a release nor an index entry would
   be proposed again by every `cpm discover -skip-published`.
+- Either publishes nothing when a variant measured there has a boundary no
+  hop ran on (`boundary_not_run` in the gate's output). It is not an
+  `invalid` kind, because the boundary's `not_run` cells already say it.
+
+That last rule is one of three that keep the driver and the registry in
+step. The driver runs every pair of its own protocol list and does not read
+`variants.yaml`, which lists the boundaries a variant is scored on.
+
+- `go test ./driver` fails when the driver's pairs and the registry's
+  `boundaries` are not the same set.
+- `cpm aggregate` stops on a raw hop whose boundary the registry does not
+  list. It has no cells to be filed under.
+- `cpm gate` refuses a registry boundary the driver did not run, as above.
 
 Runs and back-tests are the record of each *job*. The same measurements are
 also filed the way people look for them — by tracer version — in one rolling
@@ -505,6 +518,14 @@ looking at `requirements.in`, so `verify.yml` compares the two
 (and whatever the tracer pulls in) is not locked: it resolves at build time,
 because the tracer version is the variable being measured.
 
+The Ruby relay is locked differently. It commits a `Gemfile.lock` beside
+each tool's Gemfile (`relays/ruby/gemfiles/<tool>/`), installed with
+`BUNDLE_FROZEN`. That lock holds the tracer and what it pulls in as well,
+because the tracer is a line of the same Gemfile and Bundler resolves a
+Gemfile as a whole. Whatever moves the tracer moves the lock with it:
+`cpm pins` runs `bundle lock --update <tracer gem>`, which leaves the
+application's gems where the lock has them.
+
 Two bots move versions, and they do not overlap:
 
 - **Dependabot** (`.github/dependabot.yml`) keeps the *application*
@@ -528,7 +549,8 @@ Two bots move versions, and they do not overlap:
   for each pin that is behind, `cpm pins latest -only <id> -apply` writes it
   the way the ecosystem expects (`go get` + `go mod tidy` for the whole
   module family, `cargo update` for the crate family, a JSON key, every
-  `==` line, a `gem` line, an `ARG`). There is exactly one PR per pin: branch
+  `==` line, a `gem` line with `bundle lock`, an `ARG`). There is exactly
+  one PR per pin: branch
   `bump/<id>`, title `bump(<id>): <from> → <to>`, labels `dependencies` +
   `tracer-bump` + `auto-merge`, squash auto-merge requested. A newer
   upstream release rewrites that branch (current `main` + one commit) and
@@ -544,7 +566,8 @@ Two bots move versions, and they do not overlap:
 
 The same `cpm pins` write path serves `backtest.yml`, which runs `cpm pins
 set` to move any pin *backwards* in a scratch checkout, and `verify.yml`
-runs `cpm pins check` so every instrumented variant has exactly one pin and
+runs `cpm pins check` so every instrumented variant has exactly one pin,
+every `Gemfile.lock` holds the tracer version its Gemfile pins, and
 every pinned or followed cargo crate has one copy in its `Cargo.lock`. That
 last rule is the Rust relays' safety net: `datadog-opentelemetry` requires an
 exact `opentelemetry` version, and a second copy of the API crate in the
@@ -635,7 +658,8 @@ quadratically (n protocols → n² boundaries; 4 → 16 today, a fifth makes 25)
    (`relay-{proto}-{variant}` naming), the sink-inbound address, and any
    declare/warm-up rules — see the RabbitMQ sections above for the shape.
 2. `driver/` — seed headers into the new carrier; extend the boundary list
-   (16 → 25 tests per variant).
+   (16 → 25 tests per variant). `go test ./driver` fails until the
+   registry (step 5) lists the same pairs.
 3. `sink/` — consume/serve the new protocol and record arriving
    headers/metadata verbatim, with the same base64 rules for non-UTF-8.
 4. Every relay in `relays/*` — one inbound listener plus one `forward_via`

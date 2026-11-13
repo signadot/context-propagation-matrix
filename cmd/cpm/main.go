@@ -96,7 +96,7 @@ func usage() {
   validate   check variants.yaml, docker-compose.yml and annotations/ agree
   aggregate  results/raw/*.json -> results.json + MATRIX.md (+ changes.json)
   gate       exit 1 if a results.json must not be published (canary leak, wrong transport,
-             agent not attached): [-reran ids] [-baseline results.json] <results.json>
+             agent not attached, a boundary not run): [-reran ids] [-baseline results.json] <results.json>
   diff       compare two results.json files into changes.json
   summary    markdown summary of a results.json for CI/Slack
   coords     tracer package coordinates per variant as JSON (for version discovery)
