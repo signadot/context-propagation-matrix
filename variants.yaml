@@ -219,7 +219,7 @@ variants:
     flavour: default
     display_name: Go
     setup_tier: in-code
-    attach: "otelhttp / otelgrpc wrappers + hand-written Kafka and AMQP carriers"
+    attach: "otelhttp / otelgrpc wrappers + franz-go kotel hooks + hand-written AMQP carrier"
     tracer: { name: go.opentelemetry.io/otel, registry: goproxy, package: go.opentelemetry.io/otel, github: open-telemetry/opentelemetry-go }
     docs: https://opentelemetry.io/docs/languages/go/instrumentation/
     source: relays/go/otel
@@ -239,7 +239,7 @@ variants:
     flavour: default
     display_name: .NET
     setup_tier: zero-code
-    attach: "CLR profiler env (OpenTelemetry.AutoInstrumentation)"
+    attach: "instrument.sh env: CLR profiler + DOTNET_STARTUP_HOOKS (OpenTelemetry.AutoInstrumentation)"
     tracer: { name: OpenTelemetry.AutoInstrumentation, registry: github-releases, package: open-telemetry/opentelemetry-dotnet-instrumentation, tag_prefix: v, github: open-telemetry/opentelemetry-dotnet-instrumentation }
     docs: https://opentelemetry.io/docs/zero-code/dotnet/
     source: relays/dotnet
@@ -249,7 +249,7 @@ variants:
     flavour: default
     display_name: Ruby
     setup_tier: init-only
-    attach: "require 'opentelemetry/sdk'; OpenTelemetry::SDK.configure { use_all }"
+    attach: "require 'opentelemetry/sdk' and six instrumentation gems; SDK.configure with c.use for each"
     tracer: { name: opentelemetry-sdk, registry: rubygems, package: opentelemetry-sdk, github: open-telemetry/opentelemetry-ruby }
     docs: https://opentelemetry.io/docs/languages/ruby/
     source: relays/ruby/gemfiles/otel
@@ -259,7 +259,7 @@ variants:
     flavour: default
     display_name: PHP
     setup_tier: zero-code
-    attach: "ext-opentelemetry + auto-* packages via php.ini"
+    attach: "ext-opentelemetry + auto-* composer packages, OTEL_PHP_AUTOLOAD_ENABLED=true"
     tracer: { name: opentelemetry (ext), registry: pecl, package: opentelemetry, github: open-telemetry/opentelemetry-php-instrumentation }
     docs: https://opentelemetry.io/docs/zero-code/php/
     source: relays/php
@@ -269,7 +269,7 @@ variants:
     flavour: default
     display_name: Rust
     setup_tier: in-code
-    attach: "opentelemetry propagator API + hand-written carriers"
+    attach: "opentelemetry propagator API, opentelemetry-http for HTTP + hand-written gRPC/Kafka/AMQP carriers"
     tracer: { name: opentelemetry, registry: crates, package: opentelemetry, github: open-telemetry/opentelemetry-rust }
     docs: https://opentelemetry.io/docs/languages/rust/
     source: relays/rust/otel
@@ -351,7 +351,7 @@ variants:
     flavour: default
     display_name: Go
     setup_tier: in-code
-    attach: "dd-trace-go contrib wrappers (net/http, grpc, sarama) + hand-written AMQP carrier"
+    attach: "dd-trace-go contribs (net/http, grpc, sarama) + tracer.Inject/Extract for Kafka; hand-written AMQP carrier"
     tracer: { name: dd-trace-go, registry: goproxy, package: github.com/DataDog/dd-trace-go/v2, github: DataDog/dd-trace-go }
     docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/go/
     source: relays/go/datadog
@@ -361,7 +361,7 @@ variants:
     flavour: defaults
     display_name: Go (defaults)
     setup_tier: in-code
-    attach: "dd-trace-go contribs, propagation style left at default"
+    attach: "dd-trace-go contribs + tracer.Inject/Extract for Kafka, propagation style left at default"
     tracer: { name: dd-trace-go, registry: goproxy, package: github.com/DataDog/dd-trace-go/v2, github: DataDog/dd-trace-go }
     docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/go/
     source: relays/go/datadog
@@ -402,7 +402,7 @@ variants:
     flavour: default
     display_name: Ruby
     setup_tier: init-only
-    attach: "require 'datadog/auto_instrument'; Datadog.configure"
+    attach: "require 'datadog'; c.tracing.instrument per integration, karafka/waterdrop distributed_tracing: true"
     tracer: { name: datadog (gem), registry: rubygems, package: datadog, github: DataDog/dd-trace-rb }
     docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/ruby/
     source: relays/ruby/gemfiles/datadog
@@ -412,7 +412,7 @@ variants:
     flavour: defaults
     display_name: Ruby (defaults)
     setup_tier: init-only
-    attach: "require 'datadog/auto_instrument', propagation style left at default"
+    attach: "require 'datadog'; same boot file as datadog-ruby, propagation style left at default"
     tracer: { name: datadog (gem), registry: rubygems, package: datadog, github: DataDog/dd-trace-rb }
     docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/ruby/
     source: relays/ruby/gemfiles/datadog
@@ -494,7 +494,7 @@ variants:
     flavour: default
     display_name: Ruby
     setup_tier: init-only
-    attach: "require 'elastic_apm'; ElasticAPM.start"
+    attach: "require 'elastic-apm'; HttpApp.use ElasticAPM::Middleware; ElasticAPM::Sinatra.start(HttpApp)"
     tracer: { name: elastic-apm (gem), registry: rubygems, package: elastic-apm, github: elastic/apm-agent-ruby }
     docs: https://www.elastic.co/docs/reference/apm/agents/ruby
     source: relays/ruby/gemfiles/elastic
