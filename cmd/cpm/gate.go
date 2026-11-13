@@ -30,6 +30,11 @@ import (
 //     run.reran) unless -reran names the ids.
 //   - canary_leak and transport_mismatch on a variant measured here block:
 //     they are faults of the relay or the harness, never a result.
+//   - A boundary with no hop on a variant measured here blocks
+//     (boundary_not_run). The driver runs its own protocol list, and this
+//     is a boundary of variants.yaml it did not run: its cells are not_run,
+//     which is no result either. It is not one of results.Judge's verdicts
+//     and is not recorded as `invalid`, since the cells say it themselves.
 //   - agent_inactive on a variant measured here blocks, except in a
 //     back-test (run.kind), where it warns. That an old version does not
 //     attach on today's runtime is worth recording once, and the document
@@ -80,6 +85,14 @@ func gate(w io.Writer, res, baseline *results.Results, measured map[string]bool)
 	}
 	var judged, here, blocking, warnings int
 	unbased := map[string]bool{} // languages judged without a baseline
+	// The run a carried-over variant came from; -reran can leave out a
+	// variant the document says this run measured.
+	carriedFrom := func(v *results.Variant) string {
+		if v.MeasuredIn == "" || v.MeasuredIn == res.Run.RunID {
+			return "an earlier run"
+		}
+		return v.MeasuredIn
+	}
 	for _, v := range res.Variants {
 		if v.Missing {
 			continue
@@ -92,6 +105,17 @@ func gate(w io.Writer, res, baseline *results.Results, measured map[string]bool)
 		if mine {
 			here++
 		}
+		if missed := notRun(v); len(missed) > 0 {
+			detail := fmt.Sprintf("no hop on %d of %d boundaries (%s): the driver did not run what variants.yaml lists",
+				len(missed), len(v.Hops), strings.Join(missed, ", "))
+			if mine {
+				blocking++
+				say("error", "%s: %s: %s", v.ID, problemBoundaryNotRun, detail)
+			} else {
+				warnings++
+				say("warning", "%s: %s: %s (carried over from %s, which was the run to judge it; not blocking)", v.ID, problemBoundaryNotRun, detail, carriedFrom(v))
+			}
+		}
 		b := res.BaselineFor(v, baseline)
 		if b == nil && !res.IsBaseline(v) {
 			unbased[v.Language] = true
@@ -100,12 +124,7 @@ func gate(w io.Writer, res, baseline *results.Results, measured map[string]bool)
 			switch {
 			case !mine:
 				warnings++
-				// -reran can leave out a variant the document says this run measured.
-				from := v.MeasuredIn
-				if from == "" || from == res.Run.RunID {
-					from = "an earlier run"
-				}
-				say("warning", "%s: %s: %s (carried over from %s, which was the run to judge it; not blocking)", v.ID, p.Kind, p.Detail, from)
+				say("warning", "%s: %s: %s (carried over from %s, which was the run to judge it; not blocking)", v.ID, p.Kind, p.Detail, carriedFrom(v))
 			case p.Kind == results.ProblemAgentInactive && res.Run.Kind == "backtest":
 				warnings++
 				say("warning", "%s: %s: %s (a back-test is published and filed with this verdict)", v.ID, p.Kind, p.Detail)
@@ -127,6 +146,25 @@ func gate(w io.Writer, res, baseline *results.Results, measured map[string]bool)
 	fmt.Fprintf(w, "gate: %s (%s): %d variant(s) judged, %d measured in this run: %d blocking, %d warning(s)\n",
 		res.Run.RunID, res.Run.Kind, judged, here, blocking, warnings)
 	return blocking
+}
+
+// problemBoundaryNotRun is the gate's name for a variant with a boundary no
+// hop ran on.
+const problemBoundaryNotRun = "boundary_not_run"
+
+// notRun returns the boundaries of v that have no hop: the ones whose cells
+// `cpm aggregate` wrote as not_run because the raw result had no test for
+// them. An undelivered hop did run, and is not one of them.
+func notRun(v *results.Variant) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, c := range v.Cells {
+		if c.Outcome == results.OutcomeNotRun && !seen[c.Boundary] {
+			seen[c.Boundary] = true
+			out = append(out, c.Boundary)
+		}
+	}
+	return out
 }
 
 // loadBaseline reads the optional -baseline document of gate and aggregate.

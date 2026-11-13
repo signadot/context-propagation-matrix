@@ -30,7 +30,8 @@ go run ./cmd/cpm gate results/latest/results.json   # what CI checks before it p
 ```
 
 `run.sh` starts Kafka, RabbitMQ and the sink, builds the relay image for each
-variant, runs the driver (16 hops), writes `results/raw/<variant>.json`, and
+variant, runs the driver (one hop per boundary), writes
+`results/raw/<variant>.json`, and
 finally aggregates everything into `results/latest/results.json` and
 `MATRIX.md`. Look at `results/latest/MATRIX.md` for your rows.
 
@@ -49,6 +50,8 @@ per-version filing and the site rebuild, so nothing from that run is
 published; fix the cause and re-run the workflow. A variant carried over from
 an earlier release only warns. `cpm aggregate` records the same verdict on
 the variant as `invalid`; DESIGN.md ("Results schema") has the exact rules.
+The gate also refuses a variant measured in that run that has a boundary no
+hop ran on: the driver and `variants.yaml` disagree about the protocols.
 
 The first build of the Java and .NET images is slow (agent downloads); later
 builds are cached.
@@ -119,7 +122,9 @@ per variant). Open an issue first so we can agree the carrier semantics.
    inbound address (`relay-{proto}-{variant}` naming), the sink inbound
    address, declare/warm-up rules. The RabbitMQ sections are the template.
 2. `driver/` — seed headers into the new carrier; the boundary list is
-   protocols², so adding the protocol adds 2n+1 tests per variant.
+   protocols², so adding the protocol adds 2n+1 tests per variant. The
+   driver has its own protocol list: `go test ./driver` fails until
+   `variants.yaml` (step 5) lists the same pairs.
 3. `sink/` — consume/serve the new protocol and record arriving
    headers/metadata verbatim (base64 for non-UTF-8, as today).
 4. Every relay under `relays/*` — one inbound listener plus one
@@ -131,11 +136,20 @@ per variant). Open an issue first so we can agree the carrier semantics.
    `boundaries:` in the column order you want. The registry refuses to load
    unless the boundary count is exactly protocols². contextpropagation.io
    derives its grids, heatmaps, OG images and copy from these `dimensions`,
-   so no site change is needed for a new column.
+   so no site change is needed for a new column. Bump `matrix_version` in
+   the same change: a variant is now scored on more cells, and results from
+   before and after must not be compared cell for cell. `cpm validate`
+   fails until it is bumped (it compares the registry with the latest
+   release).
 6. `docker-compose.yml` — a broker service (with a healthcheck) if needed,
    and any new endpoints in `x-relay-common-env`.
 7. Run everything (`./run.sh all`); the new column will be mostly red at
    first — that is the point. Annotate.
+8. Re-read the annotations, `FINDINGS.md` and `REFERENCES.md`. They state
+   results against the boundaries that existed when they were written
+   ("crosses all 16 boundaries", "9/16"), and nothing derives those numbers.
+   A sentence that still says 16 has not been checked against the new
+   column.
 
 ## Adding a provider (a new tool)
 

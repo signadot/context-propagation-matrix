@@ -166,8 +166,10 @@ func TestBuild_HopObservations(t *testing.T) {
 			t.Errorf("%s: outcome %q, want pass", id, outcomes[id])
 		}
 	}
-	if c := res.Variant("otel-node").Counts["traceparent"]; c.Pass != 2 || c.NotRun != 14 || c.Total != 16 {
-		t.Errorf("otel-node traceparent counts = %+v, want 2 passes and 14 not run", *c)
+	// The fixture has two hops for otel-node; every other boundary of the
+	// registry is not run.
+	if c, n := res.Variant("otel-node").Counts["traceparent"], len(res.Dimensions.Boundaries); c.Pass != 2 || c.NotRun != n-2 || c.Total != n {
+		t.Errorf("otel-node traceparent counts = %+v, want 2 passes and %d not run of %d", *c, n-2, n)
 	}
 	// otel-node 2, datadog-java 1, elastic-java 2, newrelic-java 2, none-node 1.
 	if got := res.Summary.TotalsByHeader["traceparent"].Pass; got != 8 {

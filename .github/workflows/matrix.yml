@@ -328,9 +328,10 @@ jobs:
             logs.tar.gz
             summary.md
       # Nothing below may publish a measurement that is not one: a leaked
-      # canary, a hop that arrived over the wrong protocol, or an agent that
-      # never attached, which scores 0 of 64 exactly like a tool that
-      # propagates nothing. Any of these on a variant measured in this run
+      # canary, a hop that arrived over the wrong protocol, a boundary of
+      # variants.yaml the driver did not run, or an agent that never
+      # attached, which scores nothing exactly like a tool that propagates
+      # nothing. Any of these on a variant measured in this run
       # fails the job here; on a carried-over variant it only warns, because
       # the run that measured it was the one to judge it. Placed after the
       # upload above so the document that was refused can still be

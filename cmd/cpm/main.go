@@ -2,6 +2,7 @@
 // output into the published results contract.
 //
 //	cpm list [-tool otel] [-secret|-no-secret] [-json]
+//	cpm boundaries [-json]
 //	cpm affected (-base <rev> | -since results.json) [-head HEAD] [-json]
 //	cpm validate [-results results/latest/results.json]
 //	cpm aggregate [-raw results/raw] [-out results/latest] [-run-id id] [-prev results.json] [-reran ids] [-republish results.json]
@@ -49,6 +50,8 @@ func main() {
 	switch os.Args[1] {
 	case "list":
 		err = cmdList(os.Args[2:])
+	case "boundaries":
+		err = cmdBoundaries(os.Args[2:])
 	case "affected":
 		err = cmdAffected(os.Args[2:])
 	case "validate":
@@ -84,15 +87,16 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|gate|diff|summary|coords|annotations|pins|discover|versions> [flags]
+	fmt.Fprintln(os.Stderr, `usage: cpm <list|boundaries|affected|validate|aggregate|gate|diff|summary|coords|annotations|pins|discover|versions> [flags]
 
   list       print variant ids from variants.yaml (one per line, or -json)
+  boundaries print the boundaries variants.yaml lists, in its order (one per line, or -json)
   affected   variant ids to re-measure: -base <rev> (what a change could alter) and/or
              -since <results.json> (what changed since each was last measured) [-head HEAD]
   validate   check variants.yaml, docker-compose.yml and annotations/ agree
   aggregate  results/raw/*.json -> results.json + MATRIX.md (+ changes.json)
   gate       exit 1 if a results.json must not be published (canary leak, wrong transport,
-             agent not attached): [-reran ids] [-baseline results.json] <results.json>
+             agent not attached, a boundary not run): [-reran ids] [-baseline results.json] <results.json>
   diff       compare two results.json files into changes.json
   summary    markdown summary of a results.json for CI/Slack
   coords     tracer package coordinates per variant as JSON (for version discovery)
@@ -206,6 +210,33 @@ func cmdList(args []string) error {
 	}
 	for _, id := range ids {
 		fmt.Println(id)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+
+// cmdBoundaries prints the boundaries the registry lists, in its order: the
+// hops one run of a variant has to record. verify.yml checks a smoked relay's
+// raw result against this list instead of a count of its own.
+func cmdBoundaries(args []string) error {
+	fs := flag.NewFlagSet("boundaries", flag.ExitOnError)
+	regPath := regFlag(fs)
+	asJSON := fs.Bool("json", false, "emit a JSON array (for a workflow output)")
+	fs.Parse(args)
+
+	reg, err := registry.Load(*regPath)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		// One line, and "http->kafka" rather than "http-\u003ekafka".
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetEscapeHTML(false)
+		return enc.Encode(reg.Boundaries)
+	}
+	for _, b := range reg.Boundaries {
+		fmt.Println(b)
 	}
 	return nil
 }
@@ -490,6 +521,7 @@ func cmdValidate(args []string) error {
 	}
 	fmt.Printf("annotations: %d loaded\n", len(anns))
 	if res, err := results.Load(*resPath); err == nil {
+		errs = append(errs, contractErrors(reg, res)...)
 		problems := annotations.Apply(res, anns)
 		gh := os.Getenv("GITHUB_ACTIONS") == "true"
 		errs = append(errs, reportProblems(os.Stdout, gh, *strict, problems)...)
@@ -520,6 +552,30 @@ func cmdValidate(args []string) error {
 	}
 	fmt.Println("ok")
 	return nil
+}
+
+// contractErrors checks matrix_version against the latest release: res is
+// that release's results.json, written with the registry of its time. When
+// the cells a variant is scored on differ from it (results.ContractDiff:
+// protocols, boundaries, headers and how each header is scored), results
+// measured before and after are not comparable cell for cell, and the
+// version that says so has to have moved. Nothing else makes anyone bump
+// it: a registry with a fifth protocol and the old matrix_version loads,
+// aggregates and publishes.
+func contractErrors(reg *registry.Registry, res *results.Results) []string {
+	was := res.Run.MatrixVersion
+	if was == 0 {
+		was = 1 // documents written before the field existed
+	}
+	if reg.MatrixVersion < was {
+		return []string{fmt.Sprintf("matrix_version is %d in variants.yaml, lower than the %d that %s was measured under", reg.MatrixVersion, was, res.Run.RunID)}
+	}
+	diff := results.ContractDiff(reg, &res.Dimensions)
+	if len(diff) == 0 || reg.MatrixVersion > was {
+		return nil
+	}
+	return []string{fmt.Sprintf("the measurement contract differs from the one %s was measured under, but matrix_version is still %d. Bump matrix_version in variants.yaml:\n      %s",
+		res.Run.RunID, was, strings.Join(diff, "\n      "))}
 }
 
 // ---------------------------------------------------------------------------

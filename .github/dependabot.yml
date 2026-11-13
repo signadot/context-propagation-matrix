@@ -97,8 +97,8 @@ updates:
       - dependency-name: "newrelic"                                   # newrelic-node
       - dependency-name: "elastic-apm-node"                           # elastic-apm-node
 
-  # Python: requirements.txt (app) + requirements-<tool>.txt (agents),
-  # all picked up from the same directory.
+  # Python: requirements.in (app, compiled to requirements.txt by pip-compile)
+  # + requirements-<tool>.txt (agents), all picked up from the same directory.
   - package-ecosystem: pip
     directory: /relays/python
     schedule: { interval: weekly }

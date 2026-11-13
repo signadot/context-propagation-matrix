@@ -12,6 +12,10 @@
 #   - go run ./cmd/cpm pins       (which pin in pins.yaml backs each variant)
 #   - the contextpropagation.io site (via results.json, never directly)
 #
+# The driver does not read it. It runs every pair of its own protocol list
+# (driver/main.go), and driver/registry_test.go fails when those pairs are
+# not the `boundaries:` below.
+#
 # Versions are deliberately NOT here. Exact pins live in the manifests and
 # Dockerfile ARGs next to each relay (Dependabot / bump-agents.yml bump them;
 # pins.yaml says where each one is); the aggregator records the
@@ -23,6 +27,9 @@ schema_version: 1
 # variant is scored on (headers × boundaries) and what each outcome means.
 # Bump it by hand when a dimension or an outcome's semantics change, so that
 # results measured under different values are not compared cell for cell.
+# `cpm validate` fails when the protocols, the boundaries, the headers or a
+# header's scoring lists below differ from the latest release and this has
+# not moved. It cannot see a change in what an outcome means.
 # Adding a variant, a tool or a language does not change the contract. Every
 # result records the value it was measured under, and keeps it when a later
 # run carries the measurement over.

@@ -53,7 +53,8 @@ type pinState struct {
 
 // pinsList prints every pin with the version its file holds. With check, it
 // also requires each pin's manifest to pass pins.Check (one copy of every
-// cargo crate in Cargo.lock) and every instrumented variant in variants.yaml
+// cargo crate in Cargo.lock, a Gemfile.lock at the version its Gemfile
+// pins) and every instrumented variant in variants.yaml
 // to resolve to exactly one pin (and every listed variant to exist), exiting
 // non-zero on any failure — the verify.yml gate.
 func pinsList(args []string, check bool) error {
@@ -318,7 +319,8 @@ func releasesURL(p registry.Package, github string) string {
 // pin in pins.yaml, whatever its kind: tracers are moved only by
 // bump-agents.yml (Dependabot ignores them, see .github/dependabot.yml).
 // -apply writes through Pin.Write, the same path as `cpm pins set`, so a
-// gomod family moves together and `go mod tidy` / `cargo update` run.
+// gomod family moves together and `go mod tidy` / `cargo update` / `bundle
+// lock` run.
 // Output is the JSON bump-agents.yml consumes (pinBump).
 func pinsLatest(args []string) error {
 	fs := flag.NewFlagSet("pins latest", flag.ExitOnError)

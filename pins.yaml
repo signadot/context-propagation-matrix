@@ -41,7 +41,13 @@
 #                  package at the pinned version, but not required in go.mod.
 #   kind: npm      file (package.json) + packages
 #   kind: pip      file (requirements-*.txt) + packages (globs; every `pkg==`)
-#   kind: bundler  file (Gemfile) + packages (gem names)
+#   kind: bundler  file (Gemfile) + packages (gem names): the `gem` lines
+#                  rewritten and the Gemfile.lock beside the file moved with
+#                  `bundle lock --update <gems>` (the gems and what they
+#                  depend on; the rest of the lock stays unless it conflicts
+#                  with them), so the Dockerfile's frozen install still
+#                  applies. `check` also requires the lock to hold the
+#                  version the Gemfile pins (relays/ruby/README.md).
 #   kind: cargo    dir + packages (crates): Cargo.toml requirement set exact
 #                  and Cargo.lock moved with `cargo update`, so the
 #                  Dockerfile's `--locked` build still applies. Optional

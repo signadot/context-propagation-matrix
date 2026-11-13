@@ -19,7 +19,7 @@ combination, never by quoting vendor documentation.
   anything the platform itself propagates, e.g. .NET's built-in `Activity`
   machinery). See Roadmap below for further tool candidates.
 - **Languages**: `java`, `node`, `python`, `go`, `dotnet`, `ruby`, `php`, `rust`
-- **Boundaries** (inbound protocol → outbound protocol): all 16 of
+- **Boundaries** (inbound protocol → outbound protocol): every pair in
   `{http, grpc, kafka, rabbitmq} × {http, grpc, kafka, rabbitmq}`
 - **Headers observed** (primary): `traceparent`, `tracestate`, `baggage` (W3C),
   `ot-baggage-*` (OpenTracing legacy). Secondary observations recorded verbatim:
@@ -117,7 +117,7 @@ Query: `GET /observations?test_id=X` → `{"observations":[...]}`.
 
 ### Driver (Go, uninstrumented)
 
-For each variant it runs all 16 boundaries. Per test:
+For each variant it runs every boundary. Per test:
 
 1. Generate `test_id = {variant}--{in}-{out}--{rand8}`, a random W3C
    `trace_id`/`span_id`, and routing key `rk-{rand8}`.
@@ -209,11 +209,12 @@ documents aggregated before they existed. Adding them therefore leaves
   SDKs, but not all: `@opentelemetry/sdk-node` (otel-node) and the otelc
   runtime (otel-go-compiletime) register no `TracerProvider` when no trace
   exporter is configured, so with `none` they either forward the inbound
-  headers verbatim or inject nothing — a 16/16 or 0/16 that says nothing about
-  the instrumentation. Those two run with `OTEL_TRACES_EXPORTER=console`
-  (spans to stdout, no network). A variant whose observed `traceparent`
-  carries the seeded span-id on every delivered hop is the signature of this
-  problem: an active tracer always starts a new span on the inbound side.
+  headers verbatim or inject nothing — every boundary passes or none does,
+  which says nothing about the instrumentation. Those two run with
+  `OTEL_TRACES_EXPORTER=console` (spans to stdout, no network). A variant
+  whose observed `traceparent` carries the seeded span-id on every delivered
+  hop is the signature of this problem: an active tracer always starts a new
+  span on the inbound side.
 - **datadog**: primary run with
   `DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage` (the configuration
   from [dd-trace-java#11286](https://github.com/DataDog/dd-trace-java/issues/11286));
@@ -274,8 +275,9 @@ from `results/raw/*.json` plus the registry (`variants.yaml`):
   (tools, languages, protocols, boundaries, headers, setup tiers, verbatim
   from the registry so consumers never need the YAML), and one entry per
   variant with tracer coordinates + observed version, runtime, client
-  library versions, config, 16 `hops` (evidence: seeded and observed headers,
-  delivery, canary) and 64 `cells`. Each cell has a stable id
+  library versions, config, one entry in `hops` per boundary (evidence:
+  seeded and observed headers, delivery, canary) and one in `cells` per
+  header per boundary (16 and 64 today). Each cell has a stable id
   `{variant}/{header}/{inbound}-{outbound}` and a normalised `outcome`
   (`pass` · `partial` · `new_trace` · `fail` · `undelivered` · `not_run`)
   next to the driver's raw status. Annotations (below) are embedded, and a
@@ -293,6 +295,12 @@ from `results/raw/*.json` plus the registry (`variants.yaml`):
   pair resolves to the same measurement in every run that carries it. The
   site uses these to present results per tracer version and to say where
   and when each one was measured.
+
+  `cpm validate` checks the part of the bump rule it can see. It fails when
+  the protocols, the boundaries, the headers or a header's scoring lists in
+  `variants.yaml` differ from the `dimensions` of the latest release and
+  `matrix_version` has not moved. A change in what an outcome means that
+  leaves those alone still has to be bumped by hand.
 
   An `in-code` variant also carries `legs`, copied from the registry: per
   protocol, `inbound` and `outbound`, each one of the `dimensions.wirings`
@@ -371,6 +379,19 @@ gated the same way.
   the verdict. That a version does not attach on today's runtime is worth
   recording once, and a pair with neither a release nor an index entry would
   be proposed again by every `cpm discover -skip-published`.
+- Either publishes nothing when a variant measured there has a boundary no
+  hop ran on (`boundary_not_run` in the gate's output). It is not an
+  `invalid` kind, because the boundary's `not_run` cells already say it.
+
+That last rule is one of three that keep the driver and the registry in
+step. The driver runs every pair of its own protocol list and does not read
+`variants.yaml`, which lists the boundaries a variant is scored on.
+
+- `go test ./driver` fails when the driver's pairs and the registry's
+  `boundaries` are not the same set.
+- `cpm aggregate` stops on a raw hop whose boundary the registry does not
+  list. It has no cells to be filed under.
+- `cpm gate` refuses a registry boundary the driver did not run, as above.
 
 Runs and back-tests are the record of each *job*. The same measurements are
 also filed the way people look for them — by tracer version — in one rolling
@@ -495,12 +516,23 @@ Nothing in the harness installs "latest": every dependency manifest pins
 exact versions and every curl-fetched agent is a version ARG in its
 Dockerfile, so a rebuild months from now produces the same images and the
 matrix stays attributable to exact tracer versions (each table row carries
-the version that produced it). The Node and PHP relays also commit a
+the version that produced it). The Node, PHP and Python relays also commit a
 lockfile for the application's own dependencies (`relays/node/package-lock.json`,
-`relays/php/composer.lock`), installed with `npm ci` / `composer install`, so
-their transitive packages are fixed too. The tracer installed on top of it
+`relays/php/composer.lock`, `relays/python/requirements.txt` compiled from
+`requirements.in`), installed with `npm ci` / `composer install` / `pip install`, so
+their transitive packages are fixed too. pip installs the compiled file without
+looking at `requirements.in`, so `verify.yml` compares the two
+(`scripts/check-python-requirements.sh`). The tracer installed on top of it
 (and whatever the tracer pulls in) is not locked: it resolves at build time,
 because the tracer version is the variable being measured.
+
+The Ruby relay is locked differently. It commits a `Gemfile.lock` beside
+each tool's Gemfile (`relays/ruby/gemfiles/<tool>/`), installed with
+`BUNDLE_FROZEN`. That lock holds the tracer and what it pulls in as well,
+because the tracer is a line of the same Gemfile and Bundler resolves a
+Gemfile as a whole. Whatever moves the tracer moves the lock with it:
+`cpm pins` runs `bundle lock --update <tracer gem>`, which leaves the
+application's gems where the lock has them.
 
 Two bots move versions, and they do not overlap:
 
@@ -509,8 +541,8 @@ Two bots move versions, and they do not overlap:
   per hand-wired Go tool under `relays/go/<tool>`, and the two build-time
   weaving modules `relays/go-orchestrion` and `relays/go-otelc`), npm (app +
   one single-dependency manifest per Node
-  tool under `relays/node/tools/`), pip (`requirements.txt` +
-  `requirements-<tool>.txt`), bundler (one Gemfile per tool under
+  tool under `relays/node/tools/`), pip (`requirements.in`, compiled
+  to `requirements.txt`, + `requirements-<tool>.txt`), bundler (one Gemfile per tool under
   `relays/ruby/gemfiles/`), composer, maven, nuget, cargo, and docker base
   images — one grouped `app-deps` PR per ecosystem. Every tracer package
   that `pins.yaml` lists is in that ecosystem's `ignore` list, so Dependabot
@@ -525,7 +557,8 @@ Two bots move versions, and they do not overlap:
   for each pin that is behind, `cpm pins latest -only <id> -apply` writes it
   the way the ecosystem expects (`go get` + `go mod tidy` for the whole
   module family, `cargo update` for the crate family, a JSON key, every
-  `==` line, a `gem` line, an `ARG`). There is exactly one PR per pin: branch
+  `==` line, a `gem` line with `bundle lock`, an `ARG`). There is exactly
+  one PR per pin: branch
   `bump/<id>`, title `bump(<id>): <from> → <to>`, labels `dependencies` +
   `tracer-bump` + `auto-merge`, squash auto-merge requested. A newer
   upstream release rewrites that branch (current `main` + one commit) and
@@ -541,7 +574,8 @@ Two bots move versions, and they do not overlap:
 
 The same `cpm pins` write path serves `backtest.yml`, which runs `cpm pins
 set` to move any pin *backwards* in a scratch checkout, and `verify.yml`
-runs `cpm pins check` so every instrumented variant has exactly one pin and
+runs `cpm pins check` so every instrumented variant has exactly one pin,
+every `Gemfile.lock` holds the tracer version its Gemfile pins, and
 every pinned or followed cargo crate has one copy in its `Cargo.lock`. That
 last rule is the Rust relays' safety net: `datadog-opentelemetry` requires an
 exact `opentelemetry` version, and a second copy of the API crate in the
@@ -632,16 +666,21 @@ quadratically (n protocols → n² boundaries; 4 → 16 today, a fifth makes 25)
    (`relay-{proto}-{variant}` naming), the sink-inbound address, and any
    declare/warm-up rules — see the RabbitMQ sections above for the shape.
 2. `driver/` — seed headers into the new carrier; extend the boundary list
-   (16 → 25 tests per variant).
+   (16 → 25 tests per variant). `go test ./driver` fails until the
+   registry (step 5) lists the same pairs.
 3. `sink/` — consume/serve the new protocol and record arriving
    headers/metadata verbatim, with the same base64 rules for non-UTF-8.
 4. Every relay in `relays/*` — one inbound listener plus one `forward_via`
    branch, using the language's idiomatic client.
 5. `variants.yaml` — add the protocol under `protocols:` and the new
    `boundaries:` (the registry requires exactly protocols² of them, in the
-   column order you want).
+   column order you want), and bump `matrix_version`; `cpm validate` fails
+   until it is bumped.
 6. `docker-compose.yml` — a broker/infra service (with healthcheck) if the
    protocol needs one, plus any new endpoints in `x-relay-common-env`.
+7. Re-read the annotations, `FINDINGS.md` and `REFERENCES.md`: they state
+   results against the boundaries that existed when they were written, and
+   nothing derives those numbers (see `CONTRIBUTING.md`).
 
 ## Roadmap / contributions welcome
 
