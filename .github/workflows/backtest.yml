@@ -6,7 +6,7 @@
 # set` — the same edit to go.mod / package.json / requirements / Gemfile /
 # Cargo.toml / Dockerfile ARG that a Dependabot PR makes, pointed backwards),
 # build the relay with the unchanged Dockerfile,
-# run the 16 hops, aggregate a single-variant results.json with
+# run every boundary, aggregate a single-variant results.json with
 # kind=backtest, and publish it as pre-release `backtest-<variant>-<version>`.
 # A final job then files each document under its version in the variant's
 # rolling `variant-<id>` release (scripts/publish-versions.sh), which is what
@@ -180,7 +180,7 @@ jobs:
                  --set "relay-$V.cache-from=type=registry,ref=$CACHE_IMAGE:relay-$V"
                  --set "relay-$V.cache-from=type=registry,ref=$CACHE_IMAGE:$(dirname "$df" | tr / -)")
           docker buildx bake -f docker-compose.yml "${args[@]}" sink driver "relay-$V"
-      - name: Run the 16 hops (retry once on driver failure)
+      - name: Run every boundary (retry once on driver failure)
         run: |
           set -euo pipefail
           mkdir -p results/raw results/data

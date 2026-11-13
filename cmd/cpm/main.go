@@ -2,6 +2,7 @@
 // output into the published results contract.
 //
 //	cpm list [-tool otel] [-secret|-no-secret] [-json]
+//	cpm boundaries [-json]
 //	cpm affected (-base <rev> | -since results.json) [-head HEAD] [-json]
 //	cpm validate [-results results/latest/results.json]
 //	cpm aggregate [-raw results/raw] [-out results/latest] [-run-id id] [-prev results.json] [-reran ids] [-republish results.json]
@@ -49,6 +50,8 @@ func main() {
 	switch os.Args[1] {
 	case "list":
 		err = cmdList(os.Args[2:])
+	case "boundaries":
+		err = cmdBoundaries(os.Args[2:])
 	case "affected":
 		err = cmdAffected(os.Args[2:])
 	case "validate":
@@ -84,9 +87,10 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|gate|diff|summary|coords|annotations|pins|discover|versions> [flags]
+	fmt.Fprintln(os.Stderr, `usage: cpm <list|boundaries|affected|validate|aggregate|gate|diff|summary|coords|annotations|pins|discover|versions> [flags]
 
   list       print variant ids from variants.yaml (one per line, or -json)
+  boundaries print the boundaries variants.yaml lists, in its order (one per line, or -json)
   affected   variant ids to re-measure: -base <rev> (what a change could alter) and/or
              -since <results.json> (what changed since each was last measured) [-head HEAD]
   validate   check variants.yaml, docker-compose.yml and annotations/ agree
@@ -206,6 +210,33 @@ func cmdList(args []string) error {
 	}
 	for _, id := range ids {
 		fmt.Println(id)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+
+// cmdBoundaries prints the boundaries the registry lists, in its order: the
+// hops one run of a variant has to record. verify.yml checks a smoked relay's
+// raw result against this list instead of a count of its own.
+func cmdBoundaries(args []string) error {
+	fs := flag.NewFlagSet("boundaries", flag.ExitOnError)
+	regPath := regFlag(fs)
+	asJSON := fs.Bool("json", false, "emit a JSON array (for a workflow output)")
+	fs.Parse(args)
+
+	reg, err := registry.Load(*regPath)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		// One line, and "http->kafka" rather than "http-\u003ekafka".
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetEscapeHTML(false)
+		return enc.Encode(reg.Boundaries)
+	}
+	for _, b := range reg.Boundaries {
+		fmt.Println(b)
 	}
 	return nil
 }
