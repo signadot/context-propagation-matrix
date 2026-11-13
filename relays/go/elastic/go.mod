@@ -6,7 +6,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.16.0
 	github.com/signadot/context-propagation-matrix/gen v0.0.0-00010101000000-000000000000
 	github.com/signadot/context-propagation-matrix/relays/go/internal v0.0.0-00010101000000-000000000000
-	github.com/twmb/franz-go v1.22.2
+	github.com/twmb/franz-go v1.22.3
 	go.elastic.co/apm/module/apmgrpc/v2 v2.7.12
 	go.elastic.co/apm/module/apmhttp/v2 v2.7.12
 	go.elastic.co/apm/v2 v2.7.12
@@ -23,7 +23,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
-	github.com/twmb/franz-go/pkg/kmsg v1.15.0 // indirect
+	github.com/twmb/franz-go/pkg/kmsg v1.15.1 // indirect
 	go.elastic.co/fastjson v1.5.1 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
