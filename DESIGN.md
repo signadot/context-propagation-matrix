@@ -499,7 +499,9 @@ the version that produced it). The Node, PHP and Python relays also commit a
 lockfile for the application's own dependencies (`relays/node/package-lock.json`,
 `relays/php/composer.lock`, `relays/python/requirements.txt` compiled from
 `requirements.in`), installed with `npm ci` / `composer install` / `pip install`, so
-their transitive packages are fixed too. The tracer installed on top of it
+their transitive packages are fixed too. pip installs the compiled file without
+looking at `requirements.in`, so `verify.yml` compares the two
+(`scripts/check-python-requirements.sh`). The tracer installed on top of it
 (and whatever the tracer pulls in) is not locked: it resolves at build time,
 because the tracer version is the variable being measured.
 

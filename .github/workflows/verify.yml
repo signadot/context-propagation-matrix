@@ -104,6 +104,13 @@ jobs:
       # bump-agents.yml move). Offline.
       - name: pins.yaml matches the manifests and the registry
         run: go run ./cmd/cpm pins check >/dev/null
+      # The Python image installs requirements.txt, and only pip-compile reads
+      # requirements.in. A version changed in one and not compiled into the
+      # other would build and pass, so the two are compared here. Offline.
+      - name: relays/python/requirements.txt agrees with requirements.in
+        run: scripts/check-python-requirements.sh
+      - name: check-python-requirements.sh catches a stale requirements.txt
+        run: scripts/test-check-python-requirements.sh
       - name: shell scripts parse
         run: for f in run.sh scripts/*.sh; do bash -n "$f" || exit 1; done
       # matrix.yml carries results over from the release this names and diffs
