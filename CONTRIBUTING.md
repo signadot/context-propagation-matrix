@@ -30,7 +30,8 @@ go run ./cmd/cpm gate results/latest/results.json   # what CI checks before it p
 ```
 
 `run.sh` starts Kafka, RabbitMQ and the sink, builds the relay image for each
-variant, runs the driver (16 hops), writes `results/raw/<variant>.json`, and
+variant, runs the driver (one hop per boundary), writes
+`results/raw/<variant>.json`, and
 finally aggregates everything into `results/latest/results.json` and
 `MATRIX.md`. Look at `results/latest/MATRIX.md` for your rows.
 
@@ -136,6 +137,11 @@ per variant). Open an issue first so we can agree the carrier semantics.
    and any new endpoints in `x-relay-common-env`.
 7. Run everything (`./run.sh all`); the new column will be mostly red at
    first — that is the point. Annotate.
+8. Re-read the annotations, `FINDINGS.md` and `REFERENCES.md`. They state
+   results against the boundaries that existed when they were written
+   ("crosses all 16 boundaries", "9/16"), and nothing derives those numbers.
+   A sentence that still says 16 has not been checked against the new
+   column.
 
 ## Adding a provider (a new tool)
 

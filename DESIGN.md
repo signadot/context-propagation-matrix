@@ -19,7 +19,7 @@ combination, never by quoting vendor documentation.
   anything the platform itself propagates, e.g. .NET's built-in `Activity`
   machinery). See Roadmap below for further tool candidates.
 - **Languages**: `java`, `node`, `python`, `go`, `dotnet`, `ruby`, `php`, `rust`
-- **Boundaries** (inbound protocol → outbound protocol): all 16 of
+- **Boundaries** (inbound protocol → outbound protocol): every pair in
   `{http, grpc, kafka, rabbitmq} × {http, grpc, kafka, rabbitmq}`
 - **Headers observed** (primary): `traceparent`, `tracestate`, `baggage` (W3C),
   `ot-baggage-*` (OpenTracing legacy). Secondary observations recorded verbatim:
@@ -117,7 +117,7 @@ Query: `GET /observations?test_id=X` → `{"observations":[...]}`.
 
 ### Driver (Go, uninstrumented)
 
-For each variant it runs all 16 boundaries. Per test:
+For each variant it runs every boundary. Per test:
 
 1. Generate `test_id = {variant}--{in}-{out}--{rand8}`, a random W3C
    `trace_id`/`span_id`, and routing key `rk-{rand8}`.
@@ -209,11 +209,12 @@ documents aggregated before they existed. Adding them therefore leaves
   SDKs, but not all: `@opentelemetry/sdk-node` (otel-node) and the otelc
   runtime (otel-go-compiletime) register no `TracerProvider` when no trace
   exporter is configured, so with `none` they either forward the inbound
-  headers verbatim or inject nothing — a 16/16 or 0/16 that says nothing about
-  the instrumentation. Those two run with `OTEL_TRACES_EXPORTER=console`
-  (spans to stdout, no network). A variant whose observed `traceparent`
-  carries the seeded span-id on every delivered hop is the signature of this
-  problem: an active tracer always starts a new span on the inbound side.
+  headers verbatim or inject nothing — every boundary passes or none does,
+  which says nothing about the instrumentation. Those two run with
+  `OTEL_TRACES_EXPORTER=console` (spans to stdout, no network). A variant
+  whose observed `traceparent` carries the seeded span-id on every delivered
+  hop is the signature of this problem: an active tracer always starts a new
+  span on the inbound side.
 - **datadog**: primary run with
   `DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage` (the configuration
   from [dd-trace-java#11286](https://github.com/DataDog/dd-trace-java/issues/11286));
@@ -274,8 +275,9 @@ from `results/raw/*.json` plus the registry (`variants.yaml`):
   (tools, languages, protocols, boundaries, headers, setup tiers, verbatim
   from the registry so consumers never need the YAML), and one entry per
   variant with tracer coordinates + observed version, runtime, client
-  library versions, config, 16 `hops` (evidence: seeded and observed headers,
-  delivery, canary) and 64 `cells`. Each cell has a stable id
+  library versions, config, one entry in `hops` per boundary (evidence:
+  seeded and observed headers, delivery, canary) and one in `cells` per
+  header per boundary (16 and 64 today). Each cell has a stable id
   `{variant}/{header}/{inbound}-{outbound}` and a normalised `outcome`
   (`pass` · `partial` · `new_trace` · `fail` · `undelivered` · `not_run`)
   next to the driver's raw status. Annotations (below) are embedded, and a
@@ -634,6 +636,9 @@ quadratically (n protocols → n² boundaries; 4 → 16 today, a fifth makes 25)
    column order you want).
 6. `docker-compose.yml` — a broker/infra service (with healthcheck) if the
    protocol needs one, plus any new endpoints in `x-relay-common-env`.
+7. Re-read the annotations, `FINDINGS.md` and `REFERENCES.md`: they state
+   results against the boundaries that existed when they were written, and
+   nothing derives those numbers (see `CONTRIBUTING.md`).
 
 ## Roadmap / contributions welcome
 
