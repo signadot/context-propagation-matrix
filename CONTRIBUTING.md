@@ -26,6 +26,7 @@ NEW_RELIC_LICENSE_KEY=... ./run.sh tool:newrelic   # New Relic agents need a (fr
 
 go run ./cmd/cpm validate          # variants.yaml ↔ docker-compose.yml ↔ annotations/
 go run ./cmd/cpm aggregate         # re-render results/latest from results/raw
+go run ./cmd/cpm gate results/latest/results.json   # what CI checks before it publishes
 ```
 
 `run.sh` starts Kafka, RabbitMQ and the sink, builds the relay image for each
@@ -38,6 +39,16 @@ Results are never committed: `results/raw`, `results/latest` and
 (`run-YYYY-MM-DD[.N]`) carrying `results.json`, `MATRIX.md`, `changes.json`,
 `raw.tar.gz` and `logs.tar.gz`. `./run.sh fetch -raw` first means your local
 matrix starts complete and a one-variant run only replaces that variant's row.
+
+A run is published only when `cpm gate` passes. It refuses a run in which a
+variant measured in that run leaked the canary, delivered a hop over the
+wrong protocol, or — for an instrumented variant — showed nothing its
+uninstrumented `none-{lang}` baseline does not show as well (the agent did
+not attach). When it refuses, the job fails before the release, the
+per-version filing and the site rebuild, so nothing from that run is
+published; fix the cause and re-run the workflow. A variant carried over from
+an earlier release only warns. `cpm aggregate` records the same verdict on
+the variant as `invalid`; DESIGN.md ("Results schema") has the exact rules.
 
 The first build of the Java and .NET images is slow (agent downloads); later
 builds are cached.

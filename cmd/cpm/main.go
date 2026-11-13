@@ -7,6 +7,7 @@
 //	cpm aggregate [-raw results/raw] [-out results/latest] [-run-id id] [-prev results.json] [-reran ids] [-republish results.json]
 //	cpm diff <from.json> <to.json> [-out changes.json]
 //	cpm summary <results.json> [-changes changes.json]
+//	cpm gate [-reran ids] [-baseline results.json] <results.json>
 //	cpm annotations mark-fixed <id> -fixed-in <version>
 //	cpm annotations resolved <results.json>
 //	cpm coords [-results results.json]
@@ -54,6 +55,8 @@ func main() {
 		err = cmdValidate(os.Args[2:])
 	case "aggregate":
 		err = cmdAggregate(os.Args[2:])
+	case "gate":
+		err = cmdGate(os.Args[2:])
 	case "diff":
 		err = cmdDiff(os.Args[2:])
 	case "summary":
@@ -81,13 +84,15 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|diff|summary|coords|annotations|pins|discover|versions> [flags]
+	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|gate|diff|summary|coords|annotations|pins|discover|versions> [flags]
 
   list       print variant ids from variants.yaml (one per line, or -json)
   affected   variant ids to re-measure: -base <rev> (what a change could alter) and/or
              -since <results.json> (what changed since each was last measured) [-head HEAD]
   validate   check variants.yaml, docker-compose.yml and annotations/ agree
   aggregate  results/raw/*.json -> results.json + MATRIX.md (+ changes.json)
+  gate       exit 1 if a results.json must not be published (canary leak, wrong transport,
+             agent not attached): [-reran ids] [-baseline results.json] <results.json>
   diff       compare two results.json files into changes.json
   summary    markdown summary of a results.json for CI/Slack
   coords     tracer package coordinates per variant as JSON (for version discovery)
@@ -545,6 +550,7 @@ func cmdAggregate(args []string) error {
 	republish := fs.String("republish", "", "results.json of the release being rendered again from its own raw results (republish.yml): nothing is measured, so the run keeps its commit, partial and reran, and every variant the provenance recorded there; excludes -prev, -reran and -commit")
 	ignoreUnknown := fs.Bool("ignore-unknown", false, "skip raw results for variants no longer in variants.yaml (carried over from an older release) instead of failing")
 	pinsPath := fs.String("pins", "pins.yaml", "pins manifest; the version each measured variant's tracer pin holds in this checkout is recorded as tracer.pinned (\"\" to skip)")
+	baseline := fs.String("baseline", "", "results.json to take a language's uninstrumented baseline from when the raw results hold none (a back-test); used to record variant.invalid")
 	fs.Parse(args)
 	if *republish != "" {
 		// -commit defaults to GITHUB_SHA, so only an explicit one conflicts.
@@ -650,6 +656,9 @@ func cmdAggregate(args []string) error {
 		}
 	}
 	if err := res.SetProvenance(from, measured, pinned); err != nil {
+		return err
+	}
+	if err := recordValidity(res, *baseline); err != nil {
 		return err
 	}
 

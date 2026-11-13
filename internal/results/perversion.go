@@ -49,6 +49,10 @@ type VersionEntry struct {
 	MatrixVersion  int               `json:"matrix_version"`
 	Counts         map[string]*Count `json:"counts"`
 	CanaryLeaks    int               `json:"canary_leaks"`
+	// Invalid is the document's Variant.Invalid: with it a reader of the
+	// index can tell an agent that never attached from one that propagates
+	// nothing, which have the same counts.
+	Invalid []Problem `json:"invalid,omitempty"`
 }
 
 // safeVersion is what may appear in an asset file name: registries hand out
@@ -275,7 +279,8 @@ func (r *Results) Entry(version string) (VersionEntry, error) {
 	}
 	e := VersionEntry{Version: version, Asset: asset, Kind: r.Run.Kind,
 		MeasuredIn: v.MeasuredIn, MeasuredAt: v.RanAt, MeasuredCommit: v.MeasuredCommit,
-		MatrixVersion: v.MatrixVersion, Counts: v.Counts, CanaryLeaks: len(r.Summary.CanaryLeaks)}
+		MatrixVersion: v.MatrixVersion, Counts: v.Counts, CanaryLeaks: len(r.Summary.CanaryLeaks),
+		Invalid: v.Invalid}
 	if v.Tracer != nil {
 		e.Reported = v.Tracer.Version
 	}

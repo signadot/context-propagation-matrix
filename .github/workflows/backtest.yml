@@ -12,6 +12,10 @@
 # rolling `variant-<id>` release (scripts/publish-versions.sh), which is what
 # the site reads per version, and asks Netlify to rebuild the site so the
 # new documents are shown.
+# `cpm gate` stands between the aggregate and the release: a leaked canary or
+# a hop over the wrong protocol publishes nothing, and an agent that did not
+# attach (judged against the uninstrumented relay in the latest run) is
+# published and filed with `invalid: agent_inactive` in the document.
 # Pairs already measured — filed in the variant's release by a matrix run or
 # a back-test, or with a backtest-* release — are skipped, so re-runs only
 # fill gaps; dispatch with `refresh` to measure them again (after a
@@ -65,6 +69,7 @@ jobs:
     outputs:
       pairs: ${{ steps.plan.outputs.pairs }}
       count: ${{ steps.plan.outputs.count }}
+      baseline: ${{ steps.baseline.outputs.artifact-id != '' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -94,6 +99,25 @@ jobs:
           echo "count=$(jq length pairs.json)" >> "$GITHUB_OUTPUT"
           echo "### Back-test plan: $(jq length pairs.json) builds" >> "$GITHUB_STEP_SUMMARY"
           jq -r '.[] | "- \(.variant) @ \(.version) (current \(.current))"' pairs.json >> "$GITHUB_STEP_SUMMARY"
+      # The same results.json is every pair's baseline: a back-test document
+      # holds one variant, and whether its agent attached is judged against
+      # the uninstrumented relay of that language in the latest run. Handed on
+      # as an artifact rather than fetched by each pair: finding the latest
+      # run pages through every release (over a thousand), and up to 250 jobs
+      # doing that would take API budget the publish steps need. It also
+      # gives every pair of one dispatch the same baseline. Nothing is
+      # uploaded before the first run-* release; the gate then says it had
+      # no baseline.
+      - id: baseline
+        name: Keep that results.json as the baseline for every pair
+        uses: actions/upload-artifact@v7
+        with:
+          name: latest-run-results
+          path: results/latest/results.json
+          if-no-files-found: ignore
+          # As long as the relay logs below, so a pair re-run later still
+          # finds its baseline.
+          retention-days: 30
 
   run:
     needs: plan
@@ -112,6 +136,8 @@ jobs:
       V: ${{ matrix.pair.variant }}
       VER: ${{ matrix.pair.version }}
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+      # The latest run's results.json from the plan job; empty when there is none.
+      BASELINE: ${{ needs.plan.outputs.baseline == 'true' && '/tmp/baseline/results.json' || '' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -187,12 +213,19 @@ jobs:
           path: relay-${{ env.V }}.log
           if-no-files-found: warn
           retention-days: 30
+      - name: Latest run's results.json (the uninstrumented baseline to judge this agent against)
+        if: env.BASELINE != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: latest-run-results
+          path: /tmp/baseline
       - name: Aggregate a single-variant results.json (kind=backtest)
         run: |
           set -euo pipefail
           mkdir -p /tmp/raw && cp "results/raw/$V.json" /tmp/raw/
           go run ./cmd/cpm aggregate -raw /tmp/raw -out /tmp/out -kind backtest -commit "$GITHUB_SHA" \
-            -run-id "backtest-$V-$VER" -notes "pinned $(jq -r .id /tmp/pin.json) to $VER via cpm pins set"
+            -run-id "backtest-$V-$VER" -notes "pinned $(jq -r .id /tmp/pin.json) to $VER via cpm pins set" \
+            ${BASELINE:+-baseline "$BASELINE"}
           # The relay must have run the version we asked for: the document is
           # filed under $VER, so a mismatch would publish cells under a version
           # they did not measure (shared Go modules once built otel-go 1.40–1.43
@@ -207,6 +240,15 @@ jobs:
             echo "::error::relay reported tracer version \"$reported\", requested $VER — the build did not pin $V's tracer (check the pins.yaml entry and the relay's module manifest); not publishing"
             exit 1
           fi
+      # A leaked canary or a hop over the wrong protocol is a fault of the
+      # relay or the harness: the job fails, nothing is published or filed, and
+      # the next sweep proposes the pair again. An agent that did not attach
+      # only warns. The document is published and filed carrying
+      # `invalid: agent_inactive`, because "this version does not attach on
+      # today's stack" is worth recording once, and a pair with neither a
+      # release nor an index entry would be measured again by every sweep.
+      - name: Gate (refuse a canary leak or a wrong transport; record an agent that did not attach)
+        run: go run ./cmd/cpm gate ${BASELINE:+-baseline "$BASELINE"} /tmp/out/results.json
       - name: Publish release backtest-${{ env.V }}-${{ env.VER }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -221,7 +263,7 @@ jobs:
             gh release upload "$tag" --clobber "${assets[@]}"
             gh release edit "$tag" --notes "Back-test of \`$V\` with tracer version \`$VER\` (kind=backtest), re-measured $(date -u +%F) at $GITHUB_SHA. See the run's results.json for cells." >/dev/null
           else
-            gh release create "$tag" --title "backtest: $V @ $VER" --prerelease \
+            gh release create "$tag" --target "$GITHUB_SHA" --title "backtest: $V @ $VER" --prerelease \
               --notes "Back-test of \`$V\` with tracer version \`$VER\` (kind=backtest). See the run's results.json for cells." \
               "${assets[@]}"
           fi

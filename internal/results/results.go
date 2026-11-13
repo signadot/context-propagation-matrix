@@ -193,6 +193,10 @@ type Variant struct {
 	RequiresSecret string            `json:"requires_secret,omitempty"`
 	Source         string            `json:"source"`
 	RanAt          time.Time         `json:"ran_at"`
+	// Invalid says why this measurement is not a result about the tool (see
+	// validity.go). Absent for a valid one, and from documents written
+	// before it was recorded, which `cpm gate` judges from their hops.
+	Invalid []Problem `json:"invalid,omitempty"`
 	// Provenance of the measurement itself, which may predate this run when
 	// the variant was carried over from an earlier release: MeasuredIn is the
 	// run id (release tag) whose job ran the hops, MeasuredCommit the harness
