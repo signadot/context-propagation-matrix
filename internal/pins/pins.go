@@ -5,7 +5,7 @@
 // the way each ecosystem expects: `go get` + `go mod tidy`, `cargo update`
 // behind an exact requirement (with the crates the pin `follow`s given the
 // requirement the pinned release declares), a JSON key, every `pkg==` line,
-// a `gem` line, an `ARG`.
+// a `gem` line with `bundle lock` behind it, an `ARG`.
 package pins
 
 import (
@@ -31,7 +31,7 @@ const (
 	KindGoMod   = "gomod"   // go.mod module family
 	KindNPM     = "npm"     // package.json dependencies
 	KindPip     = "pip"     // requirements file `pkg==` lines
-	KindBundler = "bundler" // Gemfile `gem 'x', 'v'` lines
+	KindBundler = "bundler" // Gemfile `gem 'x', 'v'` lines + Gemfile.lock
 	KindCargo   = "cargo"   // Cargo.toml requirement + Cargo.lock
 )
 
@@ -228,27 +228,35 @@ func (p *Pin) Read() (string, error) {
 
 // Check enforces what a pin's manifest must satisfy on main beyond
 // resolving: for cargo, one copy of every pinned and followed crate in
-// Cargo.lock. Other kinds have nothing to add. `cpm pins check` runs it;
-// `cpm pins set` (back-test checkouts) does not.
+// Cargo.lock; for bundler, a Gemfile.lock that holds every pinned gem at
+// the Gemfile's version. Other kinds have nothing to add. `cpm pins check`
+// runs it; `cpm pins set` (back-test checkouts) does not.
 func (p *Pin) Check() error {
-	if p.Kind != KindCargo {
-		return nil
+	var err error
+	switch p.Kind {
+	case KindCargo:
+		err = p.checkCargo()
+	case KindBundler:
+		err = p.checkBundler()
 	}
-	if err := p.checkCargo(); err != nil {
+	if err != nil {
 		return fmt.Errorf("%s: %w", p.ID, err)
 	}
 	return nil
 }
 
 // Files lists the files Write touches, without writing: the manifest for
-// arg/npm/pip/bundler, go.mod + go.sum for gomod, Cargo.toml + Cargo.lock
-// for cargo. bump-agents.yml names them in the PR body before -apply runs.
+// arg/npm/pip, go.mod + go.sum for gomod, Cargo.toml + Cargo.lock for
+// cargo, Gemfile + Gemfile.lock for bundler. bump-agents.yml names them in
+// the PR body before -apply runs.
 func (p *Pin) Files() []string {
 	switch p.Kind {
 	case KindGoMod:
 		return []string{filepath.Join(p.Dir, "go.mod"), filepath.Join(p.Dir, "go.sum")}
 	case KindCargo:
 		return []string{filepath.Join(p.Dir, "Cargo.toml"), filepath.Join(p.Dir, "Cargo.lock")}
+	case KindBundler:
+		return []string{p.File, p.gemfileLock()}
 	}
 	return []string{p.File}
 }
@@ -260,7 +268,8 @@ func (p *Pin) Files() []string {
 type Requirements func(ctx context.Context, p registry.Package, version string) (map[string]string, error)
 
 // Write sets the pin to version and returns the files it touched. Kinds
-// gomod and cargo run `go` and `cargo` in the module directory.
+// gomod, cargo and bundler run `go`, `cargo` and `bundle` in the manifest's
+// directory.
 func (p *Pin) Write(ctx context.Context, version string, reqs Requirements) ([]string, error) {
 	version = versions.Strip(version)
 	if version == "" {
@@ -502,10 +511,21 @@ func (p *Pin) writePip(version string) ([]string, error) {
 }
 
 // ---------------------------------------------------------------------------
-// bundler: `gem 'name', 'version'` (single or double quotes).
+// bundler: the Gemfile holds `gem 'name', 'version'` (single or double
+// quotes) and the Gemfile.lock beside it the resolution of everything the
+// Gemfile pulls in, the tracer included: Bundler resolves a Gemfile as a
+// whole, so unlike npm there is no locked application to install the tracer
+// on top of. The Dockerfile installs frozen (the build fails when the lock
+// does not satisfy the Gemfile), so Write moves the lock with the `gem` line
+// and Check requires the two to agree.
 
 func gemRegexp(name string) *regexp.Regexp {
 	return regexp.MustCompile(`(?m)^(gem ['"]` + regexp.QuoteMeta(name) + `['"],\s*['"])([^'"]+)(['"])`)
+}
+
+// gemfileLock is the lock Bundler keeps for the pin's Gemfile.
+func (p *Pin) gemfileLock() string {
+	return p.File + ".lock"
 }
 
 func (p *Pin) readBundler() (string, error) {
@@ -524,6 +544,61 @@ func (p *Pin) readBundler() (string, error) {
 	return vs[0], nil
 }
 
+// gemLockVersions lists the versions of gem among the lock's specs: one, or
+// none when the gem is not locked. A gem with precompiled variants has an
+// entry per platform (`grpc (1.85.0-x86_64-linux-gnu)`), all at one version;
+// the lines a dependent lists the gem on are indented further and the
+// DEPENDENCIES entry less, so neither is a spec.
+func gemLockVersions(lock, gem string) []string {
+	re := regexp.MustCompile(`(?m)^    ` + regexp.QuoteMeta(gem) + ` \(([^)-]+)(?:-[^)]+)?\)$`)
+	var vs []string
+	for _, m := range re.FindAllStringSubmatch(lock, -1) {
+		if !contains(vs, m[1]) {
+			vs = append(vs, m[1])
+		}
+	}
+	return vs
+}
+
+// checkBundler requires Gemfile.lock to exist and to hold every pinned gem
+// at the version the Gemfile pins. A Gemfile moved without its lock (an
+// edit by hand, a `cpm pins` run whose `bundle lock` was skipped) only
+// fails when the image is built; `cpm pins check` says so first.
+func (p *Pin) checkBundler() error {
+	gemfile, err := os.ReadFile(p.File)
+	if err != nil {
+		return err
+	}
+	path := p.gemfileLock()
+	lock, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("%w (the image installs frozen and needs the lock; relays/ruby/README.md says how to generate it)", err)
+	}
+	for _, gem := range p.Packages {
+		m := gemRegexp(gem).FindStringSubmatch(string(gemfile))
+		if m == nil {
+			return fmt.Errorf("gem '%s' not pinned in %s", gem, p.File)
+		}
+		if vs := gemLockVersions(string(lock), gem); len(vs) != 1 || vs[0] != m[2] {
+			held := "does not list it"
+			if len(vs) > 0 {
+				held = "holds " + strings.Join(vs, " and ")
+			}
+			return fmt.Errorf("%s pins %s %s but %s %s; the image build would fail — move the lock with `bundle lock` (relays/ruby/README.md)", p.File, gem, m[2], path, held)
+		}
+	}
+	return nil
+}
+
+// writeBundler rewrites the `gem` lines and moves Gemfile.lock with them.
+// `bundle lock --update <gems>` resolves the pinned gems and what they
+// depend on again and leaves every other gem where the lock has it, so a
+// bump or a back-test changes the tracer and not the application under it.
+// When an old tracer cannot live with a locked version of some other gem,
+// Bundler (2.5) unlocks that gem itself. A version Bundler still cannot
+// resolve is an error, with the Gemfile left rewritten as cargo leaves
+// Cargo.toml; nothing here resolves the whole Gemfile again, because that
+// would move the application's gems inside a tracer change.
 func (p *Pin) writeBundler(version string) ([]string, error) {
 	b, err := os.ReadFile(p.File)
 	if err != nil {
@@ -537,7 +612,18 @@ func (p *Pin) writeBundler(version string) ([]string, error) {
 		}
 		src = re.ReplaceAllString(src, "${1}"+version+"${3}")
 	}
-	return []string{p.File}, writeFile(p.File, src)
+	// Without a lock `bundle lock` would write one for every platform the
+	// gems ship for, not the two the image is built for.
+	if _, err := os.Stat(p.gemfileLock()); err != nil {
+		return nil, fmt.Errorf("%w (relays/ruby/README.md says how to generate it)", err)
+	}
+	if err := writeFile(p.File, src); err != nil {
+		return nil, err
+	}
+	if err := run(filepath.Dir(p.File), "bundle", append([]string{"lock", "--update"}, p.Packages...)...); err != nil {
+		return nil, err
+	}
+	return p.Files(), nil
 }
 
 // ---------------------------------------------------------------------------
