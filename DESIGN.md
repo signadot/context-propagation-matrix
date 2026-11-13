@@ -340,6 +340,17 @@ release per instrumented variant, `variant-{id}`:
 | `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts, plus the document's `invalid` when the measurement is not valid (so an agent that never attached can be told from one that propagates nothing without opening the document) |
 | `versions.json` | the bundle: `{schema_version, index, documents}` — `index` is `index.json`, `documents` maps each listed version to its `{version}.json` byte for byte. One download gives a consumer the variant's whole history; the site reads only this asset |
 
+Byte for byte as filed, with one exception. Cells are the measurement and
+never change; annotations are the explanation and belong to the YAML. So
+every publish of a variant — a run, a back-test, or `republish.yml` after a
+merge to `annotations/` — re-derives the annotations of every document in the
+bundle from the current `annotations/` (`annotations.Reannotate`: the same
+evaluation a back-test aggregate makes, judged on that variant alone), while
+each `{version}.json` asset keeps the annotations it was filed with. A note
+written or corrected after a version was measured thus reaches that version's
+page: attached to its failing cells on the versions before the fix, resolved
+with `fixed_in` on the versions from it.
+
 `{version}` is the *pinned* tracer version (`tracer.pinned`: what `cpm pins`
 reads from the manifest the relay was built from, the value a bump PR names
 and a back-test tag carries), not the string the relay reports —
@@ -349,7 +360,8 @@ its one pair (`scripts/publish-versions.sh`, wrapping `cpm versions`); when
 a version is measured again the latest measurement replaces the earlier one.
 `scripts/rebuild-versions.sh` recreates all of them from the run and
 back-test releases; `scripts/publish-versions.sh -rebuild` re-derives
-`index.json` and `versions.json` from the documents already on a release.
+`index.json` and `versions.json` from the documents already on a release;
+`scripts/publish-versions.sh -refresh` re-annotates `versions.json` in place.
 The site reads one `versions.json` per variant — ~50 downloads per build,
 each of which must succeed for the build to pass — instead of every run
 release or every per-version document.
@@ -371,7 +383,8 @@ Go relays stamp it with `-ldflags "-X main.tracerVersion=…"` at build, since
 a weaver's module is not among the binary's build-info dependencies.
 `scripts/fetch-latest.sh` (or `./run.sh fetch [-raw]`) restores a release
 into `results/latest` and `results/raw`, and `republish.yml` re-renders the
-latest release in place when `annotations/` changes.
+latest release in place and re-annotates every per-version bundle when
+`annotations/` changes.
 
 contextpropagation.io consumes only `results.json` (from GitHub Releases), so
 the schema is versioned (`schema_version: 2`) and changes to it are breaking

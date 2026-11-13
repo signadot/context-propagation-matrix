@@ -184,6 +184,7 @@ type Variant struct {
 	DisplayName    string            `json:"display_name"`
 	SetupTier      *string           `json:"setup_tier"`
 	Attach         string            `json:"attach,omitempty"`
+	Docs           string            `json:"docs,omitempty"`
 	Tracer         *Package          `json:"tracer,omitempty"`
 	Weaver         *Package          `json:"weaver,omitempty"`
 	Runtime        string            `json:"runtime,omitempty"`
@@ -294,6 +295,7 @@ func Build(reg *registry.Registry, raws []*raw.VariantResult, run Run) (*Results
 			Source: rv.Source, RequiresSecret: reg.RequiresSecret(rv),
 			Counts: map[string]*Count{},
 		}
+		v.Docs = rv.Docs
 		for _, h := range reg.HeaderOrder {
 			v.Counts[h] = &Count{}
 		}
@@ -551,11 +553,20 @@ func Load(path string) (*Results, error) {
 
 // Write serialises results to path with stable formatting.
 func (r *Results) Write(path string) error {
-	b, err := json.MarshalIndent(r, "", " ")
+	b, err := r.Encode()
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(b, '\n'), 0o644)
+	return os.WriteFile(path, b, 0o644)
+}
+
+// Encode renders the document as Write files it: indented, newline-ended.
+func (r *Results) Encode() ([]byte, error) {
+	b, err := json.MarshalIndent(r, "", " ")
+	if err != nil {
+		return nil, err
+	}
+	return append(b, '\n'), nil
 }
 
 // Variant returns the variant with the given id.

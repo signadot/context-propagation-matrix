@@ -15,6 +15,8 @@
 #                                                            # old document without tracer.pinned
 #   scripts/publish-versions.sh -rebuild VARIANT...          # re-derive index.json and versions.json
 #                                                            # from the <version>.json assets
+#   scripts/publish-versions.sh -refresh VARIANT...          # re-annotate versions.json in place
+#                                                            # (republish.yml, when annotations/ changes)
 #
 # For each variant: download the release's index.json and versions.json (if
 # the release exists; create it otherwise) plus any <version>.json the bundle
@@ -24,31 +26,39 @@
 # index does not know are re-read and added — so two workflows updating the
 # same variant seconds apart cannot leave it wrong for longer than the next
 # update. Needs `gh` with contents:write; GH_REPO overrides the repository.
+#
+# Whatever the mode, `cpm versions` re-annotates every document in the bundle
+# from annotations/ at this checkout: a <version>.json asset keeps the
+# annotations it was filed with, the bundle (what the site renders) carries
+# the ones the current YAML attaches to that version's cells.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 version=""
 rebuild=false
+refresh=false
 results=""
 while (($#)); do
   case "$1" in
     -version|--version) version="$2"; shift 2 ;;
     -rebuild|--rebuild) rebuild=true; shift ;;
-    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -refresh|--refresh) refresh=true; shift ;;
+    -h|--help) sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "publish-versions: unknown flag $1 (try -h)" >&2; exit 2 ;;
     *)
-      if ! $rebuild && [[ -z "$results" ]]; then results="$1"; else break; fi
+      if ! $rebuild && ! $refresh && [[ -z "$results" ]]; then results="$1"; else break; fi
       shift ;;
   esac
 done
-if ! $rebuild && [[ -z "$results" ]]; then echo "publish-versions: results.json required (try -h)" >&2; exit 2; fi
+if $rebuild && $refresh; then echo "publish-versions: -rebuild and -refresh exclude each other" >&2; exit 2; fi
+if ! $rebuild && ! $refresh && [[ -z "$results" ]]; then echo "publish-versions: results.json required (try -h)" >&2; exit 2; fi
 if (($# == 0)); then echo "publish-versions: at least one variant required" >&2; exit 2; fi
 repo=${GH_REPO:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}
 
 failed=()
 for v in "$@"; do
   tag="variant-$v"
-  if ! $rebuild; then
+  if ! $rebuild && ! $refresh; then
     # Baselines have no tracer, so no version to file under.
     tracer=$(jq -r --arg v "$v" '.variants[] | select(.id == $v) | .tracer // empty | .package // empty' "$results")
     if [[ -z "$tracer" ]]; then echo "== $v: no tracer, nothing to file"; continue; fi
@@ -63,6 +73,9 @@ for v in "$@"; do
     if grep -qx versions.json "$work/assets"; then
       gh release download "$tag" -R "$repo" -p versions.json -D "$work"
     fi
+  elif $refresh; then
+    # Baselines and variants never measured have no release; nothing to refresh.
+    echo "   no $tag release; nothing to re-annotate"; rm -rf "$work"; continue
   else
     present=""
     : >"$work/assets"
@@ -92,6 +105,10 @@ for v in "$@"; do
     if ((${#docs[@]} == 0)); then echo "   nothing on $tag to rebuild from"; rm -rf "$work"; continue; fi
     out=$(go run ./cmd/cpm versions "${args[@]}" "${docs[@]}") || { failed+=("$v"); continue; }
     upload=("$work/index.json" "$work/versions.json")
+  elif $refresh; then
+    if [[ ! -f "$work/versions.json" ]] && ((${#docs[@]} == 0)); then echo "   nothing on $tag to re-annotate"; rm -rf "$work"; continue; fi
+    out=$(go run ./cmd/cpm versions "${args[@]}" ${docs[@]+"${docs[@]}"}) || { failed+=("$v"); continue; }
+    upload=("$work/index.json" "$work/versions.json")
   else
     [[ -n "$version" ]] && args+=(-version "$version")
     out=$(go run ./cmd/cpm versions "${args[@]}" -results "$results" ${docs[@]+"${docs[@]}"}) || { failed+=("$v"); continue; }
@@ -99,7 +116,11 @@ for v in "$@"; do
     upload=("$work/$asset" "$work/index.json" "$work/versions.json")
   fi
   gh release upload "$tag" -R "$repo" --clobber "${upload[@]}" >/dev/null
-  echo "   $(jq -r '"\(.version) (\(.asset))"' <<<"$out" | paste -sd ' ' -) uploaded; index has $(jq '.versions|length' "$work/index.json") version(s)"
+  if $refresh; then
+    echo "   re-annotated; index has $(jq '.versions|length' "$work/index.json") version(s)"
+  else
+    echo "   $(jq -r '"\(.version) (\(.asset))"' <<<"$out" | paste -sd ' ' -) uploaded; index has $(jq '.versions|length' "$work/index.json") version(s)"
+  fi
   rm -rf "$work"
 done
 if ((${#failed[@]})); then

@@ -3,7 +3,9 @@
 # results.json embeds annotations/ (titles, causes, links, fixed_in), so a
 # merge that only touches annotations/** needs the latest release re-rendered,
 # not re-run: download that release's raw.tar.gz, aggregate it again at this
-# commit, replace results.json and MATRIX.md on the same release, and fire the
+# commit, replace results.json and MATRIX.md on the same release, re-annotate
+# every variant's per-version bundle (variant-{id}/versions.json, the
+# documents behind /results/{tool}/{language}/{version}/), and fire the
 # Netlify build hook. Measurements, the run id and every variant's provenance
 # (the run and commit that measured it, the tracer version pinned then) are
 # unchanged, so the site's history sees one run with better explanations
@@ -82,6 +84,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.fetch.outputs.tag }}
         run: gh release upload "$TAG" results/latest/results.json results/latest/MATRIX.md --clobber
+      - name: Re-annotate every variant's per-version bundle
+        if: steps.fetch.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Each version's document keeps the cells it measured and takes the
+          # annotations the YAML attaches to them now, so a note written after
+          # a version was measured reaches that version's page. Baselines and
+          # variants never measured have no release and are skipped.
+          read -ra ids <<<"$(go run ./cmd/cpm list | paste -sd' ' -)"
+          scripts/publish-versions.sh -refresh "${ids[@]}"
       - name: Rebuild contextpropagation.io
         if: steps.fetch.outputs.tag != ''
         env:

@@ -216,7 +216,10 @@ go run ./cmd/cpm validate -strict  # exactly what PR CI runs
 ```
 
 Once merged, `republish.yml` does the same on the latest release (replacing
-its `results.json` and `MATRIX.md`) and rebuilds the site — no matrix run.
+its `results.json` and `MATRIX.md`), re-annotates every variant's per-version
+bundle so each version's page shows the note too — attached to its failing
+cells on the versions before a fix, as resolved on the versions from
+`fixed_in` on — and rebuilds the site. No matrix run.
 
 ### Lifecycle: write once, let the data retire it
 

@@ -76,7 +76,8 @@ every 6 hours                                  ──▶ matrix.yml: the variant
                                                    a cancelled or failed run); nothing when up to date
 merge to main touching annotations/**          ──▶ republish.yml: re-aggregate the latest release's
                                                    raw.tar.gz at this commit, replace its
-                                                   results.json + MATRIX.md ──▶ Netlify hook
+                                                   results.json + MATRIX.md, re-annotate every
+                                                   variant's versions.json ──▶ Netlify hook
 pull request                                   ──▶ verify.yml: fetch the latest results.json,
                                                    cpm validate -strict, two smoke variants
 ```
