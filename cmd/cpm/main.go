@@ -490,6 +490,7 @@ func cmdValidate(args []string) error {
 	}
 	fmt.Printf("annotations: %d loaded\n", len(anns))
 	if res, err := results.Load(*resPath); err == nil {
+		errs = append(errs, contractErrors(reg, res)...)
 		problems := annotations.Apply(res, anns)
 		gh := os.Getenv("GITHUB_ACTIONS") == "true"
 		errs = append(errs, reportProblems(os.Stdout, gh, *strict, problems)...)
@@ -520,6 +521,30 @@ func cmdValidate(args []string) error {
 	}
 	fmt.Println("ok")
 	return nil
+}
+
+// contractErrors checks matrix_version against the latest release: res is
+// that release's results.json, written with the registry of its time. When
+// the cells a variant is scored on differ from it (results.ContractDiff:
+// protocols, boundaries, headers and how each header is scored), results
+// measured before and after are not comparable cell for cell, and the
+// version that says so has to have moved. Nothing else makes anyone bump
+// it: a registry with a fifth protocol and the old matrix_version loads,
+// aggregates and publishes.
+func contractErrors(reg *registry.Registry, res *results.Results) []string {
+	was := res.Run.MatrixVersion
+	if was == 0 {
+		was = 1 // documents written before the field existed
+	}
+	if reg.MatrixVersion < was {
+		return []string{fmt.Sprintf("matrix_version is %d in variants.yaml, lower than the %d that %s was measured under", reg.MatrixVersion, was, res.Run.RunID)}
+	}
+	diff := results.ContractDiff(reg, &res.Dimensions)
+	if len(diff) == 0 || reg.MatrixVersion > was {
+		return nil
+	}
+	return []string{fmt.Sprintf("the measurement contract differs from the one %s was measured under, but matrix_version is still %d. Bump matrix_version in variants.yaml:\n      %s",
+		res.Run.RunID, was, strings.Join(diff, "\n      "))}
 }
 
 // ---------------------------------------------------------------------------

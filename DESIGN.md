@@ -294,6 +294,12 @@ from `results/raw/*.json` plus the registry (`variants.yaml`):
   site uses these to present results per tracer version and to say where
   and when each one was measured.
 
+  `cpm validate` checks the part of the bump rule it can see. It fails when
+  the protocols, the boundaries, the headers or a header's scoring lists in
+  `variants.yaml` differ from the `dimensions` of the latest release and
+  `matrix_version` has not moved. A change in what an outcome means that
+  leaves those alone still has to be bumped by hand.
+
   An `in-code` variant also carries `legs`, copied from the registry: per
   protocol, `inbound` and `outbound`, each one of the `dimensions.wirings`
   ids. Variants without legs have no `legs` key, and `dimensions.wirings` is
@@ -631,7 +637,8 @@ quadratically (n protocols → n² boundaries; 4 → 16 today, a fifth makes 25)
    branch, using the language's idiomatic client.
 5. `variants.yaml` — add the protocol under `protocols:` and the new
    `boundaries:` (the registry requires exactly protocols² of them, in the
-   column order you want).
+   column order you want), and bump `matrix_version`; `cpm validate` fails
+   until it is bumped.
 6. `docker-compose.yml` — a broker/infra service (with healthcheck) if the
    protocol needs one, plus any new endpoints in `x-relay-common-env`.
 

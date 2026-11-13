@@ -131,7 +131,11 @@ per variant). Open an issue first so we can agree the carrier semantics.
    `boundaries:` in the column order you want. The registry refuses to load
    unless the boundary count is exactly protocols². contextpropagation.io
    derives its grids, heatmaps, OG images and copy from these `dimensions`,
-   so no site change is needed for a new column.
+   so no site change is needed for a new column. Bump `matrix_version` in
+   the same change: a variant is now scored on more cells, and results from
+   before and after must not be compared cell for cell. `cpm validate`
+   fails until it is bumped (it compares the registry with the latest
+   release).
 6. `docker-compose.yml` — a broker service (with a healthcheck) if needed,
    and any new endpoints in `x-relay-common-env`.
 7. Run everything (`./run.sh all`); the new column will be mostly red at

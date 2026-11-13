@@ -23,6 +23,9 @@ schema_version: 1
 # variant is scored on (headers × boundaries) and what each outcome means.
 # Bump it by hand when a dimension or an outcome's semantics change, so that
 # results measured under different values are not compared cell for cell.
+# `cpm validate` fails when the protocols, the boundaries, the headers or a
+# header's scoring lists below differ from the latest release and this has
+# not moved. It cannot see a change in what an outcome means.
 # Adding a variant, a tool or a language does not change the contract. Every
 # result records the value it was measured under, and keeps it when a later
 # run carries the measurement over.
