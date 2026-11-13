@@ -484,7 +484,7 @@ variants:
     flavour: default
     display_name: .NET
     setup_tier: zero-code
-    attach: "CLR profiler env (Elastic.Apm.Profiler.Managed)"
+    attach: "DOTNET_STARTUP_HOOKS (ElasticApmAgentStartupHook.dll)"
     tracer: { name: elastic-apm-dotnet, registry: github-releases, package: elastic/apm-agent-dotnet, tag_prefix: v, github: elastic/apm-agent-dotnet }
     docs: https://www.elastic.co/docs/reference/apm/agents/dotnet
     source: relays/dotnet

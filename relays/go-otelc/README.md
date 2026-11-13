@@ -16,7 +16,7 @@ the libraries the app imports.
 | http | net/http (server + client) | yes |
 | grpc | google.golang.org/grpc | yes |
 | kafka | github.com/segmentio/kafka-go v0.4.51 | yes — the **only** Kafka client otelc v1 supports (the hand-wired `otel-go` relay uses franz-go + kotel, so the rows also compare client coverage) |
-| rabbitmq | github.com/rabbitmq/amqp091-go | **no** — otelc has no AMQP instrumentation; the dark rabbitmq cells measure that |
+| rabbitmq | github.com/rabbitmq/amqp091-go | yes, since otelc 1.2.0: publish injects, so `http->rabbitmq` and `grpc->rabbitmq` pass; nothing continues a trace after a consume, so `rabbitmq->*` starts a new one. otelc 1.1.0 and earlier had no AMQP instrumentation and those cells were dark |
 
 Measured result (see `MATRIX.md` on the latest release and FINDINGS §11): every
 http/grpc-inbound leg propagates **everything — traceparent, tracestate, and
