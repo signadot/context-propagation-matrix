@@ -10,8 +10,9 @@
 #       published results.json agree; every tracer pin in pins.yaml resolves;
 #       shell scripts parse.
 #   "Boot and propagate: <variant>"  (one per smoked variant; not required)
-#       build the relay from the GHCR layer cache, run the 16 hops against
-#       real brokers, check the driver recorded all 16 and leaked no canary.
+#       build the relay from the GHCR layer cache, run every boundary
+#       against real brokers, check the driver recorded each boundary
+#       variants.yaml lists, once, and leaked no canary.
 #   "Affected relays build, boot and propagate"
 #       the stable gate over the per-variant jobs above: fails if any of them
 #       failed, passes when none was needed.
@@ -116,6 +117,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       variants: ${{ steps.plan.outputs.variants }}
+      boundaries: ${{ steps.plan.outputs.boundaries }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -176,6 +178,11 @@ jobs:
           fi
           echo "variants=$(echo "$selected" | jq -R . | jq -sc 'map(select(length > 0))')" >> "$GITHUB_OUTPUT"
           echo "smoking: $(echo $selected)"
+          # The hops a smoked relay has to record: the registry's list, read
+          # here because the smoke jobs set up no Go.
+          boundaries=$(go run ./cmd/cpm boundaries -json)
+          echo "boundaries=$boundaries" >> "$GITHUB_OUTPUT"
+          echo "boundaries: $boundaries"
 
   smoke:
     name: "Boot and propagate: ${{ matrix.variant }}"
@@ -239,19 +246,32 @@ jobs:
           sleep 5
           docker compose run --rm --pull never driver -variant "$V" >/dev/null 2>&1 || true
           sleep 10
-      - name: Run the 16 hops
+      - name: Run every boundary
         run: docker compose run --rm --pull never driver -variant "$V"
-      - name: Assert 16 hops recorded, canary clean
+      # The driver has its own protocol list; variants.yaml's boundaries are
+      # what a variant is scored on. Compared by name, so that a count that
+      # happens to match cannot hide a boundary one of them lacks.
+      - name: Assert every boundary recorded, canary clean
+        env:
+          BOUNDARIES: ${{ needs.plan.outputs.boundaries }}
         run: |
           python3 - <<'EOF'
           import json, os
+          want = json.loads(os.environ["BOUNDARIES"])
+          assert want, "the plan job passed no boundaries"
           d = json.load(open(f"results/raw/{os.environ['V']}.json"))
           hops = d["tests"]
-          assert len(hops) == 16, f"expected 16 hops, got {len(hops)}"
+          got = [t["boundary"] for t in hops]
+          missing = [b for b in want if b not in got]
+          assert not missing, f"the driver recorded no hop on {missing}, which variants.yaml lists"
+          unlisted = sorted({b for b in got if b not in want})
+          assert not unlisted, f"the driver recorded {unlisted}, which variants.yaml does not list"
+          repeated = sorted({b for b in got if got.count(b) > 1})
+          assert not repeated, f"the driver recorded {repeated} more than once"
           leaks = [t["boundary"] for t in hops if t.get("status") and t["status"]["canary_leak"]]
           assert not leaks, f"canary leaked on {leaks}"
           delivered = sum(1 for t in hops if t["delivered"])
-          print(f"ok: {delivered}/16 hops delivered")
+          print(f"ok: {delivered}/{len(want)} hops delivered")
           EOF
       - name: Relay logs (on failure)
         if: failure()
