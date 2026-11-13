@@ -36,6 +36,7 @@ variants:
     display_name: Go
     setup_tier: in-code
     tracer: { name: otel, registry: goproxy, package: p }
+    docs: https://example.com/otel/go
     source: relays/go/otel
     legs:
       http:  { inbound: library, outbound: library }
@@ -47,6 +48,7 @@ variants:
     display_name: Java
     setup_tier: zero-code
     tracer: { name: otel, registry: maven, package: p }
+    docs: https://example.com/otel/java
     source: relays/java
   - { id: none-go, tool: none, language: go, flavour: default, display_name: Go, setup_tier: null, source: relays/go/none }
 `
