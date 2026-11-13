@@ -32,8 +32,8 @@ A **variant** is one tool × language pair, named `{tool}-{lang}` (e.g.
 compile unmodified naive Go source with each vendor's build-time weaver
 (`relays/go-otelc/`, `relays/go-orchestrion/`), measured alongside the
 hand-wired `otel-go`/`datadog-go` rows. Not every tool covers every language
-(e.g. Elastic has no Rust agent); `run.sh` holds the authoritative variant
-list.
+(e.g. Elastic has no Rust agent); `variants.yaml` holds the authoritative
+variant list.
 
 ## Components
 
@@ -43,7 +43,7 @@ driver ──(seeded headers via http|grpc|kafka)──▶ relay-{variant} ─�
 driver ◀──────────────── GET /observations?test_id=... ────────────────────────────────┘
 ```
 
-### Relay (one app per language, three instrumentation variants)
+### Relay (one app per language, one build target per tool)
 
 The relay is deliberately naive application code. It listens on all four
 protocols and, on receiving a message, forwards a new message to the sink over
@@ -315,6 +315,58 @@ Back-tests of older tracer versions publish `backtest-{variant}-{version}`
 pre-releases with a single-variant `results.json`, `MATRIX.md` and the raw
 file.
 
+### What counts as a measurement: `invalid` and `cpm gate`
+
+A variant can run all its hops and still not be a measurement of its tool.
+`cpm aggregate` judges every measured variant from its hops and, when the
+measurement is not valid, records why on the variant in `results.json` as
+`invalid`, a list of `{kind, boundaries, detail}`. The field is absent on a
+valid variant and in documents written before it existed. The kinds:
+
+- `canary_leak`: `x-sd-canary` reached the sink on the listed `boundaries`,
+  so the relay copies inbound headers itself and a `pass` is not the tool's
+  doing.
+- `transport_mismatch`: on the listed `boundaries` the hop was delivered
+  over a protocol other than the boundary's outbound one.
+- `agent_inactive` (instrumented variants only, no `boundaries`): the relay
+  showed no sign of its tool, so its `fail` cells mean "did not attach", not
+  "does not propagate". An old agent on a runtime it does not support is the
+  usual cause.
+
+The `agent_inactive` rule: on every delivered hop, the tracing header names
+the sink observed are a subset of what the uninstrumented baseline of the
+same language (`none-{language}`) shows on the same boundary.
+
+- Tracing header names are each `headers[].wire_name`, anything starting
+  `ot-baggage-`, and every tool's `native_headers`, read from the document's
+  own dimensions. Any other header is ignored.
+- The baseline is needed because a runtime can send tracing headers with no
+  agent installed: .NET does, on its HTTP and gRPC clients. The comparison
+  is per boundary because on `http->http` a working OpenTelemetry .NET agent
+  sends the same names as the bare runtime.
+- The baseline is the document's own `none-{language}` or, for a back-test,
+  the one in the latest run (`cpm aggregate -baseline`). With neither, the
+  comparison is with nothing ("no tracing header at all") and `detail` says
+  so.
+- It is a floor, not a health check. An agent that half-works shows headers
+  and is not flagged: the New Relic Node agent without a licence key still
+  sends bare W3C headers on six boundaries (`results/nokey/`, FINDINGS.md
+  §9).
+
+Nothing is published until `cpm gate` has judged the document. It recomputes
+the verdict from the hops, so a document written before `invalid` existed is
+gated the same way.
+
+- A matrix run publishes nothing (no release, no per-version filing, no site
+  rebuild) when a variant measured in that run is `invalid` for any of the
+  three reasons. A variant carried over from an earlier release only warns,
+  because the run that measured it was the one to judge it.
+- A back-test publishes nothing for `canary_leak` or `transport_mismatch`.
+  For `agent_inactive` it is published and filed with a warning, carrying
+  the verdict. That a version does not attach on today's runtime is worth
+  recording once, and a pair with neither a release nor an index entry would
+  be proposed again by every `cpm discover -skip-published`.
+
 Runs and back-tests are the record of each *job*. The same measurements are
 also filed the way people look for them — by tracer version — in one rolling
 release per instrumented variant, `variant-{id}`:
@@ -322,8 +374,19 @@ release per instrumented variant, `variant-{id}`:
 | Asset | Contents |
 |---|---|
 | `{version}.json` | a single-variant schema v2 document for that tracer version: the variant, the run manifest it was measured in, the dimensions, the annotations that touch it and a summary for it alone |
-| `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts |
+| `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts, plus the document's `invalid` when the measurement is not valid (so an agent that never attached can be told from one that propagates nothing without opening the document) |
 | `versions.json` | the bundle: `{schema_version, index, documents}` — `index` is `index.json`, `documents` maps each listed version to its `{version}.json` byte for byte. One download gives a consumer the variant's whole history; the site reads only this asset |
+
+Byte for byte as filed, with one exception. Cells are the measurement and
+never change; annotations are the explanation and belong to the YAML. So
+every publish of a variant — a run, a back-test, or `republish.yml` after a
+merge to `annotations/` — re-derives the annotations of every document in the
+bundle from the current `annotations/` (`annotations.Reannotate`: the same
+evaluation a back-test aggregate makes, judged on that variant alone), while
+each `{version}.json` asset keeps the annotations it was filed with. A note
+written or corrected after a version was measured thus reaches that version's
+page: attached to its failing cells on the versions before the fix, resolved
+with `fixed_in` on the versions from it.
 
 `{version}` is the *pinned* tracer version (`tracer.pinned`: what `cpm pins`
 reads from the manifest the relay was built from, the value a bump PR names
@@ -334,7 +397,8 @@ its one pair (`scripts/publish-versions.sh`, wrapping `cpm versions`); when
 a version is measured again the latest measurement replaces the earlier one.
 `scripts/rebuild-versions.sh` recreates all of them from the run and
 back-test releases; `scripts/publish-versions.sh -rebuild` re-derives
-`index.json` and `versions.json` from the documents already on a release.
+`index.json` and `versions.json` from the documents already on a release;
+`scripts/publish-versions.sh -refresh` re-annotates `versions.json` in place.
 The site reads one `versions.json` per variant — ~50 downloads per build,
 each of which must succeed for the build to pass — instead of every run
 release or every per-version document.
@@ -356,7 +420,8 @@ Go relays stamp it with `-ldflags "-X main.tracerVersion=…"` at build, since
 a weaver's module is not among the binary's build-info dependencies.
 `scripts/fetch-latest.sh` (or `./run.sh fetch [-raw]`) restores a release
 into `results/latest` and `results/raw`, and `republish.yml` re-renders the
-latest release in place when `annotations/` changes.
+latest release in place and re-annotates every per-version bundle when
+`annotations/` changes.
 
 contextpropagation.io consumes only `results.json` (from GitHub Releases), so
 the schema is versioned (`schema_version: 2`) and changes to it are breaking
@@ -393,14 +458,14 @@ the matrix footnotes.
 
 | language | server / http client | grpc | kafka | rabbitmq |
 |---|---|---|---|---|
-| java | Spring Boot 3 (Tomcat) / RestTemplate (HttpURLConnection) | grpc-java | spring-kafka (kafka-clients) | spring-rabbit (amqp-client) |
+| java | Spring Boot 4 (Tomcat) / RestTemplate (HttpURLConnection) | grpc-java | spring-kafka (kafka-clients) | spring-rabbit (amqp-client) |
 | node | express / axios (node http) | @grpc/grpc-js + proto-loader | kafkajs | amqplib |
 | python | flask / requests | grpcio | confluent-kafka | pika |
 | go | net/http | google.golang.org/grpc | per-tool contrib (kotel / dd contrib / nrsarama) | amqp091-go (per-tool wiring) |
-| go (build-time) | net/http | google.golang.org/grpc | IBM/sarama (orchestrion) · segmentio/kafka-go (otelc) — each weaver's supported client | amqp091-go (neither weaver has an integration) |
+| go (build-time) | net/http | google.golang.org/grpc | IBM/sarama (orchestrion) · segmentio/kafka-go (otelc) — each weaver's supported client | amqp091-go (otelc instruments it; Orchestrion has no integration) |
 | dotnet | ASP.NET Core minimal API / HttpClient | Grpc.AspNetCore + Grpc.Net.Client | Confluent.Kafka | RabbitMQ.Client |
-| ruby | sinatra (puma) / net-http | grpc gem | per-tool (rdkafka / ruby-kafka), see relay README | bunny |
-| php | Apache mod_php + Slim 4 / Guzzle | ext-grpc (client only; no server — see relay README) | ext-rdkafka | php-amqplib |
+| ruby | sinatra (puma) / net-http | grpc gem | per-tool (rdkafka / karafka), see relay README | bunny |
+| php | Apache mod_php + Slim 4 / ext-curl | ext-grpc (client only; no server — see relay README) | ext-rdkafka | php-amqplib |
 | rust | axum / reqwest | tonic | rdkafka | lapin |
 
 ## Version pinning & updates
@@ -478,7 +543,17 @@ the driver, sink, protobuf contract, shared images or the workflow re-run
 everything — carries every other variant's raw result over from the previous
 release, publishes a new Release with the resulting `results.json`, and
 diffs it against the previous release into `changes.json`. A Rust tracer
-bump therefore measures two variants in a few minutes rather than 47. The
+bump therefore measures two variants in a few minutes rather than 47.
+
+A push is not the only thing a run has to account for. A run queued behind
+another can be cancelled by a newer one, a job can fail, and a merge made
+with a workflow's own token (how `bump-agents.yml` lands tracer bumps) starts
+no run at all. So the same step also diffs from each variant's own
+`measured_commit` in the latest release (`cpm affected -since results.json`)
+and adds every variant whose inputs changed since then; a 6-hourly schedule
+runs just that selection, and starts nothing when every variant is measured
+at its current inputs. `republish.yml` re-renders a release without touching
+any variant's `measured_commit`, so that record stays true. The
 Monday schedule and manual dispatches run the full matrix. Locally:
 `./run.sh <variants>` re-runs and re-aggregates; update `annotations/` (and
 FINDINGS/REFERENCES) if a cell changed.

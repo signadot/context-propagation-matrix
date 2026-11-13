@@ -71,11 +71,15 @@ merge to main (relays/**, variants.yaml, ...)  ──▶ matrix.yml: cpm affecte
                                                    the previous release's raw.tar.gz, aggregates
                                                    ──▶ Release run-YYYY-MM-DD[.N] ──▶ Netlify hook
 Monday 06:17 UTC / workflow_dispatch           ──▶ matrix.yml: every variant, same publish path
+every 6 hours                                  ──▶ matrix.yml: the variants whose inputs changed since
+                                                   they were last measured (a bot-merged tracer bump,
+                                                   a cancelled or failed run); nothing when up to date
 merge to main touching annotations/**          ──▶ republish.yml: re-aggregate the latest release's
                                                    raw.tar.gz at this commit, replace its
-                                                   results.json + MATRIX.md ──▶ Netlify hook
+                                                   results.json + MATRIX.md, re-annotate every
+                                                   variant's versions.json ──▶ Netlify hook
 pull request                                   ──▶ verify.yml: fetch the latest results.json,
-                                                   cpm validate -strict, two smoke variants
+                                                   cpm validate -strict, smoke the affected relays
 ```
 
 A push run publishes the latest known state of every cell: `run.partial` and
@@ -105,7 +109,7 @@ annotations/       per-cell explanations as data (matched into results.json)
 proto/             relay/sink gRPC definitions
 sink/              uninstrumented Go recorder (HTTP + gRPC + Kafka + RabbitMQ)
 driver/            uninstrumented Go test driver (seeds headers, evaluates results)
-cmd/cpm/           CLI: list | affected | validate | aggregate | diff | summary | coords | annotations
+cmd/cpm/           CLI: list | affected | validate | aggregate | diff | summary | coords | annotations | pins | discover | versions
 internal/          registry loader, results schema v2, annotations, affected-variant rules, renderer
 matrixgen/         compatibility wrapper around `cpm aggregate` (MATRIX.md only)
 scripts/           fetch-latest.sh: restore results/latest (+ results/raw) from a release

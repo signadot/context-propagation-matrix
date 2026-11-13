@@ -26,6 +26,7 @@ NEW_RELIC_LICENSE_KEY=... ./run.sh tool:newrelic   # New Relic agents need a (fr
 
 go run ./cmd/cpm validate          # variants.yaml ↔ docker-compose.yml ↔ annotations/
 go run ./cmd/cpm aggregate         # re-render results/latest from results/raw
+go run ./cmd/cpm gate results/latest/results.json   # what CI checks before it publishes
 ```
 
 `run.sh` starts Kafka, RabbitMQ and the sink, builds the relay image for each
@@ -38,6 +39,16 @@ Results are never committed: `results/raw`, `results/latest` and
 (`run-YYYY-MM-DD[.N]`) carrying `results.json`, `MATRIX.md`, `changes.json`,
 `raw.tar.gz` and `logs.tar.gz`. `./run.sh fetch -raw` first means your local
 matrix starts complete and a one-variant run only replaces that variant's row.
+
+A run is published only when `cpm gate` passes. It refuses a run in which a
+variant measured in that run leaked the canary, delivered a hop over the
+wrong protocol, or — for an instrumented variant — showed nothing its
+uninstrumented `none-{lang}` baseline does not show as well (the agent did
+not attach). When it refuses, the job fails before the release, the
+per-version filing and the site rebuild, so nothing from that run is
+published; fix the cause and re-run the workflow. A variant carried over from
+an earlier release only warns. `cpm aggregate` records the same verdict on
+the variant as `invalid`; DESIGN.md ("Results schema") has the exact rules.
 
 The first build of the Java and .NET images is slow (agent downloads); later
 builds are cached.
@@ -71,9 +82,9 @@ would make every cell green and every cell meaningless.
    `latest`). Add the tracer's pin to `pins.yaml` (which file holds it and
    how it is written); `cpm pins check` in `verify.yml` fails until every
    instrumented variant has one. If an agent is fetched by URL, make the
-   version a Dockerfile `ARG` (`kind: arg`) so `bump-agents.yml` can bump it;
-   the other kinds are Dependabot's, and `backtest.yml` moves any of them
-   backwards through the same entry.
+   version a Dockerfile `ARG` (`kind: arg`); `bump-agents.yml` moves every
+   kind of pin and Dependabot ignores them, and `backtest.yml` moves any of
+   them backwards through the same entry.
 3. **`docker-compose.yml`** — one `relay-{tool}-{lang}` service per target:
    `<<: *relay-common-env`, `profiles: [{variant}]`, `restart: on-failure`,
    `depends_on: *relay-depends`, plus the tool's environment (copy another
@@ -205,7 +216,10 @@ go run ./cmd/cpm validate -strict  # exactly what PR CI runs
 ```
 
 Once merged, `republish.yml` does the same on the latest release (replacing
-its `results.json` and `MATRIX.md`) and rebuilds the site — no matrix run.
+its `results.json` and `MATRIX.md`), re-annotates every variant's per-version
+bundle so each version's page shows the note too — attached to its failing
+cells on the versions before a fix, as resolved on the versions from
+`fixed_in` on — and rebuilds the site. No matrix run.
 
 ### Lifecycle: write once, let the data retire it
 
@@ -231,8 +245,8 @@ page uses it to say what was broken in which release. Release notes for each
 ## Pull requests
 
 - CI (`verify.yml`) runs `go vet`, `cpm validate -strict` against the latest
-  published `results.json`, and two smoke variants; it needs no secrets, so
-  fork PRs work.
+  published `results.json`, and boots the relays the change affects; it needs
+  no secrets, so fork PRs work.
 - Include the relevant rows from your local `results/latest/MATRIX.md` in
   the PR description. Results themselves are gitignored and cannot be
   committed; CI measures and publishes on merge.
@@ -246,9 +260,14 @@ page uses it to say what was broken in which release. Release notes for each
   which it is built from), `sink/`, `proto/`, `gen/`, `docker/`,
   `go.mod`/`go.sum` or `matrix.yml` itself re-runs everything. Cells not
   re-measured are carried over from the previous release, and the new release
-  records `run.partial` / `run.reran`. Annotation-only merges go through
-  `republish.yml` instead. The Monday schedule and `workflow_dispatch` always
-  run the full matrix. Try it locally: `go run ./cmd/cpm affected -base origin/main`.
+  records `run.partial` / `run.reran`. The same run also measures any variant
+  whose inputs changed since it was last measured (`cpm affected -since
+  results/latest/results.json`), which covers a run that was cancelled or
+  failed and merges that start no run, such as the bot's tracer bumps; a
+  6-hourly schedule does only that. Annotation-only merges go through
+  `republish.yml` instead. The Monday schedule and `workflow_dispatch` run
+  the full matrix by default. Try it locally:
+  `go run ./cmd/cpm affected -base origin/main`.
 
 ### Repository secrets (maintainers)
 
@@ -260,7 +279,7 @@ degrades rather than fails without them:
 | Secret | Used by | Without it |
 |---|---|---|
 | `NEW_RELIC_LICENSE_KEY` | New Relic relays (`tool:newrelic`) | New Relic variants are skipped (they appear in `results.json` as registered but not run); every other cell is unaffected. A free-tier key is sufficient. |
-| `NETLIFY_BUILD_HOOK_URL` | `matrix.yml` and `republish.yml` after publishing | contextpropagation.io is not rebuilt until its next scheduled build; the release itself is unaffected. |
+| `NETLIFY_BUILD_HOOK_URL` | `matrix.yml`, `republish.yml` and `backtest.yml` after publishing | contextpropagation.io is not rebuilt until its next scheduled build; the release itself is unaffected. |
 | `SLACK_WEBHOOK_URL` | `matrix.yml` summary step | No Slack summary is posted. |
 
 The step that opens a PR marking resolved annotations fixed also needs

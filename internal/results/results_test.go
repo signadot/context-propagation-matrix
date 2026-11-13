@@ -292,6 +292,28 @@ func TestSetProvenance(t *testing.T) {
 		t.Errorf("full run: got %q / %q", full.Variants[0].MeasuredIn, full.Variants[1].MeasuredIn)
 	}
 
+	// A republish measures nothing (measured is empty, not nil): rendering a
+	// release again from its own results must not move any variant's
+	// provenance to the commit doing the rendering, or the pinned version to
+	// whatever that commit pins.
+	again := &Results{
+		Run:      Run{RunID: "run-2026-11-09", HarnessCommit: "ddd", MatrixVersion: 2},
+		Variants: []*Variant{{ID: "otel-java"}, {ID: "otel-node"}, {ID: "otel-php", Tracer: &Package{}}, v("otel-go", true)},
+	}
+	cur.Variant("otel-php").Tracer = &Package{Pinned: "1.2.1"}
+	if err := again.SetProvenance(cur, map[string]bool{}, map[string]string{"otel-php": "9.9.9"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, got := range again.Variants {
+		w := want[got.ID]
+		if got.MeasuredIn != w[0] || got.MeasuredCommit != w[1] || got.MatrixVersion != w[2] {
+			t.Errorf("republish %s: got (%q, %q, %d), want %v", got.ID, got.MeasuredIn, got.MeasuredCommit, got.MatrixVersion, w)
+		}
+	}
+	if p := again.Variant("otel-php").Tracer.Pinned; p != "1.2.1" {
+		t.Errorf("republish: otel-php pinned = %q, want the measured 1.2.1", p)
+	}
+
 	// Carried over with no prev, or with prev lacking the variant → error.
 	orphan := &Results{Run: Run{RunID: "run-y"}, Variants: []*Variant{v("otel-java", false), v("otel-php", false)}}
 	if err := orphan.SetProvenance(nil, map[string]bool{"otel-php": true}, nil); err == nil {

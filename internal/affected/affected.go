@@ -154,6 +154,95 @@ func Compute(in Inputs) Result {
 	return res
 }
 
+// Since selects the variants whose inputs changed after they were last
+// measured. measuredAt gives, by variant id, the harness commit of the
+// variant's latest published measurement; a variant with no entry (or an
+// empty one) has none and is always selected. diff computes the change from
+// such a commit to the revision about to be measured and is called once per
+// distinct commit.
+//
+// The change in one push is not enough to decide what to run, because an
+// earlier run may not have measured what it was meant to: it was cancelled
+// while queued behind another, one of its jobs failed, or the merge started
+// no run at all (GitHub creates none for a merge made with the workflow's
+// own token, which is how tracer bumps land). Diffing from each variant's
+// own last measurement picks all of those up in the next run of any kind.
+func Since(reg *registry.Registry, measuredAt map[string]string, diff func(base string) Result) Result {
+	var res Result
+	hit := map[string]bool{}
+	var bases []string // distinct commits, in registry order of first use
+	byBase := map[string][]string{}
+	for _, v := range reg.SortedVariants() {
+		base := measuredAt[v.ID]
+		if base == "" {
+			hit[v.ID] = true
+			res.Reasons = append(res.Reasons, v.ID+": no published measurement")
+			continue
+		}
+		if _, seen := byBase[base]; !seen {
+			bases = append(bases, base)
+		}
+		byBase[base] = append(byBase[base], v.ID)
+	}
+	for _, base := range bases {
+		d := diff(base)
+		changed := map[string]bool{}
+		for _, id := range d.Variants {
+			changed[id] = true
+		}
+		var stale []string
+		for _, id := range byBase[base] {
+			if d.All || changed[id] {
+				hit[id] = true
+				stale = append(stale, id)
+			}
+		}
+		if len(stale) == 0 {
+			res.Reasons = append(res.Reasons, fmt.Sprintf("since %s: no change reaches the %d variant(s) last measured there", short(base), len(byBase[base])))
+			continue
+		}
+		// The diff's reasons name every variant a path reaches; of those,
+		// only the ones last measured at this commit are selected here.
+		for _, why := range d.Reasons {
+			res.Reasons = append(res.Reasons, "since "+short(base)+": "+why)
+		}
+		res.Reasons = append(res.Reasons, "since "+short(base)+": to measure, "+strings.Join(stale, ", "))
+	}
+	for _, v := range reg.SortedVariants() {
+		if hit[v.ID] {
+			res.Variants = append(res.Variants, v.ID)
+		}
+	}
+	res.All = len(res.Variants) == len(reg.Variants)
+	return res
+}
+
+// Union merges two selections: a variant either one selects is selected.
+func Union(reg *registry.Registry, a, b Result) Result {
+	hit := map[string]bool{}
+	for _, id := range a.Variants {
+		hit[id] = true
+	}
+	for _, id := range b.Variants {
+		hit[id] = true
+	}
+	res := Result{Reasons: append(append([]string{}, a.Reasons...), b.Reasons...)}
+	for _, v := range reg.SortedVariants() {
+		if a.All || b.All || hit[v.ID] {
+			res.Variants = append(res.Variants, v.ID)
+		}
+	}
+	res.All = a.All || b.All || len(res.Variants) == len(reg.Variants)
+	return res
+}
+
+func short(rev string) string {
+	if len(rev) > 7 {
+		return rev[:7]
+	}
+	return rev
+}
+
 func hasPrefix(p string, prefixes []string) bool {
 	for _, pre := range prefixes {
 		if strings.HasPrefix(p, pre) {

@@ -212,14 +212,17 @@ func githubHeaders(accept string) map[string]string {
 	return headers
 }
 
-// publishedReleases pages through the repo's releases (up to 1000) and
-// collects the backtest-* tags and each variant-* release's index.json asset.
+// publishedReleases pages through every release of the repo, until the API
+// returns an empty page, and collects the backtest-* tags and each
+// variant-* release's index.json asset. The repo holds one release per
+// measured (variant, version), so the list is long and keeps growing; a
+// fixed page bound would silently drop the oldest back-tests.
 // Drafts are ignored: a publish step that fails part-way (the API's rate
 // limit, say) leaves an empty draft carrying the tag name, and a draft is
 // not a measurement.
 func publishedReleases(ctx context.Context, client *versions.Client, repo string) (*releases, error) {
 	out := &releases{indexes: map[string]string{}}
-	for page := 1; page <= 10; page++ {
+	for page := 1; ; page++ {
 		var rel []struct {
 			TagName string `json:"tag_name"`
 			Draft   bool   `json:"draft"`

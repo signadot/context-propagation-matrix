@@ -49,6 +49,10 @@ type VersionEntry struct {
 	MatrixVersion  int               `json:"matrix_version"`
 	Counts         map[string]*Count `json:"counts"`
 	CanaryLeaks    int               `json:"canary_leaks"`
+	// Invalid is the document's Variant.Invalid: with it a reader of the
+	// index can tell an agent that never attached from one that propagates
+	// nothing, which have the same counts.
+	Invalid []Problem `json:"invalid,omitempty"`
 }
 
 // safeVersion is what may appear in an asset file name: registries hand out
@@ -117,6 +121,36 @@ func LoadVersionBundle(path string, v *Variant) (*VersionBundle, error) {
 // Put stores the document for a version, as written to its asset.
 func (b *VersionBundle) Put(version string, doc []byte) {
 	b.Documents[version] = json.RawMessage(doc)
+}
+
+// Each decodes every document in the bundle, oldest version first, hands it
+// to fn and stores it back as fn left it. It is how the bundle is
+// re-annotated: the cells of a document never change after it is filed, but
+// the annotations follow annotations/*.yaml and are re-derived on every
+// publish, so the bundle — what the site renders — always carries the
+// current explanation of each version, while the {version}.json asset keeps
+// the one it was filed with.
+func (b *VersionBundle) Each(fn func(version string, doc *Results) error) error {
+	vs := make([]string, 0, len(b.Documents))
+	for v := range b.Documents {
+		vs = append(vs, v)
+	}
+	sort.Slice(vs, func(i, j int) bool { return versions.Compare(vs[i], vs[j]) < 0 })
+	for _, v := range vs {
+		var doc Results
+		if err := json.Unmarshal(b.Documents[v], &doc); err != nil {
+			return fmt.Errorf("%s.json in bundle: %w", v, err)
+		}
+		if err := fn(v, &doc); err != nil {
+			return fmt.Errorf("%s.json: %w", v, err)
+		}
+		raw, err := doc.Encode()
+		if err != nil {
+			return err
+		}
+		b.Documents[v] = json.RawMessage(raw)
+	}
+	return nil
 }
 
 // Sync makes the bundle follow idx: documents for versions the index no
@@ -250,7 +284,8 @@ func (r *Results) Entry(version string) (VersionEntry, error) {
 	}
 	e := VersionEntry{Version: version, Asset: asset, Kind: r.Run.Kind,
 		MeasuredIn: v.MeasuredIn, MeasuredAt: v.RanAt, MeasuredCommit: v.MeasuredCommit,
-		MatrixVersion: v.MatrixVersion, Counts: v.Counts, CanaryLeaks: len(r.Summary.CanaryLeaks)}
+		MatrixVersion: v.MatrixVersion, Counts: v.Counts, CanaryLeaks: len(r.Summary.CanaryLeaks),
+		Invalid: v.Invalid}
 	if v.Tracer != nil {
 		e.Reported = v.Tracer.Version
 	}

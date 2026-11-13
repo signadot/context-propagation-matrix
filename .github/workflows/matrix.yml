@@ -1,8 +1,10 @@
 # matrix.yml — run the matrix and publish a versioned result.
 #
-#   plan      → which variants: everything on schedule / dispatch; on a push to
-#               main only those the pushed change can affect (`cpm affected`),
-#               and New Relic ones only when the secret exists
+#   plan      → which variants: everything on the Monday schedule / dispatch;
+#               on a push to main those the pushed change can affect plus
+#               those whose inputs changed since they were last measured
+#               (`cpm affected -base … -since …`); on the 6-hourly schedule
+#               only the latter; New Relic ones only when the secret exists
 #   run       → one job per variant, all in parallel, each with its own brokers
 #   aggregate → this run's raw results over the previous release's raw.tar.gz
 #               → results.json (schema v2) + MATRIX.md + changes.json; publish a
@@ -13,16 +15,22 @@
 # results (scripts/fetch-latest.sh restores them locally; republish.yml
 # re-renders the latest release when annotations change).
 #
-# Triggers: weekly, manual, and any merge to main that can change a result.
+# Triggers: weekly, manual, any merge to main that can change a result, and
+# every 6 hours for whatever a merge left unmeasured. The last one exists
+# because not every merge starts a run: GitHub creates no push run for a
+# merge made with a workflow's own token, which is how bump-agents.yml lands
+# tracer bumps, and of several runs queued behind a running one only the
+# newest survives. That run starts nothing when everything is up to date.
 name: matrix
 
 on:
   schedule:
-    - cron: '17 6 * * 1' # Mondays 06:17 UTC
+    - cron: '17 6 * * 1' # Mondays 06:17 UTC: every variant
+    - cron: '53 */6 * * *' # every 6 hours: variants not measured since their inputs changed (keep in step with SELECTOR below)
   workflow_dispatch:
     inputs:
       variants:
-        description: 'Space-separated variant ids, or "all" / "public" / "tool:datadog" / "language:python"'
+        description: 'Space-separated variant ids, or "all" / "public" / "tool:datadog" / "language:python" / "stale" (not measured since their inputs changed)'
         default: all
         required: false
       publish:
@@ -63,29 +71,49 @@ env:
 
 jobs:
   plan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       variants: ${{ steps.plan.outputs.variants }}
       publish: ${{ steps.plan.outputs.publish }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          fetch-depth: 0 # cpm affected diffs against the commit before the push
-      - uses: actions/setup-go@v5
+          fetch-depth: 0 # cpm affected diffs against earlier commits
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
       - id: plan
         env:
           HAS_NR: ${{ secrets.NEW_RELIC_LICENSE_KEY != '' }}
-          SELECTOR: ${{ github.event.inputs.variants || 'all' }}
+          SELECTOR: ${{ github.event.inputs.variants || (github.event.schedule == '53 */6 * * *' && 'stale') || 'all' }}
           PUBLISH: ${{ github.event.inputs.publish || 'true' }}
           BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }} # scripts/fetch-latest.sh
         run: |
           set -euo pipefail
+          # setup-go registers a problem matcher for `<file>.go: <message>`
+          # lines. `cpm affected` prints its reasons in that shape (`affected:
+          # cmd/cpm/main.go: aggregation/tooling only, no variants`), and the
+          # matcher would file each one as an error annotation on this job.
+          echo "::remove-matcher owner=go::"
+          # Variants whose inputs changed since their own latest published
+          # measurement (plus, with `-base REV`, those a change since REV can
+          # alter). This is what lets a run make up for one that was
+          # cancelled in the queue, a job that failed, or a merge that
+          # started no run. Before the first release: every variant.
+          stale() {
+            scripts/fetch-latest.sh >&2
+            if [[ -f results/latest/results.json ]]; then
+              go run ./cmd/cpm affected -since results/latest/results.json -head "$GITHUB_SHA" "$@"
+            else
+              go run ./cmd/cpm list
+            fi
+          }
           list() {
             case "$1" in
               all)        go run ./cmd/cpm list ;;
+              stale)      stale ;;
               public)     go run ./cmd/cpm list -no-secret ;;
               tool:*)     go run ./cmd/cpm list -tool "${1#tool:}" ;;
               language:*) go run ./cmd/cpm list -language "${1#language:}" ;;
@@ -93,9 +121,10 @@ jobs:
             esac
           }
           if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
-            # Only the variants the pushed change can alter; every other cell is
-            # carried over from the previous release (reasons are printed to the log).
-            selected=$(go run ./cmd/cpm affected -base "$BEFORE" -head "$GITHUB_SHA" | sort -u)
+            # The variants the pushed change can alter and any others that are
+            # stale; every other cell is carried over from the previous
+            # release (reasons are printed to the log).
+            selected=$(stale -base "$BEFORE" | sort -u)
           else
             selected=$(for s in $SELECTOR; do list "$s"; done | sort -u)
           fi
@@ -107,7 +136,7 @@ jobs:
           echo "variants=$(echo "$selected" | jq -R . | jq -sc 'map(select(length > 0))')" >> "$GITHUB_OUTPUT"
           echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
           if [[ -z "$selected" ]]; then
-            echo "::notice::no variant is affected by this change; nothing to run or publish"
+            echo "::notice::every variant is measured at its current inputs; nothing to run or publish"
           else
             echo "Running: $(echo $selected)"
           fi
@@ -115,7 +144,10 @@ jobs:
   run:
     needs: plan
     if: needs.plan.outputs.variants != '[]'
-    runs-on: ubuntu-latest
+    # A named image, not ubuntu-latest: GitHub moves that label to the next
+    # Ubuntu release over several weeks, so one run can span two images, and
+    # the runner's kernel and Docker are part of what a variant is measured on.
+    runs-on: ubuntu-24.04
     # A warm job is ~5 min. The margin is for a cold PHP relay build: its gRPC
     # PECL extension compiles from source (25-40 min, relays/php/Dockerfile) and
     # the five PHP variants compile it concurrently whenever the pinned base
@@ -131,9 +163,9 @@ jobs:
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
       V: ${{ matrix.variant }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -187,7 +219,7 @@ jobs:
       - name: Relay + sink logs
         if: always()
         run: docker compose logs --no-color "relay-$V" sink > "relay-$V.log" 2>&1 || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: raw-${{ matrix.variant }}
@@ -200,15 +232,15 @@ jobs:
   aggregate:
     needs: [plan, run]
     if: always() && needs.plan.result == 'success' && needs.plan.outputs.variants != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       run_id: ${{ steps.ids.outputs.run_id }}
       changed: ${{ steps.agg.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -235,7 +267,7 @@ jobs:
             echo "::warning::$prev has no raw.tar.gz; variants not measured in this run will show as not run"
           fi
       - name: Collect this run's raw results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: raw-*
           path: artifacts
@@ -250,6 +282,13 @@ jobs:
           find artifacts -name '*.json' -exec cp {} results/raw/ \;
           find artifacts -name '*.log' -exec mv {} logs/ \; || true
           reran=$(find artifacts -name '*.json' -exec basename {} .json \; | sort | tr '\n' ' ')
+          # Every job failed. An empty -reran means "everything was measured
+          # here" to cpm aggregate, which would publish the carried-over
+          # results as this run's measurements at this commit.
+          if [[ -z "${reran// /}" ]]; then
+            echo "::error::no variant produced a result; nothing to aggregate or publish"
+            exit 1
+          fi
           echo "reran=$reran" >> "$GITHUB_OUTPUT"
           echo "measured now: $reran"
           echo "raw results to aggregate: $(ls results/raw | wc -l)"
@@ -280,7 +319,7 @@ jobs:
           go run ./cmd/cpm summary ${prev:+-changes results/latest/changes.json} results/latest/results.json | tee summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Package raw evidence
         run: tar czf raw.tar.gz -C results raw && tar czf logs.tar.gz logs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: aggregated
           path: |
@@ -288,6 +327,19 @@ jobs:
             raw.tar.gz
             logs.tar.gz
             summary.md
+      # Nothing below may publish a measurement that is not one: a leaked
+      # canary, a hop that arrived over the wrong protocol, or an agent that
+      # never attached, which scores 0 of 64 exactly like a tool that
+      # propagates nothing. Any of these on a variant measured in this run
+      # fails the job here; on a carried-over variant it only warns, because
+      # the run that measured it was the one to judge it. Placed after the
+      # upload above so the document that was refused can still be
+      # downloaded. Every later step has the implicit success() in its `if:`,
+      # so none of them runs after a failure.
+      - name: Gate (a variant measured in this run must be a valid measurement)
+        env:
+          RERAN: ${{ steps.merge.outputs.reran }}
+        run: go run ./cmd/cpm gate -reran "$RERAN" results/latest/results.json
       # When an upstream fix lands, the affected annotation's cells all pass and
       # the aggregator marks it resolved (never an error). Open a PR that records
       # `status: fixed` / `fixed_in` so PR CI (`cpm validate -strict`) is green
@@ -329,7 +381,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ steps.ids.outputs.run_id }}" \
+          gh release create "${{ steps.ids.outputs.run_id }}" --target "$GITHUB_SHA" \
             --title "${{ steps.ids.outputs.run_id }}" \
             --notes-file summary.md \
             results/latest/results.json results/latest/MATRIX.md raw.tar.gz logs.tar.gz \
