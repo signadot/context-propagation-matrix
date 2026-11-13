@@ -231,10 +231,13 @@ updates:
       - /relays/php
       - /relays/rust
     schedule: { interval: weekly }
+    # Dependabot names an image without its registry host: the .NET images
+    # are `dotnet/sdk` and `dotnet/aspnet` in its log and its PR titles. A
+    # rule under `mcr.microsoft.com/dotnet/...` matches nothing.
     ignore:
-      - dependency-name: "mcr.microsoft.com/dotnet/sdk"
+      - dependency-name: "dotnet/sdk"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "mcr.microsoft.com/dotnet/aspnet"
+      - dependency-name: "dotnet/aspnet"
         update-types: ["version-update:semver-major"]
       - dependency-name: "eclipse-temurin"
         update-types: ["version-update:semver-major"]
