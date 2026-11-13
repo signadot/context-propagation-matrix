@@ -7,7 +7,7 @@
 //	cpm validate [-results results/latest/results.json]
 //	cpm aggregate [-raw results/raw] [-out results/latest] [-run-id id] [-prev results.json] [-reran ids] [-republish results.json]
 //	cpm diff <from.json> <to.json> [-out changes.json]
-//	cpm summary <results.json> [-changes changes.json]
+//	cpm summary <results.json> [-changes changes.json] [-not-measured ids]
 //	cpm gate [-reran ids] [-baseline results.json] <results.json>
 //	cpm annotations mark-fixed <id> -fixed-in <version>
 //	cpm annotations resolved <results.json>
@@ -98,7 +98,8 @@ func usage() {
   gate       exit 1 if a results.json must not be published (canary leak, wrong transport,
              agent not attached, a boundary not run): [-reran ids] [-baseline results.json] <results.json>
   diff       compare two results.json files into changes.json
-  summary    markdown summary of a results.json for CI/Slack
+  summary    markdown summary of a results.json for CI/Slack [-changes changes.json]
+             [-not-measured ids: variants the run was to measure and got no result for]
   coords     tracer package coordinates per variant as JSON (for version discovery)
   annotations mark-fixed <id> -fixed-in <version>   record an upstream fix in annotations/
   annotations resolved <results.json>              list resolved-but-unmarked annotations (id<TAB>version)
@@ -804,9 +805,10 @@ func cmdSummary(args []string) error {
 	fs := flag.NewFlagSet("summary", flag.ExitOnError)
 	changesPath := fs.String("changes", "", "changes.json to include")
 	siteURL := fs.String("site", "https://contextpropagation.io", "site base URL for permalinks")
+	notMeasured := fs.String("not-measured", "", "variant ids this run was to measure and got no result for (space/comma separated)")
 	pos, err := parsePositionals(fs, args, 1)
 	if err != nil {
-		return fmt.Errorf("usage: cpm summary <results.json> [-changes changes.json] [-site url]")
+		return fmt.Errorf("usage: cpm summary <results.json> [-changes changes.json] [-not-measured ids] [-site url]")
 	}
 	res, err := results.Load(pos[0])
 	if err != nil {
@@ -816,6 +818,13 @@ func cmdSummary(args []string) error {
 	fmt.Fprintf(&sb, "## Context propagation matrix — %s\n\n", res.Run.RunID)
 	fmt.Fprintf(&sb, "%d variants · %d hops · %d cells · finished %s\n\n",
 		res.Summary.VariantCount, res.Summary.HopCount, res.Summary.CellCount, res.Run.FinishedAt.UTC().Format(time.RFC3339))
+	// A variant whose job failed changes no cell: its last result is carried
+	// over like that of a variant the run was never to measure, and nothing
+	// else in this summary tells the two apart. First, so that it is read.
+	if ids := strings.FieldsFunc(*notMeasured, func(r rune) bool { return r == ' ' || r == ',' || r == '\n' }); len(ids) > 0 {
+		fmt.Fprintf(&sb, "**Could not be measured in this run: %d variant(s)** — %s. The job of each failed, was cancelled or timed out; each keeps the result it had before this run, if it had one.\n\n",
+			len(ids), strings.Join(ids, ", "))
+	}
 	if res.Run.Partial {
 		carried := 0
 		for _, v := range res.Variants {
