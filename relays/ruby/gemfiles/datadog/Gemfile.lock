@@ -10,10 +10,10 @@ GEM
       openssl (>= 3.3)
       sorted_set (~> 1, >= 1.0.2)
     cgi (0.5.2)
-    datadog (2.48.0)
+    datadog (2.49.0)
       cgi
       datadog-ruby_core_source (~> 3.5, >= 3.5.6)
-      libdatadog (~> 46.1.0.1.1)
+      libdatadog (~> 48.0.0.1.1)
       libddwaf (~> 1.30.0.1.0)
       logger
       msgpack
@@ -51,8 +51,8 @@ GEM
       ffi (~> 1.17.1)
       json (> 2.0)
       logger
-    libdatadog (46.1.0.1.1-aarch64-linux)
-    libdatadog (46.1.0.1.1-x86_64-linux)
+    libdatadog (48.0.0.1.1-aarch64-linux)
+    libdatadog (48.0.0.1.1-x86_64-linux)
     libddwaf (1.30.0.1.0-aarch64-linux)
       ffi (~> 1.0)
     libddwaf (1.30.0.1.0-x86_64-linux)
@@ -98,7 +98,7 @@ PLATFORMS
 
 DEPENDENCIES
   bunny (= 3.6.0)
-  datadog (= 2.48.0)
+  datadog (= 2.49.0)
   grpc (= 1.85.0)
   karafka (= 2.6.1)
   puma (= 8.0.2)
