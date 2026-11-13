@@ -1,8 +1,8 @@
 """Naive relay: receives {test_id, forward_via} over HTTP/gRPC/Kafka/RabbitMQ
 and forwards to the sink over the requested protocol. Never touches headers or
-tracing APIs — context propagation is the instrumentation's job. (The only
-exception is boot-time agent setup where a tool documents it, e.g. Elastic's
-Flask middleware below.)"""
+tracing APIs — context propagation is the instrumentation's job. Every tool is
+attached from outside: a runner command or, for Elastic (no zero-code runner),
+the boot file boot_elastic.py."""
 
 import json
 import os
@@ -182,20 +182,13 @@ def consume_rabbit():
             time.sleep(3)
 
 
-# Elastic APM has no zero-code runner for Python: the documented setup is the
-# Flask middleware plus elasticapm.instrument() for library patching. This is
-# boot-time agent setup (equivalent to ddtrace-run), not header handling.
-if TOOL == "elastic":
-    import elasticapm
-    from elasticapm.contrib.flask import ElasticAPM
-
-    elasticapm.instrument()
-    ElasticAPM(app)
-
-
-if __name__ == "__main__":
+def main():
     threading.Thread(target=serve_grpc, daemon=True).start()
     threading.Thread(target=consume, daemon=True).start()
     threading.Thread(target=consume_rabbit, daemon=True).start()
     print(f"relay {VARIANT} on :8080 (http), :8081 (grpc), topic {RELAY_TOPIC}, queue {RELAY_RABBIT_QUEUE}", flush=True)
     app.run(host="0.0.0.0", port=8080, threaded=True)
+
+
+if __name__ == "__main__":
+    main()

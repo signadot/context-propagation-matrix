@@ -44,6 +44,11 @@ fi
 # Bind-mount targets for the driver (raw results) and sink (observation log).
 mkdir -p results/raw results/data
 
+# Read once and matched from a variable: `cpm list | grep -q` under pipefail
+# fails whenever grep exits on an early match while the list is still being
+# written, and a registered variant is then reported as unknown.
+known=$(cpm list) || exit 1
+
 variants=()
 for arg in "$@"; do
   case "$arg" in
@@ -52,7 +57,7 @@ for arg in "$@"; do
     tool:*)      variants+=($(cpm list -tool "${arg#tool:}")) ;;
     language:*)  variants+=($(cpm list -language "${arg#language:}")) ;;
     *)
-      if ! cpm list | grep -qx "$arg"; then
+      if ! grep -qxF -- "$arg" <<<"$known"; then
         echo "unknown variant: $arg (see: $0 with no args)" >&2
         exit 2
       fi

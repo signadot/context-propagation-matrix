@@ -9,8 +9,7 @@
 # dependency, pinned in go.mod, so Dependabot bumps it). With no committed
 # otel.instrumentation.go file, otelc analyzes the dependency graph and
 # enables every instrumentation it has for the libraries the app imports
-# (net/http, grpc, segmentio/kafka-go — it has none for amqp091/RabbitMQ,
-# which the rabbitmq legs of the matrix measure).
+# (net/http, grpc, segmentio/kafka-go and, since otelc 1.2.0, amqp091-go).
 
 # go.mod is the source of truth for the Go version; the image is a bootstrap
 # (see docker/go.Dockerfile and scripts/check-toolchains.sh).

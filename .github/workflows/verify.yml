@@ -10,8 +10,9 @@
 #       published results.json agree; every tracer pin in pins.yaml resolves;
 #       shell scripts parse.
 #   "Boot and propagate: <variant>"  (one per smoked variant; not required)
-#       build the relay from the GHCR layer cache, run the 16 hops against
-#       real brokers, check the driver recorded all 16 and leaked no canary.
+#       build the relay from the GHCR layer cache, run every boundary
+#       against real brokers, check the driver recorded each boundary
+#       variants.yaml lists, once, and leaked no canary.
 #   "Affected relays build, boot and propagate"
 #       the stable gate over the per-variant jobs above: fails if any of them
 #       failed, passes when none was needed.
@@ -59,10 +60,10 @@ env:
 jobs:
   go:
     name: "Go: gofmt, vet, test"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -75,10 +76,10 @@ jobs:
 
   consistency:
     name: "Registry, pins, annotations and scripts consistent"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -92,7 +93,10 @@ jobs:
       # Pull requests are strict: an annotation whose cells all pass (or whose
       # explicit outcome no longer occurs) must be marked fixed in the same
       # review. The scheduled matrix run stays non-strict so an upstream fix
-      # can never stop results from being published.
+      # can never stop results from being published. Two things are only
+      # ever a warning, strict or not: an annotation some of whose cells now
+      # pass, and failing cells that no annotation explains. validate prints
+      # both as ::warning:: annotations here (GITHUB_ACTIONS is set).
       - name: variants.yaml, docker-compose.yml and annotations agree
         run: go run ./cmd/cpm validate -results results/latest/results.json ${{ github.event_name != 'push' && '-strict' || '' }}
       # Every tracer pin listed in pins.yaml resolves in its file, and every
@@ -102,17 +106,23 @@ jobs:
         run: go run ./cmd/cpm pins check >/dev/null
       - name: shell scripts parse
         run: for f in run.sh scripts/*.sh; do bash -n "$f" || exit 1; done
+      # matrix.yml carries results over from the release this names and diffs
+      # against it, and republish.yml rewrites it. The releases API does not
+      # list runs newest first, so the choice is tested. Offline.
+      - name: fetch-latest.sh names the newest run
+        run: scripts/test-fetch-latest.sh
 
   plan:
     name: "Which relays does this change affect?"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       variants: ${{ steps.plan.outputs.variants }}
+      boundaries: ${{ steps.plan.outputs.boundaries }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # cpm affected diffs two revisions
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -124,6 +134,11 @@ jobs:
           PUSH_BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
+          # setup-go registers a problem matcher for `<file>.go: <message>`
+          # lines. `cpm affected` prints its reasons in that shape (`affected:
+          # cmd/cpm/main.go: aggregation/tooling only, no variants`), and the
+          # matcher would file each one as an error annotation on this job.
+          echo "::remove-matcher owner=go::"
           case "$GITHUB_EVENT_NAME" in
             pull_request)
               # Diff from where the branch forked, not from the base branch's
@@ -163,12 +178,17 @@ jobs:
           fi
           echo "variants=$(echo "$selected" | jq -R . | jq -sc 'map(select(length > 0))')" >> "$GITHUB_OUTPUT"
           echo "smoking: $(echo $selected)"
+          # The hops a smoked relay has to record: the registry's list, read
+          # here because the smoke jobs set up no Go.
+          boundaries=$(go run ./cmd/cpm boundaries -json)
+          echo "boundaries=$boundaries" >> "$GITHUB_OUTPUT"
+          echo "boundaries: $boundaries"
 
   smoke:
     name: "Boot and propagate: ${{ matrix.variant }}"
     needs: plan
     if: needs.plan.outputs.variants != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -178,11 +198,11 @@ jobs:
       V: ${{ matrix.variant }}
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Log in to GHCR (cache read/write; skipped for forks)
         if: github.event.pull_request.head.repo.fork != true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -226,19 +246,32 @@ jobs:
           sleep 5
           docker compose run --rm --pull never driver -variant "$V" >/dev/null 2>&1 || true
           sleep 10
-      - name: Run the 16 hops
+      - name: Run every boundary
         run: docker compose run --rm --pull never driver -variant "$V"
-      - name: Assert 16 hops recorded, canary clean
+      # The driver has its own protocol list; variants.yaml's boundaries are
+      # what a variant is scored on. Compared by name, so that a count that
+      # happens to match cannot hide a boundary one of them lacks.
+      - name: Assert every boundary recorded, canary clean
+        env:
+          BOUNDARIES: ${{ needs.plan.outputs.boundaries }}
         run: |
           python3 - <<'EOF'
           import json, os
+          want = json.loads(os.environ["BOUNDARIES"])
+          assert want, "the plan job passed no boundaries"
           d = json.load(open(f"results/raw/{os.environ['V']}.json"))
           hops = d["tests"]
-          assert len(hops) == 16, f"expected 16 hops, got {len(hops)}"
+          got = [t["boundary"] for t in hops]
+          missing = [b for b in want if b not in got]
+          assert not missing, f"the driver recorded no hop on {missing}, which variants.yaml lists"
+          unlisted = sorted({b for b in got if b not in want})
+          assert not unlisted, f"the driver recorded {unlisted}, which variants.yaml does not list"
+          repeated = sorted({b for b in got if got.count(b) > 1})
+          assert not repeated, f"the driver recorded {repeated} more than once"
           leaks = [t["boundary"] for t in hops if t.get("status") and t["status"]["canary_leak"]]
           assert not leaks, f"canary leaked on {leaks}"
           delivered = sum(1 for t in hops if t["delivered"])
-          print(f"ok: {delivered}/16 hops delivered")
+          print(f"ok: {delivered}/{len(want)} hops delivered")
           EOF
       - name: Relay logs (on failure)
         if: failure()
@@ -250,7 +283,7 @@ jobs:
     name: "Affected relays build, boot and propagate"
     needs: [plan, smoke]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - env:
           PLAN: ${{ needs.plan.result }}

@@ -51,8 +51,9 @@ RUN pip install --no-cache-dir -r requirements-newrelic.txt
 ENTRYPOINT ["newrelic-admin", "run-program", "python", "app.py"]
 
 FROM app AS elastic
-# No zero-code runner: app.py conditionally applies the documented Flask
-# middleware + elasticapm.instrument() when TOOL=elastic.
+# No zero-code runner: boot_elastic.py imports app.py, applies the documented
+# Flask middleware + elasticapm.instrument() to its Flask app, then starts it.
 COPY relays/python/requirements-elastic.txt .
 RUN pip install --no-cache-dir -r requirements-elastic.txt
-ENTRYPOINT ["python", "app.py"]
+COPY relays/python/boot_elastic.py .
+ENTRYPOINT ["python", "boot_elastic.py"]

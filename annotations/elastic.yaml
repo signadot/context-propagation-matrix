@@ -175,26 +175,34 @@
     - { title: "Elastic .NET profiler auto-instrumentation docs", url: "https://www.elastic.co/docs/reference/apm/agents/dotnet/setup-auto-instrumentation" }
 
 - id: elastic-dotnet-rabbitmq-native-no-baggage
-  title: "Elastic .NET: RabbitMQ trace context flows via the client's native ActivitySource, but baggage does not"
+  title: "Elastic .NET: RabbitMQ trace context flows via the client's native ActivitySource, but consume drops baggage"
   match:
+    # Only the consume side fails: baggage passes on http->rabbitmq and
+    # grpc->rabbitmq (see the explanation).
     - tool: elastic
       language: dotnet
       header: baggage
-      boundary: ["http->rabbitmq", "grpc->rabbitmq", "rabbitmq->http", "rabbitmq->grpc", "rabbitmq->rabbitmq"]
-  cause: "The Elastic agent has no RabbitMQ.Client 7 instrumentation; the client's own default propagation carries trace id and tracestate only, never baggage."
+      boundary: ["rabbitmq->http", "rabbitmq->grpc", "rabbitmq->rabbitmq"]
+  cause: "The Elastic agent has no RabbitMQ.Client 7 instrumentation; the client's own default consume path restores trace id and tracestate only, never baggage."
   explanation: |
     `*->rabbitmq` injection and `rabbitmq->*` continuation both pass for
-    `traceparent`/`tracestate` on elastic-apm-dotnet 1.34.7 — not because the
+    `traceparent`/`tracestate` on elastic-apm-dotnet 1.36.0 — not because the
     agent instruments RabbitMQ (its own instrumentation is profiler-only and
     caps at `RabbitMQ.Client <7.0.0`), but because RabbitMQ.Client 7.x ships
     native `ActivitySource` instrumentation (PR #1261) that the agent's
     OpenTelemetry bridge picks up.
 
-    That native path cannot carry baggage: its `DefaultContextExtractor` calls
-    `ExtractTraceIdAndState(...)` only. Baggage was addressed via an opt-in
-    package (PR #1528) that has never shipped stable (#1728, open since Nov
-    2024). Workaround: forward `baggage` as an application header in the AMQP
-    message properties yourself.
+    Baggage is split by direction. On publish it passes: `http->rabbitmq` and
+    `grpc->rabbitmq` deliver the seeded baggage in the AMQP headers (re-spaced
+    as `key = value, key = value`, which the scoring accepts). It was absent on
+    those legs until run-2026-11-10.5, the first run on .NET 10 with the agent
+    unchanged at 1.36.0 (previously .NET 8). On consume it does not: on
+    `rabbitmq->*` the trace and tracestate continue but no `baggage` header is
+    sent onward. The native consume path cannot restore it: its
+    `DefaultContextExtractor` calls `ExtractTraceIdAndState(...)` only. Baggage
+    was addressed via an opt-in package (PR #1528) that has never shipped stable
+    (#1728, open since Nov 2024). Workaround: read `baggage` from the AMQP
+    message properties yourself in the consumer.
   status: open
   links:
     - { title: "Elastic .NET profiler auto-instrumentation docs", url: "https://www.elastic.co/docs/reference/apm/agents/dotnet/setup-auto-instrumentation" }

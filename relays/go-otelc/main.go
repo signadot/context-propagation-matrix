@@ -16,8 +16,9 @@
 //   - Kafka:    github.com/segmentio/kafka-go       — woven (the ONLY Kafka
 //     client otelc v1 supports; note the hand-wired otel-go relay uses
 //     franz-go + kotel, so the two rows also compare client coverage)
-//   - RabbitMQ: github.com/rabbitmq/amqp091-go      — NOT woven: otelc has no
-//     RabbitMQ instrumentation at all. The rabbitmq legs measure that absence.
+//   - RabbitMQ: github.com/rabbitmq/amqp091-go      — woven since otelc
+//     1.2.0 (publish injects; nothing continues a trace after a consume).
+//     Earlier otelc releases had no RabbitMQ instrumentation.
 //
 // This module intentionally does not share code with relays/go: the weaver
 // operates on the whole module, and the point is a clean, naive dependency
@@ -136,7 +137,7 @@ func (f *forwarder) forward(ctx context.Context, testID, via string) error {
 	}
 }
 
-// ---- RabbitMQ plumbing (plain amqp091, no instrumentation exists to weave) ----
+// ---- RabbitMQ plumbing (plain amqp091; any tracing comes from the weaver) ----
 
 func dialRabbit() (*amqp.Connection, *amqp.Channel, error) {
 	conn, err := amqp.Dial(rabbitURL())
@@ -258,7 +259,7 @@ func infoHandler() http.HandlerFunc {
 				"http":     "net/http (plain source, woven)",
 				"grpc":     "google.golang.org/grpc (plain source, woven)",
 				"kafka":    "segmentio/kafka-go " + moduleVersion("github.com/segmentio/kafka-go") + " (plain source, woven)",
-				"rabbitmq": "amqp091-go " + moduleVersion("github.com/rabbitmq/amqp091-go") + " (plain source, NO instrumentation exists)",
+				"rabbitmq": "amqp091-go " + moduleVersion("github.com/rabbitmq/amqp091-go") + " (plain source, woven by otelc 1.2.0 and later)",
 			},
 		})
 	}
