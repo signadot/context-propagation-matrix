@@ -487,7 +487,12 @@ Nothing in the harness installs "latest": every dependency manifest pins
 exact versions and every curl-fetched agent is a version ARG in its
 Dockerfile, so a rebuild months from now produces the same images and the
 matrix stays attributable to exact tracer versions (each table row carries
-the version that produced it).
+the version that produced it). The Node and PHP relays also commit a
+lockfile for the application's own dependencies (`relays/node/package-lock.json`,
+`relays/php/composer.lock`), installed with `npm ci` / `composer install`, so
+their transitive packages are fixed too. The tracer installed on top of it
+(and whatever the tracer pulls in) is not locked: it resolves at build time,
+because the tracer version is the variable being measured.
 
 Two bots move versions, and they do not overlap:
 
