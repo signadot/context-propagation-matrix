@@ -32,8 +32,8 @@ A **variant** is one tool × language pair, named `{tool}-{lang}` (e.g.
 compile unmodified naive Go source with each vendor's build-time weaver
 (`relays/go-otelc/`, `relays/go-orchestrion/`), measured alongside the
 hand-wired `otel-go`/`datadog-go` rows. Not every tool covers every language
-(e.g. Elastic has no Rust agent); `run.sh` holds the authoritative variant
-list.
+(e.g. Elastic has no Rust agent); `variants.yaml` holds the authoritative
+variant list.
 
 ## Components
 
@@ -43,7 +43,7 @@ driver ──(seeded headers via http|grpc|kafka)──▶ relay-{variant} ─�
 driver ◀──────────────── GET /observations?test_id=... ────────────────────────────────┘
 ```
 
-### Relay (one app per language, three instrumentation variants)
+### Relay (one app per language, one build target per tool)
 
 The relay is deliberately naive application code. It listens on all four
 protocols and, on receiving a message, forwards a new message to the sink over
@@ -421,14 +421,14 @@ the matrix footnotes.
 
 | language | server / http client | grpc | kafka | rabbitmq |
 |---|---|---|---|---|
-| java | Spring Boot 3 (Tomcat) / RestTemplate (HttpURLConnection) | grpc-java | spring-kafka (kafka-clients) | spring-rabbit (amqp-client) |
+| java | Spring Boot 4 (Tomcat) / RestTemplate (HttpURLConnection) | grpc-java | spring-kafka (kafka-clients) | spring-rabbit (amqp-client) |
 | node | express / axios (node http) | @grpc/grpc-js + proto-loader | kafkajs | amqplib |
 | python | flask / requests | grpcio | confluent-kafka | pika |
 | go | net/http | google.golang.org/grpc | per-tool contrib (kotel / dd contrib / nrsarama) | amqp091-go (per-tool wiring) |
-| go (build-time) | net/http | google.golang.org/grpc | IBM/sarama (orchestrion) · segmentio/kafka-go (otelc) — each weaver's supported client | amqp091-go (neither weaver has an integration) |
+| go (build-time) | net/http | google.golang.org/grpc | IBM/sarama (orchestrion) · segmentio/kafka-go (otelc) — each weaver's supported client | amqp091-go (otelc instruments it; Orchestrion has no integration) |
 | dotnet | ASP.NET Core minimal API / HttpClient | Grpc.AspNetCore + Grpc.Net.Client | Confluent.Kafka | RabbitMQ.Client |
-| ruby | sinatra (puma) / net-http | grpc gem | per-tool (rdkafka / ruby-kafka), see relay README | bunny |
-| php | Apache mod_php + Slim 4 / Guzzle | ext-grpc (client only; no server — see relay README) | ext-rdkafka | php-amqplib |
+| ruby | sinatra (puma) / net-http | grpc gem | per-tool (rdkafka / karafka), see relay README | bunny |
+| php | Apache mod_php + Slim 4 / ext-curl | ext-grpc (client only; no server — see relay README) | ext-rdkafka | php-amqplib |
 | rust | axum / reqwest | tonic | rdkafka | lapin |
 
 ## Version pinning & updates
