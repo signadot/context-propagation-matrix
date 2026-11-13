@@ -290,7 +290,14 @@ func (r *Registry) Validate() error {
 			errs = append(errs, fmt.Sprintf("%s: docs must be an https URL, got %q", v.ID, v.Docs))
 		}
 	}
+	// With the count below, no boundary twice means every pair is listed:
+	// the count alone passes a list that repeats one pair and lacks another.
+	listed := map[string]bool{}
 	for _, b := range r.Boundaries {
+		if listed[b] {
+			errs = append(errs, fmt.Sprintf("boundary %q is listed twice", b))
+		}
+		listed[b] = true
 		in, out, ok := strings.Cut(b, "->")
 		if !ok {
 			errs = append(errs, fmt.Sprintf("boundary %q must be inbound->outbound", b))

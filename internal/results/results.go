@@ -302,10 +302,21 @@ type Results struct {
 // Variants registered but absent from raws are included with Missing=true and
 // no cells, so the site can show "not run" rather than silently dropping rows.
 func Build(reg *registry.Registry, raws []*raw.VariantResult, run Run) (*Results, error) {
+	listed := map[string]bool{}
+	for _, b := range reg.Boundaries {
+		listed[b] = true
+	}
 	byID := map[string]*raw.VariantResult{}
 	for _, r := range raws {
 		if reg.Variant(r.Variant) == nil {
 			return nil, fmt.Errorf("raw result %q is not in variants.yaml", r.Variant)
+		}
+		// A hop is filed under its boundary's cells, so one on a boundary
+		// the registry does not list would be left out without a word.
+		for _, t := range r.Tests {
+			if !listed[t.Boundary] {
+				return nil, fmt.Errorf("raw result %q has a hop on %q, which is not a boundary in variants.yaml: the driver and the registry disagree about the protocols", r.Variant, t.Boundary)
+			}
 		}
 		byID[r.Variant] = r
 	}

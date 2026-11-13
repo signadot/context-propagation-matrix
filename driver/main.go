@@ -1,4 +1,4 @@
-// Command driver runs the 16 protocol-boundary tests against one relay
+// Command driver runs one test per protocol boundary against one relay
 // variant, seeding context propagation headers on the inbound side and
 // evaluating what the sink observed on the outbound side.
 //

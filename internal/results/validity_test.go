@@ -2,6 +2,7 @@ package results
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -155,8 +156,8 @@ func TestJudge_CanaryLeak(t *testing.T) {
 	if want := []string{"http->kafka", "kafka->http"}; !reflect.DeepEqual(got[0].Boundaries, want) {
 		t.Errorf("boundaries = %v, want %v", got[0].Boundaries, want)
 	}
-	if !strings.Contains(got[0].Detail, "2 of 16") {
-		t.Errorf("detail = %q", got[0].Detail)
+	if want := fmt.Sprintf("2 of %d", len(f.reg.Boundaries)); !strings.Contains(got[0].Detail, want) {
+		t.Errorf("detail = %q, want it to say %q", got[0].Detail, want)
 	}
 }
 
@@ -194,7 +195,7 @@ func TestJudge_AgentInactive(t *testing.T) {
 	got := f.doc("backtest", inert).Judge(inert, base)
 	wantKinds(t, "inert agent", got, ProblemAgentInactive)
 	if got[0].Boundaries != nil || !strings.Contains(got[0].Detail, "none-java (measured in run-2026-11-10.22)") ||
-		!strings.Contains(got[0].Detail, "16 delivered") {
+		!strings.Contains(got[0].Detail, fmt.Sprintf("%d delivered", len(f.reg.Boundaries))) {
 		t.Errorf("problem = %+v", got[0])
 	}
 
