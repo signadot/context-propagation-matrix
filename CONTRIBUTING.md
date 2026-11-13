@@ -49,6 +49,8 @@ per-version filing and the site rebuild, so nothing from that run is
 published; fix the cause and re-run the workflow. A variant carried over from
 an earlier release only warns. `cpm aggregate` records the same verdict on
 the variant as `invalid`; DESIGN.md ("Results schema") has the exact rules.
+The gate also refuses a variant measured in that run that has a boundary no
+hop ran on: the driver and `variants.yaml` disagree about the protocols.
 
 The first build of the Java and .NET images is slow (agent downloads); later
 builds are cached.
@@ -119,7 +121,9 @@ per variant). Open an issue first so we can agree the carrier semantics.
    inbound address (`relay-{proto}-{variant}` naming), the sink inbound
    address, declare/warm-up rules. The RabbitMQ sections are the template.
 2. `driver/` — seed headers into the new carrier; the boundary list is
-   protocols², so adding the protocol adds 2n+1 tests per variant.
+   protocols², so adding the protocol adds 2n+1 tests per variant. The
+   driver has its own protocol list: `go test ./driver` fails until
+   `variants.yaml` (step 5) lists the same pairs.
 3. `sink/` — consume/serve the new protocol and record arriving
    headers/metadata verbatim (base64 for non-UTF-8, as today).
 4. Every relay under `relays/*` — one inbound listener plus one

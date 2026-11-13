@@ -12,6 +12,10 @@
 #   - go run ./cmd/cpm pins       (which pin in pins.yaml backs each variant)
 #   - the contextpropagation.io site (via results.json, never directly)
 #
+# The driver does not read it. It runs every pair of its own protocol list
+# (driver/main.go), and driver/registry_test.go fails when those pairs are
+# not the `boundaries:` below.
+#
 # Versions are deliberately NOT here. Exact pins live in the manifests and
 # Dockerfile ARGs next to each relay (Dependabot / bump-agents.yml bump them;
 # pins.yaml says where each one is); the aggregator records the

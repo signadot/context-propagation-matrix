@@ -12,8 +12,9 @@
 # rolling `variant-<id>` release (scripts/publish-versions.sh), which is what
 # the site reads per version, and asks Netlify to rebuild the site so the
 # new documents are shown.
-# `cpm gate` stands between the aggregate and the release: a leaked canary or
-# a hop over the wrong protocol publishes nothing, and an agent that did not
+# `cpm gate` stands between the aggregate and the release: a leaked canary,
+# a hop over the wrong protocol or a boundary of variants.yaml the driver
+# did not run publishes nothing, and an agent that did not
 # attach (judged against the uninstrumented relay in the latest run) is
 # published and filed with `invalid: agent_inactive` in the document.
 # Pairs already measured — filed in the variant's release by a matrix run or
