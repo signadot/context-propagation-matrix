@@ -17,13 +17,16 @@
     - tool: none
       language: php
       outcome: fail
+    # Only the cells that fail: the http/grpc legs pass for traceparent and
+    # tracestate (and, on .NET 10, baggage), as the explanation says, so they
+    # stay out of the selector to keep the staleness check meaningful.
     - tool: none
       language: dotnet
-      header: [tracestate, traceparent, ot-baggage]
-    - tool: none
-      language: dotnet
-      header: baggage
+      header: [tracestate, traceparent, baggage]
       boundary: ["*->kafka", "*->rabbitmq", "kafka->*", "rabbitmq->*"]
+    - tool: none
+      language: dotnet
+      header: ot-baggage
   cause: "These relays run with no agent, wrapper or tracing library; no runtime in the matrix carries context on its own except .NET over HTTP/gRPC."
   explanation: |
     Control runs: every language's relay with no agent, wrapper or tracing gem

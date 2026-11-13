@@ -1,7 +1,9 @@
 package affected
 
 import (
+	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -84,6 +86,8 @@ func TestPaths(t *testing.T) {
 		{"node shared code in a subdirectory", []string{"relays/node/lib/hop.js"}, []string{"otel-node", "datadog-node", "datadog-node-defaults", "none-node"}, false},
 		{"app code beside the per-tool sources", []string{"relays/ruby/app/relay.rb"}, []string{"otel-ruby", "none-ruby"}, false},
 		{"driver", []string{"driver/main.go"}, allIDs(reg), true},
+		{"packages the driver is built from", []string{"internal/eval/eval.go"}, allIDs(reg), true},
+		{"result types the driver writes", []string{"internal/raw/raw.go"}, allIDs(reg), true},
 		{"proto", []string{"proto/hop.proto", "gen/cpmatrix/hop.pb.go"}, allIDs(reg), true},
 		{"shared go image", []string{"docker/go.Dockerfile"}, allIDs(reg), true},
 		{"go.mod", []string{"go.mod", "go.sum"}, allIDs(reg), true},
@@ -140,6 +144,40 @@ func TestRegistryDiff(t *testing.T) {
 	got = Compute(Inputs{Paths: []string{"variants.yaml"}, Head: head2, Base: nil})
 	if !got.All {
 		t.Fatalf("nil base should re-run everything: %v", got.Reasons)
+	}
+}
+
+// Adding the wirings block and the legs of the in-code variants to the
+// registry re-measures those variants and no others. The base revision is
+// the checked-in registry with that block and those legs stripped: if it
+// failed to parse, Compute would re-run every variant.
+func TestRegistryDiff_Legs(t *testing.T) {
+	b, err := os.ReadFile("../../variants.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	head, err := registry.Parse(b, "head")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := regexp.MustCompile(`(?m)^wirings:\n(  .*\n)+|^    legs:\n(      .*\n)+`).ReplaceAll(b, nil)
+	if len(old) == len(b) {
+		t.Fatal("nothing stripped from the registry")
+	}
+	base, err := registry.Parse(old, "base")
+	if err != nil {
+		t.Fatalf("a revision without legs must still parse: %v", err)
+	}
+
+	var want []string
+	for _, v := range head.SortedVariants() {
+		if v.SetupTier != nil && *v.SetupTier == "in-code" {
+			want = append(want, v.ID)
+		}
+	}
+	got := Compute(Inputs{Paths: []string{"variants.yaml"}, Head: head, Base: base})
+	if got.All || !reflect.DeepEqual(got.Variants, want) {
+		t.Fatalf("got all=%v %v, want %v\n%s", got.All, got.Variants, want, strings.Join(got.Reasons, "\n"))
 	}
 }
 

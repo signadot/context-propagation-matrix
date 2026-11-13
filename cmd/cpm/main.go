@@ -2,11 +2,13 @@
 // output into the published results contract.
 //
 //	cpm list [-tool otel] [-secret|-no-secret] [-json]
+//	cpm boundaries [-json]
 //	cpm affected (-base <rev> | -since results.json) [-head HEAD] [-json]
 //	cpm validate [-results results/latest/results.json]
 //	cpm aggregate [-raw results/raw] [-out results/latest] [-run-id id] [-prev results.json] [-reran ids] [-republish results.json]
 //	cpm diff <from.json> <to.json> [-out changes.json]
 //	cpm summary <results.json> [-changes changes.json]
+//	cpm gate [-reran ids] [-baseline results.json] <results.json>
 //	cpm annotations mark-fixed <id> -fixed-in <version>
 //	cpm annotations resolved <results.json>
 //	cpm coords [-results results.json]
@@ -48,12 +50,16 @@ func main() {
 	switch os.Args[1] {
 	case "list":
 		err = cmdList(os.Args[2:])
+	case "boundaries":
+		err = cmdBoundaries(os.Args[2:])
 	case "affected":
 		err = cmdAffected(os.Args[2:])
 	case "validate":
 		err = cmdValidate(os.Args[2:])
 	case "aggregate":
 		err = cmdAggregate(os.Args[2:])
+	case "gate":
+		err = cmdGate(os.Args[2:])
 	case "diff":
 		err = cmdDiff(os.Args[2:])
 	case "summary":
@@ -81,13 +87,16 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|diff|summary|coords|annotations|pins|discover|versions> [flags]
+	fmt.Fprintln(os.Stderr, `usage: cpm <list|boundaries|affected|validate|aggregate|gate|diff|summary|coords|annotations|pins|discover|versions> [flags]
 
   list       print variant ids from variants.yaml (one per line, or -json)
+  boundaries print the boundaries variants.yaml lists, in its order (one per line, or -json)
   affected   variant ids to re-measure: -base <rev> (what a change could alter) and/or
              -since <results.json> (what changed since each was last measured) [-head HEAD]
   validate   check variants.yaml, docker-compose.yml and annotations/ agree
   aggregate  results/raw/*.json -> results.json + MATRIX.md (+ changes.json)
+  gate       exit 1 if a results.json must not be published (canary leak, wrong transport,
+             agent not attached): [-reran ids] [-baseline results.json] <results.json>
   diff       compare two results.json files into changes.json
   summary    markdown summary of a results.json for CI/Slack
   coords     tracer package coordinates per variant as JSON (for version discovery)
@@ -201,6 +210,33 @@ func cmdList(args []string) error {
 	}
 	for _, id := range ids {
 		fmt.Println(id)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+
+// cmdBoundaries prints the boundaries the registry lists, in its order: the
+// hops one run of a variant has to record. verify.yml checks a smoked relay's
+// raw result against this list instead of a count of its own.
+func cmdBoundaries(args []string) error {
+	fs := flag.NewFlagSet("boundaries", flag.ExitOnError)
+	regPath := regFlag(fs)
+	asJSON := fs.Bool("json", false, "emit a JSON array (for a workflow output)")
+	fs.Parse(args)
+
+	reg, err := registry.Load(*regPath)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		// One line, and "http->kafka" rather than "http-\u003ekafka".
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetEscapeHTML(false)
+		return enc.Encode(reg.Boundaries)
+	}
+	for _, b := range reg.Boundaries {
+		fmt.Println(b)
 	}
 	return nil
 }
@@ -444,7 +480,7 @@ func cmdValidate(args []string) error {
 	composePath := fs.String("compose", "docker-compose.yml", "compose file")
 	annDir := fs.String("annotations", "annotations", "annotations directory")
 	resPath := fs.String("results", "results/latest/results.json", "results.json to validate annotations against (skipped if missing)")
-	strict := fs.Bool("strict", false, "treat annotation warnings as errors")
+	strict := fs.Bool("strict", false, "treat annotation warnings as errors (partially resolved annotations and failing cells without an annotation stay warnings)")
 	fs.Parse(args)
 
 	reg, err := registry.Load(*regPath)
@@ -485,13 +521,10 @@ func cmdValidate(args []string) error {
 	}
 	fmt.Printf("annotations: %d loaded\n", len(anns))
 	if res, err := results.Load(*resPath); err == nil {
+		errs = append(errs, contractErrors(reg, res)...)
 		problems := annotations.Apply(res, anns)
-		for _, p := range problems {
-			fmt.Println("  " + p.String())
-			if p.Fatal || (*strict && !p.Info) {
-				errs = append(errs, p.String())
-			}
-		}
+		gh := os.Getenv("GITHUB_ACTIONS") == "true"
+		errs = append(errs, reportProblems(os.Stdout, gh, *strict, problems)...)
 		fmt.Printf("annotations: matched against %s (%d problems)\n", *resPath, len(problems))
 		resolved := 0
 		for _, a := range res.Annotations {
@@ -502,17 +535,12 @@ func cmdValidate(args []string) error {
 		if resolved > 0 {
 			fmt.Printf("annotations: %d resolved (every described cell now passes)\n", resolved)
 		}
-		// Coverage: failing cells nobody has explained yet. Informational —
-		// a new variant legitimately arrives unexplained — but surfaced here
-		// and in the Slack summary so an explanation gets written.
-		if un := annotations.Unexplained(res); len(un) > 0 {
-			fmt.Printf("annotations: %d non-pass cell(s) have no annotation:\n", len(un))
-			for _, line := range unexplainedLines(un, 20) {
-				fmt.Println("  " + line)
-			}
-		} else {
-			fmt.Println("annotations: every non-pass cell is explained")
-		}
+		// Coverage: failing cells nobody has explained yet. A warning that
+		// never fails validation, strict or not — a new upstream regression
+		// or a new variant legitimately arrives unexplained and must not block
+		// publishing — surfaced here and in the Slack summary so an
+		// explanation gets written.
+		reportUnexplained(os.Stdout, gh, annotations.Unexplained(res))
 	} else if !os.IsNotExist(err) {
 		return err
 	} else {
@@ -524,6 +552,30 @@ func cmdValidate(args []string) error {
 	}
 	fmt.Println("ok")
 	return nil
+}
+
+// contractErrors checks matrix_version against the latest release: res is
+// that release's results.json, written with the registry of its time. When
+// the cells a variant is scored on differ from it (results.ContractDiff:
+// protocols, boundaries, headers and how each header is scored), results
+// measured before and after are not comparable cell for cell, and the
+// version that says so has to have moved. Nothing else makes anyone bump
+// it: a registry with a fifth protocol and the old matrix_version loads,
+// aggregates and publishes.
+func contractErrors(reg *registry.Registry, res *results.Results) []string {
+	was := res.Run.MatrixVersion
+	if was == 0 {
+		was = 1 // documents written before the field existed
+	}
+	if reg.MatrixVersion < was {
+		return []string{fmt.Sprintf("matrix_version is %d in variants.yaml, lower than the %d that %s was measured under", reg.MatrixVersion, was, res.Run.RunID)}
+	}
+	diff := results.ContractDiff(reg, &res.Dimensions)
+	if len(diff) == 0 || reg.MatrixVersion > was {
+		return nil
+	}
+	return []string{fmt.Sprintf("the measurement contract differs from the one %s was measured under, but matrix_version is still %d. Bump matrix_version in variants.yaml:\n      %s",
+		res.Run.RunID, was, strings.Join(diff, "\n      "))}
 }
 
 // ---------------------------------------------------------------------------
@@ -545,6 +597,7 @@ func cmdAggregate(args []string) error {
 	republish := fs.String("republish", "", "results.json of the release being rendered again from its own raw results (republish.yml): nothing is measured, so the run keeps its commit, partial and reran, and every variant the provenance recorded there; excludes -prev, -reran and -commit")
 	ignoreUnknown := fs.Bool("ignore-unknown", false, "skip raw results for variants no longer in variants.yaml (carried over from an older release) instead of failing")
 	pinsPath := fs.String("pins", "pins.yaml", "pins manifest; the version each measured variant's tracer pin holds in this checkout is recorded as tracer.pinned (\"\" to skip)")
+	baseline := fs.String("baseline", "", "results.json to take a language's uninstrumented baseline from when the raw results hold none (a back-test); used to record variant.invalid")
 	fs.Parse(args)
 	if *republish != "" {
 		// -commit defaults to GITHUB_SHA, so only an explicit one conflicts.
@@ -650,6 +703,9 @@ func cmdAggregate(args []string) error {
 		}
 	}
 	if err := res.SetProvenance(from, measured, pinned); err != nil {
+		return err
+	}
+	if err := recordValidity(res, *baseline); err != nil {
 		return err
 	}
 

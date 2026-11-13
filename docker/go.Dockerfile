@@ -15,6 +15,11 @@ COPY go.mod go.sum ./
 COPY gen/go.mod gen/go.sum ./gen/
 RUN go mod download
 COPY gen ./gen
+# The driver's header evaluation and result types. Only these two packages:
+# they are the ones internal/affected re-runs every variant for, and the
+# build fails here if the driver or sink starts importing another.
+COPY internal/eval ./internal/eval
+COPY internal/raw ./internal/raw
 COPY sink ./sink
 COPY driver ./driver
 RUN CGO_ENABLED=0 go build -o /out/sink ./sink \
