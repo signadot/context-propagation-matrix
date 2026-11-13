@@ -94,6 +94,9 @@ would make every cell green and every cell meaningless.
    display name, `setup_tier`, one-line `attach`, `tracer` coordinates,
    `source`). The baseline `none-{lang}` variant has `setup_tier: null` and
    no tracer.
+   An `in-code` variant also needs `legs`: for every protocol, whether the
+   inbound and the outbound side are wired through a `library` or by the
+   relay's own code (`app`). No other variant may have them.
 5. **Dependabot** — add the manifest directory to `.github/dependabot.yml`
    for the language's ecosystem, and the relay directory to the `docker`
    list.
@@ -152,6 +155,7 @@ commercial-only agent is not.
    and to `matrix.yml` as a repository secret.
 4. One `variants:` entry per tool × language, with `setup_tier` honestly
    classified (see the tier definitions in `variants.yaml`).
+   An `in-code` variant also needs `legs` (see the `wirings:` definitions).
 5. `annotations/{tool}.yaml` for the cells that do not pass.
 
 ## Adding a variant flavour
@@ -176,9 +180,9 @@ attach mechanism — `datadog-python-kafkaprop` (a feature flag),
 
 `annotations/*.yaml` is where root causes live as data. Every non-pass cell
 should be matched by at least one annotation. `cpm validate` lists the
-failing cells nobody has explained yet; `cpm aggregate` and the Slack summary
-of the weekly run repeat that list so a new regression gets an explanation
-written.
+failing cells nobody has explained yet as a warning (a GitHub annotation in CI)
+that never fails the check, with or without `-strict`; the Slack summary of the
+weekly run repeats that list so a new regression gets an explanation written.
 
 ```yaml
 - id: datadog-java-baggage-non-http
@@ -231,6 +235,7 @@ the cell exist?) and then by **outcome** (default: every non-pass outcome).
 | Run shows… | `cpm aggregate` | `cpm validate` (PR CI, `-strict`) | Site |
 |---|---|---|---|
 | some described cells still fail | attaches to those cells | ok | Explanations card |
+| some described cells now pass in a variant while others still fail (partially resolved) | attaches to the failing cells only; **warns** once per variant, naming the cells that now pass | warns (a GitHub annotation in CI) and never fails: narrow the selector, or split the annotation, so it claims only what still fails | Explanations card on the failing cells |
 | every described cell now passes | attaches to the green cells with `resolved: true`; fills `fixed_in` from the variant's reported tracer version if the YAML has none; **warns** | fails until you record `status: fixed` and `fixed_in` | "resolved" card, kept for history |
 | a selector names a cell that does not exist (variant, header or boundary removed) | **fails** — the selector is stale or mistyped | fails | — |
 | a selector names only variants that are registered but have no results in this release (e.g. the New Relic variants when `NEW_RELIC_LICENSE_KEY` is unset, before any release carried their cells over) | notes it, attaches nothing | ok — nothing to check yet | — |
@@ -256,7 +261,8 @@ page uses it to say what was broken in which release. Release notes for each
   a file under `relays/rust/src/` re-runs every Rust variant and one under
   `relays/rust/otel/` only `otel-rust`, `relays/node/Dockerfile`
   every Node variant, a changed `relay-<id>` service or variant definition that
-  variant; anything under `driver/`, `sink/`, `proto/`, `gen/`, `docker/`,
+  variant; anything under `driver/` (and `internal/eval/`, `internal/raw/`,
+  which it is built from), `sink/`, `proto/`, `gen/`, `docker/`,
   `go.mod`/`go.sum` or `matrix.yml` itself re-runs everything. Cells not
   re-measured are carried over from the previous release, and the new release
   records `run.partial` / `run.reran`. The same run also measures any variant

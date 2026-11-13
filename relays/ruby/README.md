@@ -2,7 +2,7 @@
 
 One Sinatra/gRPC/Kafka/RabbitMQ relay app, four Docker targets (`otel` |
 `datadog` | `newrelic` | `elastic`) that differ only in which instrumentation
-gems are installed (`Gemfile.{tool}`) and which boot file loads them before
+gems are installed (`gemfiles/{tool}/Gemfile`) and which boot file loads them before
 the app (`app/boot_{tool}.rb`). Build context is the repo root; gRPC stubs
 are generated from `proto/relay.proto` at image build time with `grpc-tools`.
 
@@ -18,15 +18,16 @@ field):
 
 | tool | client | why |
 |---|---|---|
-| otel | `rdkafka` | `opentelemetry-instrumentation-rdkafka` (0.10.0, current, requires rdkafka >= 0.18) injects on `Producer#produce` and extracts + activates context around `Consumer#each`. The alternative gems target dead or framework-specific clients (`ruby-kafka` instrumentation 0.25.0 — the ruby-kafka gem itself has been unmaintained since 2022; `racecar` 0.7.0 is a framework wrapper). |
-| datadog | `karafka` + `waterdrop` (producer) | dd-trace-rb (v2.42.0) has **no rdkafka integration at all**, and its ruby-kafka `:kafka` integration only creates spans — its sole option is `enabled`; there is no `distributed_tracing` and no header injection/extraction. Datadog's documented Kafka propagation path for Ruby is the `:karafka` (>= 2.3) and `:waterdrop` (>= 2.8.8) integrations with `distributed_tracing: true`. |
+| otel | `rdkafka` | `opentelemetry-instrumentation-rdkafka` (requires rdkafka >= 0.18) injects on `Producer#produce` and extracts + activates context around `Consumer#each`. The alternative gems target dead or framework-specific clients (`ruby-kafka` instrumentation 0.25.0 — the ruby-kafka gem itself has been unmaintained since 2022; `racecar` 0.7.0 is a framework wrapper). |
+| datadog | `karafka` + `waterdrop` (producer) | dd-trace-rb (observed at v2.42.0; the pinned version is in `gemfiles/datadog/Gemfile`) has **no rdkafka integration at all**, and its ruby-kafka `:kafka` integration only creates spans — its sole option is `enabled`; there is no `distributed_tracing` and no header injection/extraction. Datadog's documented Kafka propagation path for Ruby is the `:karafka` (>= 2.3) and `:waterdrop` (>= 2.8.8) integrations with `distributed_tracing: true`. |
 | newrelic | `rdkafka` | `newrelic_rpm` >= 9.14 ships rdkafka instrumentation (also ruby-kafka): injects distributed-trace headers on produce, accepts headers and wraps each consumed message in a consume transaction. |
 | elastic | `rdkafka` | elastic-apm has **no Kafka client instrumentation at all** — the closest thing is [Racecar framework instrumentation](https://www.elastic.co/docs/release-notes/apm/agents/ruby) (added in agent 4.2, and not even listed on the [supported-technologies page](https://www.elastic.co/docs/reference/apm/agents/ruby/supported-technologies)). No rdkafka/ruby-kafka support exists, so the client matches otel's and the leg runs **uninstrumented** — a measured finding. |
 
 ## RabbitMQ client (bunny, all tools)
 
 All four targets use the same client, [`bunny`](https://rubygems.org/gems/bunny)
-(3.3.x): consume `RELAY_RABBIT_QUEUE` (default `relay-rmq-{VARIANT}`) via
+(version pinned in each `gemfiles/<tool>/Gemfile`): consume
+`RELAY_RABBIT_QUEUE` (default `relay-rmq-{VARIANT}`) via
 `queue.subscribe`, publish to `SINK_RABBIT_QUEUE` (default `sink-rmq`) via the
 default exchange. Queue declares use durable=false, auto-delete=false,
 exclusive=false everywhere (idempotent; the driver/sink declare the same).
@@ -34,7 +35,7 @@ Instrumentation coverage differs sharply per tool:
 
 | tool | bunny instrumentation |
 |---|---|
-| otel | **yes** — [`opentelemetry-instrumentation-bunny`](https://rubygems.org/gems/opentelemetry-instrumentation-bunny) (0.25.0, requires ruby >= 3.3) prepends into `Bunny::Channel` (publish-side inject), `Bunny::Consumer`/`Bunny::Queue`/`Bunny::ReaderLoop` (receive/process-side extract). Enabled via `c.use 'OpenTelemetry::Instrumentation::Bunny'` in `boot_otel.rb`. |
+| otel | **yes** — [`opentelemetry-instrumentation-bunny`](https://rubygems.org/gems/opentelemetry-instrumentation-bunny) (requires ruby >= 3.3) prepends into `Bunny::Channel` (publish-side inject), `Bunny::Consumer`/`Bunny::Queue`/`Bunny::ReaderLoop` (receive/process-side extract). Enabled via `c.use 'OpenTelemetry::Instrumentation::Bunny'` in `boot_otel.rb`. |
 | datadog | **no** — dd-trace-rb 2.x has no bunny integration; the [Ruby integrations list](https://docs.datadoghq.com/tracing/trace_collection/compatibility/ruby/) has nothing for RabbitMQ except the Sneakers/Kicks *worker framework* (consume-side only, and we don't use that framework). A third-party gem (`datadog-json-logger`) adds a `:bunny` integration but requires the consumer block to call `continue_trace!` by hand — app code touching tracing APIs, which the harness contract forbids. The leg runs **plain uninstrumented bunny**; absence is the finding. |
 | newrelic | **yes** — built into `newrelic_rpm` [since agent 4.3.0](https://docs.newrelic.com/docs/apm/agents/ruby-agent/features/message-queues/), automatic, no configuration: prepends into `Bunny::Exchange#publish` (header insert), `Bunny::Queue#pop` and `Bunny::Consumer#call` (push-style consume wrapped in a message transaction that accepts DT headers). |
 | elastic | **no** — RabbitMQ is absent from elastic-apm's [supported technologies](https://www.elastic.co/docs/reference/apm/agents/ruby/supported-technologies); the only AMQP-adjacent entry is Sneakers 2.12.0 (experimental, framework-level). Plain uninstrumented bunny; absence is the finding. |
@@ -63,8 +64,8 @@ default style with the integration able to propagate at all.
 ## gRPC caveat (otel)
 
 There is no OpenTelemetry Ruby server-side instrumentation for the plain
-`grpc` gem. `opentelemetry-instrumentation-grpc` (0.5.2) instruments
-**clients only** (it prepends `GRPC::ClientStub`, so outbound calls are
+`grpc` gem. `opentelemetry-instrumentation-grpc` (observed at 0.5.2; the
+pinned version is in `gemfiles/otel/Gemfile`) instruments **clients only** (it prepends `GRPC::ClientStub`, so outbound calls are
 injected automatically); the only server-side OTel gem targets the `gruf`
 framework, not `GRPC::RpcServer`. Consequence for the matrix: on
 `grpc -> *` boundaries the otel-ruby relay never extracts the inbound
@@ -78,8 +79,8 @@ automatically — see the next section.
 
 ## Elastic variant (elastic-apm)
 
-`Gemfile.elastic` + `app/boot_elastic.rb` + Docker target `elastic`. The
-[elastic-apm](https://rubygems.org/gems/elastic-apm) gem (4.9.x) is started
+`gemfiles/elastic/Gemfile` + `app/boot_elastic.rb` + Docker target `elastic`. The
+[elastic-apm](https://rubygems.org/gems/elastic-apm) gem is started
 with its documented Sinatra integration — `HttpApp.use ElasticAPM::Middleware`
 plus `ElasticAPM::Sinatra.start(HttpApp)` in the boot file (app code
 untouched); all other configuration comes from `ELASTIC_APM_*` env vars. An

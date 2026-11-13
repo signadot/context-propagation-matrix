@@ -1,6 +1,10 @@
 // Package raw defines the per-variant JSON the driver writes to
 // results/raw/<variant>.json. This is the harness's internal format; the
 // published contract is internal/results (schema v2).
+//
+// The driver marshals these types and the aggregator unmarshals them, so a
+// tag changed here changes what the driver writes: internal/affected re-runs
+// every variant for a change to this package for that reason.
 package raw
 
 import (
@@ -13,10 +17,15 @@ import (
 )
 
 type Status struct {
-	Traceparent   string `json:"traceparent"`
-	Tracestate    string `json:"tracestate"`
-	Baggage       string `json:"baggage"`
-	OTBaggage     string `json:"ot_baggage"`
+	Traceparent string `json:"traceparent"`
+	Tracestate  string `json:"tracestate"`
+	Baggage     string `json:"baggage"`
+	OTBaggage   string `json:"ot_baggage"`
+	// DatadogNative is x-datadog-trace-id continuity as the driver has
+	// always recorded it, for every tool. The published vendor_native is no
+	// longer taken from it: the aggregator evaluates each tool's own native
+	// header from the observed headers (eval.Native). The driver still
+	// writes it so raw files of every age have one shape.
 	DatadogNative string `json:"datadog_native"`
 	CanaryLeak    bool   `json:"canary_leak"`
 }
@@ -50,13 +59,16 @@ type Observed struct {
 	Headers   map[string][]string `json:"headers"`
 }
 
+// The omitempty tags below are the driver's: an undelivered hop has no
+// observed or status key, and a relay that reports no config has no config
+// key. They decide what the driver writes, not what the aggregator accepts.
 type TestResult struct {
 	Boundary  string    `json:"boundary"`
 	TestID    string    `json:"test_id"`
 	Delivered bool      `json:"delivered"`
 	Seeded    *Seeded   `json:"seeded,omitempty"`
 	Observed  *Observed `json:"observed,omitempty"`
-	Status    *Status   `json:"status"`
+	Status    *Status   `json:"status,omitempty"`
 	Error     string    `json:"error,omitempty"`
 }
 
@@ -64,8 +76,8 @@ type VariantResult struct {
 	Variant  string         `json:"variant"`
 	Tool     string         `json:"tool"`
 	Language string         `json:"language"`
-	Config   map[string]any `json:"config"`
-	Info     map[string]any `json:"info"`
+	Config   map[string]any `json:"config,omitempty"`
+	Info     map[string]any `json:"info,omitempty"`
 	RanAt    time.Time      `json:"ran_at"`
 	Tests    []TestResult   `json:"tests"`
 }

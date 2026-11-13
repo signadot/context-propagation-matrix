@@ -1,6 +1,11 @@
 .tools/
 relays/go-otelc/.otelc-build/
 
+# Installed dependencies. The lockfiles next to the manifests
+# (relays/node/package-lock.json, relays/php/composer.lock) are committed.
+node_modules/
+/relays/php/vendor/
+
 .env
 .env.*
 !.env.example

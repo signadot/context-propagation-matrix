@@ -3,7 +3,7 @@
 #   php-no-grpc-server                       grpc->* undelivered for every PHP variant
 #   php-grpc-client-not-instrumented         *->grpc header-free for otel/datadog/elastic/newrelic PHP
 #   go-weavers-kafka-consume-no-activation   otelc + Orchestrion kafka->* (different mechanisms, same class)
-#   go-weavers-no-amqp-instrumentation       otelc + Orchestrion rabbitmq legs (no AMQP client on either allowlist)
+#   go-weavers-no-amqp-instrumentation       otelc + Orchestrion rabbitmq->* (no continuation); Orchestrion also *->rabbitmq
 #   ot-baggage-not-implemented               OTel, Elastic and New Relic never emitted OpenTracing-era headers
 #
 # Sources: FINDINGS.md §7, §9, §11, §14; REFERENCES.md "PHP", "Go compile-time
@@ -128,28 +128,44 @@
     - { title: "dd-trace-go contrib IBM/sarama (manual pattern)", url: "https://pkg.go.dev/github.com/DataDog/dd-trace-go/contrib/IBM/sarama/v2" }
 
 - id: go-weavers-no-amqp-instrumentation
-  title: "Go build-time weavers: neither otelc nor dd-trace-go has an AMQP client integration to weave"
+  title: "Go build-time weavers: no trace continues out of a RabbitMQ consume, and Orchestrion also injects nothing on publish"
   match:
+    # otelc 1.2.0 injects on publish, so only its consume side is described
+    # here. kafka->rabbitmq is explained by the Kafka consume gap
+    # (go-weavers-kafka-consume-no-context-activation).
     - variant: otel-go-compiletime
       header: [baggage, tracestate, traceparent]
-      boundary: ["*->rabbitmq", "rabbitmq->*"]
+      boundary: "rabbitmq->*"
     - variant: datadog-go-orchestrion
       header: [baggage, tracestate, traceparent, ot-baggage]
       boundary: ["*->rabbitmq", "rabbitmq->*"]
-  cause: "otelc's supported-libraries list has no AMQP client and dd-trace-go has no amqp091 contrib, so RabbitMQ publish injects nothing and consume extracts nothing."
+  cause: "Neither weaver continues a trace after a RabbitMQ consume. Orchestrion also injects nothing on publish (dd-trace-go has no amqp091 contrib); otelc 1.2.0 does inject on publish."
   explanation: |
-    Coverage is an allowlist, and neither weaver's allowlist includes the
-    amqp091 client. otelc's getting-started supported-libraries table lists
-    `segmentio/kafka-go` as its only messaging client — no sarama, no franz-go,
-    no AMQP. dd-trace-go has no amqp091/RabbitMQ contrib, so Orchestrion has
-    nothing to enable on RabbitMQ legs.
+    The relays' amqp091 code carries no tracing (the otelc relay's publish
+    passes plain `amqp.Publishing{ContentType, Body}`), so whatever reaches the
+    wire on a RabbitMQ leg was put there by the build. What the latest run
+    measures, per variant:
 
-    Nothing is injected on `*->rabbitmq`. On `rabbitmq->*` the consumer runs
-    with no incoming context; where the outbound client *is* woven (HTTP, gRPC,
-    Kafka on Orchestrion) it emits a fresh root trace, and otherwise nothing.
+    **datadog-go-orchestrion**: nothing is injected on `*->rabbitmq` — the
+    message the sink receives carries no trace headers at all — and nothing is
+    extracted on `rabbitmq->*`. Where the outbound client is woven (HTTP, gRPC,
+    Kafka) it emits a fresh Datadog root trace: `traceparent` scores
+    `new_trace`, `tracestate` keeps only the `dd=` entry (`partial`), baggage
+    is absent; on `rabbitmq->rabbitmq` nothing is sent. dd-trace-go has no
+    amqp091/RabbitMQ contrib, so Orchestrion has nothing to enable on RabbitMQ
+    legs.
+
+    **otel-go-compiletime** (otelc 1.2.0): publish is woven. `http->rabbitmq`
+    and `grpc->rabbitmq` pass for `traceparent`, `tracestate` and `baggage` with
+    no source change; the same legs measured as dark with otelc 1.1.0. Nothing
+    continues a trace after a consume: on `rabbitmq->*` every outbound call,
+    including a RabbitMQ publish, starts a fresh root (`traceparent` is
+    `new_trace`, `tracestate` and `baggage` are absent). The relay's consume loop
+    is application code that calls the forwarder with `context.Background()`,
+    and the woven build does not change that.
+
     The hand-wired `otel-go` and `datadog-go` relays pass all RabbitMQ legs with
-    hand-written AMQP carriers — the same manual step a weaver cannot supply for
-    a library it does not know.
+    hand-written AMQP carriers.
   status: open
   links:
     - { title: "otelc getting-started (supported libraries)", url: "https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/blob/main/docs/getting-started.md" }

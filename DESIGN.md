@@ -148,6 +148,12 @@ consumes; topics are auto-created; every message is self-describing via
 
 ## Per-header status semantics
 
+The evaluation lives in `internal/eval` (unit-tested, and replayed against
+recorded raw results). The driver calls it for every delivered hop and writes
+the statuses below to the raw file. `tracestate` and `baggage` are list
+headers: when a carrier holds several fields of the same name, their values
+are joined with `,` before evaluating.
+
 - `traceparent`: `same_trace` (arrived with seeded trace-id; span-id will and
   should differ) | `new_trace` (present, different trace-id) | `absent`
 - `tracestate`: `preserved` (our foreign entry `sdtest=v1` still listed —
@@ -155,14 +161,45 @@ consumes; topics are auto-created; every message is self-describing via
   (header present, our entry gone) | `absent`
 - `baggage`: `propagated` (`sd-routing-key={rk}` parseable from the W3C list)
   | `partial` (header present, our key missing) | `absent`
-- `ot_baggage`: `propagated` (`ot-baggage-sd-routing-key == {rk}`) | `absent`
+- `ot_baggage`: `propagated` (`ot-baggage-sd-routing-key == {rk}`) | `partial`
+  (header present, different value) | `absent`
 - `datadog_native`: informational; `present_same_trace` if
   `x-datadog-trace-id` equals the low 64 bits of the seeded trace-id (decimal)
-  | `present_new_trace` | `absent`
+  | `present_new_trace` | `absent`. Recorded for every tool and kept in the
+  raw file for compatibility; nothing published reads it, `vendor_native`
+  (below) is evaluated per tool instead
 - `canary_leak`: boolean, must be `false`
 - `delivered`: boolean; `false` means the relay never forwarded anything —
   itself a reportable finding (e.g. instrumentation broke the app or the
   library isn't supported)
+
+`cpm aggregate` adds three observations to each hop of `results.json`. It
+evaluates them itself from the observed headers stored in the raw file, so
+re-aggregating raw results that predate them fills them in. They are
+informational: no cell outcome and no count depends on them.
+
+- `vendor_native`: whether the tool's own trace header carried the seeded
+  trace, judged on the tool's `native_headers` in `variants.yaml`:
+  `present_same_trace` | `present_new_trace` (another trace-id, or a value
+  that cannot be decoded) | `absent`. Datadog: `x-datadog-trace-id` equals the
+  low 64 bits of the seeded trace-id (decimal). Elastic: the trace-id in
+  `elastic-apm-traceparent`. New Relic: `d.tr` in the base64 JSON `newrelic`
+  header. Omitted for tools without native headers (`otel`, `none`)
+- `traceparent_span`: only when `traceparent` is `same_trace`. `new_span`
+  (the span-id differs from the seeded one, as it must when a tracer took
+  part) | `same_span` (the seeded span-id came back out: the relay passed the
+  header through verbatim, which scores as a `traceparent` pass although no
+  instrumentation was involved; see the otel note under Tool configuration).
+  `same_span` hops are also listed in `summary.traceparent_passthroughs` as
+  `"{variant} {boundary}"`, the way `summary.canary_leaks` lists leaks
+- `traceparent_flags`: only when `traceparent` is `same_trace`. The observed
+  trace-flags field. The driver seeds `01` (sampled); `00` continues the
+  trace but marks it not sampled, which is what the services after the relay
+  go by when deciding whether to record it
+
+These keys are optional: left out where they do not apply, and absent from
+documents aggregated before they existed. Adding them therefore leaves
+`schema_version` at 2.
 
 ## Tool configuration (kept deliberately bounded)
 
@@ -256,6 +293,11 @@ from `results/raw/*.json` plus the registry (`variants.yaml`):
   pair resolves to the same measurement in every run that carries it. The
   site uses these to present results per tracer version and to say where
   and when each one was measured.
+
+  An `in-code` variant also carries `legs`, copied from the registry: per
+  protocol, `inbound` and `outbound`, each one of the `dimensions.wirings`
+  ids. Variants without legs have no `legs` key, and `dimensions.wirings` is
+  omitted when the registry defines none.
 - `results/latest/MATRIX.md` — the human-readable tables, rendered from the
   same document.
 - `results/latest/changes.json` — when a previous run is given
@@ -402,6 +444,14 @@ enforces that docker-compose.yml has exactly one `relay-<id>` service with
 `profiles: [<id>]` per registered variant and no unregistered relays, and
 that every annotation selector matches at least one real cell.
 
+An `in-code` variant must also give `legs`: for each protocol, whose code
+moves the context on the relay's inbound and outbound side, a `library` the
+application wraps its client or server with, or `app` code that calls the
+tracer's API itself (the `wirings:` block defines both). Variants in any other
+tier, and baselines, must not have legs, because their application has no
+propagation code to describe. A leg records how the relay is wired, not
+whether it works; the cells measure that.
+
 ## Annotations: `annotations/*.yaml`
 
 Root causes live as data next to the cells they explain, not as prose that
@@ -437,7 +487,12 @@ Nothing in the harness installs "latest": every dependency manifest pins
 exact versions and every curl-fetched agent is a version ARG in its
 Dockerfile, so a rebuild months from now produces the same images and the
 matrix stays attributable to exact tracer versions (each table row carries
-the version that produced it).
+the version that produced it). The Node and PHP relays also commit a
+lockfile for the application's own dependencies (`relays/node/package-lock.json`,
+`relays/php/composer.lock`), installed with `npm ci` / `composer install`, so
+their transitive packages are fixed too. The tracer installed on top of it
+(and whatever the tracer pulls in) is not locked: it resolves at build time,
+because the tracer version is the variable being measured.
 
 Two bots move versions, and they do not overlap:
 

@@ -81,8 +81,9 @@ its own SDK versions).
 
 - Global propagator set explicitly to composite
   `TraceContextPropagator` + `BaggagePropagator`. **The Rust SDK does not
-  read `OTEL_PROPAGATORS`** (env-based propagator configuration is not
-  implemented in opentelemetry_sdk 0.32), so the compose-level
+  read `OTEL_PROPAGATORS`** (observed at opentelemetry_sdk 0.32: env-based
+  propagator configuration is not implemented; the pinned version is in
+  `otel/Cargo.toml`), so the compose-level
   `OTEL_PROPAGATORS=tracecontext,baggage` is echoed in `/info.config` but the
   actual configuration is the hardcoded equivalent.
 - The `SdkTracerProvider` is real but has **no exporter registered**: spans

@@ -43,6 +43,8 @@ on:
     paths:
       - 'relays/**'
       - 'driver/**'
+      - 'internal/eval/**'
+      - 'internal/raw/**'
       - 'sink/**'
       - 'proto/**'
       - 'gen/**'

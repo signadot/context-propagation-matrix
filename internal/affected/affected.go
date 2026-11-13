@@ -55,8 +55,11 @@ const (
 )
 
 // Prefixes (directories) and exact files whose change invalidates every
-// measurement: they are built into, or drive, every variant's run.
-var allPrefixes = []string{"driver/", "sink/", "proto/", "gen/", "docker/"}
+// measurement: they are built into, or drive, every variant's run. The two
+// internal packages are the ones the driver is built from (its header
+// evaluation and the result types it writes; docker/go.Dockerfile copies
+// exactly these), and are matched before the internal/ rule below.
+var allPrefixes = []string{"driver/", "sink/", "proto/", "gen/", "docker/", "internal/eval/", "internal/raw/"}
 var allFiles = map[string]bool{"go.mod": true, "go.sum": true, ".dockerignore": true, workflowFile: true}
 
 // Prefixes and files that cannot change a raw measurement: documentation,
