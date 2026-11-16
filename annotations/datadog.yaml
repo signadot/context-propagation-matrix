@@ -38,8 +38,8 @@
     What a user can do: the legacy `ot-baggage-*` headers cross all 16
     boundaries in this agent, or inject `baggage` manually at messaging and gRPC
     call sites. Upstream fix: inject from `Context.current()` at the messaging
-    and gRPC inject sites. Only the Kafka case is reported (#11286); the gRPC
-    and RabbitMQ measurements appear unreported (filing candidate).
+    and gRPC inject sites. Only the Kafka case is reported (#11286); we found
+    no upstream report of the gRPC and RabbitMQ cases.
   status: open
   links:
     - { title: "dd-trace-java #11286", url: "https://github.com/DataDog/dd-trace-java/issues/11286" }
@@ -258,9 +258,9 @@
     the contrib source tree confirms no bunny integration exists in code.
 
     Workaround: inject the trace context into message headers on publish and
-    continue the trace from them in the consumer block yourself. No feature
-    request for bunny exists upstream at all (filing candidate). Same class as
-    dd-trace-py/pika: canonical client, zero coverage.
+    continue the trace from them in the consumer block yourself. We found no
+    upstream feature request for bunny at all. Same class as dd-trace-py/pika:
+    the canonical client, with no integration.
   status: open
   links:
     - { title: "Datadog Ruby compatibility docs", url: "https://docs.datadoghq.com/tracing/trace_collection/compatibility/ruby/" }
@@ -288,8 +288,8 @@
     Workaround: read the record headers after `consume()` returns and continue
     the trace from them manually before outbound calls. Upstream fix: keep the
     consume span (and the extracted context) active until the application has
-    processed the message. No upstream issue reports that consumed Kafka context
-    does not reach post-consume user code (filing candidate).
+    processed the message. We found no upstream issue reporting that consumed
+    Kafka context does not reach post-consume user code.
   status: open
   links:
     - { title: "dd-trace-php KafkaIntegration.php", url: "https://github.com/DataDog/dd-trace-php/blob/master/src/DDTrace/Integrations/Kafka/KafkaIntegration.php" }
@@ -324,7 +324,7 @@
     context-carrying producer API, or weaver support for goroutine-local context
     at sites with no ctx parameter. A related operational note: `orchestrion
     pin` prints a spurious "removing unnecessary import" warning against the
-    published `all/v2` module; cosmetic, build unaffected (filing candidate).
+    published `all/v2` module; cosmetic, build unaffected.
   status: open
   links:
     - { title: "Orchestrion", url: "https://github.com/DataDog/orchestrion" }

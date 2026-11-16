@@ -24,7 +24,7 @@
     binary propagation format, baggage, logging"). A repo-wide search hits
     baggage only in the OpenTracing bridge; there is no W3C baggage code.
 
-    This contradicts Elastic's own agent spec ("Agents MUST parse, validate, and
+    Elastic's own agent spec requires it ("Agents MUST parse, validate, and
     attach the `baggage` header according to the W3C specification"). A user who
     needs baggage must carry it as an application header on every hop
     themselves.
@@ -58,8 +58,8 @@
     protocol boundaries; a user must forward the `baggage` header as an
     application header themselves. Elastic's Node distributed-tracing docs
     likewise describe manual `traceparent` passing only (no tracestate or
-    baggage). Our references record no upstream issue requesting W3C baggage in
-    these agents.
+    baggage). We found no upstream issue requesting W3C baggage in these
+    agents.
   status: open
   links:
     - { title: "Elastic agent spec: distributed tracing", url: "https://github.com/elastic/apm/blob/main/specs/agents/tracing-distributed-tracing.md" }
@@ -107,13 +107,13 @@
     *name* is assigned instead of its value. Still unfixed on main (file last
     touched Oct 2023).
 
-    Additional finding for the same report: the async variant
-    (`async_server_interceptor.py`) never reads `invocation_metadata` at all, so
-    the async gRPC server path does not extract trace context.
+    In the same package, the async variant (`async_server_interceptor.py`)
+    never reads `invocation_metadata` at all, so the async gRPC server path
+    does not extract trace context.
 
-    Unreported upstream; filing candidate with the one-line fix
-    (`metadata.key` → `metadata.value`). This is the only tracestate corruption
-    observed among all tracers that continued a trace.
+    We found no upstream report of either; the fix for the first is one line
+    (`metadata.key` → `metadata.value`). This is the only tracestate
+    corruption observed among all tracers that continued a trace.
   status: open
   links:
     - { title: "apm-agent-python server_interceptor.py @ v6.26.2 L66-L73", url: "https://github.com/elastic/apm-agent-python/blob/v6.26.2/elasticapm/contrib/grpc/server_interceptor.py#L66-L73" }
@@ -282,6 +282,5 @@
 
     gRPC-outbound legs are covered separately (`php-grpc-client-not-instrumented`)
     and gRPC-inbound is undeliverable in this topology (`php-no-grpc-server`).
-    Our references cite no upstream issue for PHP messaging support in this
-    agent.
+    We found no upstream issue requesting messaging support in this agent.
   status: open
