@@ -146,10 +146,10 @@ func TestJudge_CanaryLeak(t *testing.T) {
 	f := newFixture(t)
 	base := f.variant("none-java", noAgent)
 	v := f.variant("otel-java", func(in, out string) []string {
-		return with(plain(out), "traceparent", "tracestate", "baggage", "ot-baggage-sd-routing-key")
+		return with(plain(out), "traceparent", "tracestate", "baggage", "ot-baggage-routing-key")
 	})
 	hop(v, "http->kafka").CanaryLeak = true
-	hop(v, "kafka->http").Observed["X-SD-Canary"] = []string{"otel-java--kafka-http--1"}
+	hop(v, "kafka->http").Observed["X-CP-Canary"] = []string{"otel-java--kafka-http--1"}
 
 	got := f.doc("matrix", v, base).Judge(v, base)
 	wantKinds(t, "proxying relay", got, ProblemCanaryLeak)
@@ -158,6 +158,23 @@ func TestJudge_CanaryLeak(t *testing.T) {
 	}
 	if want := fmt.Sprintf("2 of %d", len(f.reg.Boundaries)); !strings.Contains(got[0].Detail, want) {
 		t.Errorf("detail = %q, want it to say %q", got[0].Detail, want)
+	}
+
+	// The control header is the one a hop was seeded with. A hop measured
+	// when it had another name leaked if that name arrived, and a header
+	// that only looks like today's control did not come from the driver.
+	earlier := f.variant("otel-java", func(in, out string) []string {
+		return with(plain(out), "traceparent", "tracestate", "baggage")
+	})
+	for i := range earlier.Hops {
+		earlier.Hops[i].Seeded = map[string]string{"traceparent": "x", "x-acme-canary": earlier.ID + "--1"}
+	}
+	hop(earlier, "grpc->http").Observed["X-Acme-Canary"] = []string{"otel-java--grpc-http--1"}
+	hop(earlier, "http->grpc").Observed["x-cp-canary"] = []string{"not seeded on this hop"}
+	got = f.doc("matrix", earlier, base).Judge(earlier, base)
+	wantKinds(t, "earlier control header", got, ProblemCanaryLeak)
+	if want := []string{"grpc->http"}; !reflect.DeepEqual(got[0].Boundaries, want) {
+		t.Errorf("earlier control header: boundaries = %v, want %v", got[0].Boundaries, want)
 	}
 }
 
