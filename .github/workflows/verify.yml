@@ -32,10 +32,20 @@
 # check runs land on the branch's head commit, which is the PR's head, so
 # they count for branch protection like any other run. The change is diffed
 # against the branch's merge-base with main, as for a pull request.
+#
+# merge_group is for a merge queue on main, which is not switched on. A queue
+# runs the required checks on the commit it is about to merge (main, the
+# pull requests ahead in the queue, and this one) and merges only when they
+# pass, so a pull request can no longer merge on checks that ran against an
+# older main.
 name: verify
 
 on:
   pull_request:
+  # Nothing raises this until "Require merge queue" is on for main. From then
+  # on GitHub waits for the required checks on this event, and a workflow
+  # that does not run on it leaves every queued pull request waiting.
+  merge_group:
   push:
     branches: [main]
     paths-ignore:
@@ -174,6 +184,7 @@ jobs:
           HAS_NR: ${{ secrets.NEW_RELIC_LICENSE_KEY != '' }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          QUEUE_BASE: ${{ github.event.merge_group.base_sha }}
           PUSH_BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
@@ -188,6 +199,13 @@ jobs:
               # current tip, so unrelated merges to main do not widen the set.
               base=$(git merge-base "$PR_BASE" "$PR_HEAD")
               head="$PR_HEAD"
+              ;;
+            merge_group)
+              # The commit the queue built for this pull request, which is
+              # the one checked out, against the parent the event names for
+              # it.
+              base="$QUEUE_BASE"
+              head="$GITHUB_SHA"
               ;;
             workflow_dispatch)
               # Dispatched on a bump/* branch by bump-agents.yml: same idea,
