@@ -40,7 +40,7 @@ type names struct {
 
 // namesOf returns the names a hop was seeded with, read from the headers the
 // seed records. A result is judged against what it was sent, so one measured
-// when the seeds had other names (they were renamed at matrix_version 2)
+// when the seeds had other names (they were renamed on 16 November 2026)
 // still evaluates to the statuses recorded for it. A seed that records no
 // headers is taken to have used today's.
 func namesOf(seed raw.Seeded) names {
