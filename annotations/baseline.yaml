@@ -1,8 +1,8 @@
-# Baseline (tool "none") — the eight no-instrumentation control relays.
+# Baseline (tool "none"): the eight no-instrumentation control relays.
 #
 # Seven of eight languages propagate nothing on any boundary, which is the
 # expected control result: everything in the instrumented tables is
-# attributable to the tool under test. .NET is the exception — the runtime
+# attributable to the tool under test. .NET is the exception: the runtime
 # itself propagates trace context over HTTP/gRPC with no agent attached.
 # none-php's grpc->* cells are undelivered for the same reason as every other
 # PHP variant (cross-cutting.yaml: php-no-grpc-server).
@@ -31,8 +31,8 @@
   explanation: |
     Control runs: every language's relay with no agent, wrapper or tracing gem
     attached (`none-*` variants, 128 hops). Java, Node, Python, Go, Ruby, Rust
-    and PHP behave as expected — nothing propagates on any of the 16 boundaries
-    for any header — confirming that the instrumented results are attributable
+    and PHP behave as expected: nothing propagates on any of the 16 boundaries
+    for any header. This confirms that the instrumented results are attributable
     to the tool under test, not to the apps or the harness.
 
     .NET is the partial exception: with no agent, ASP.NET Core hosting creates an
@@ -57,7 +57,7 @@
   explanation: |
     With no agent attached, .NET 8 propagates `traceparent` and `tracestate`
     across `http/grpc -> http/grpc`, and it *does* read the incoming W3C
-    `baggage` header into `Activity.Baggage` — but the default
+    `baggage` header into `Activity.Baggage`, but the default
     `DistributedContextPropagator` on .NET 8/9 is the pre-W3C "legacy"
     propagator, which re-emits baggage under the obsolete draft name
     `Correlation-Context`. Values survive one hop and are then invisible to any
@@ -65,8 +65,8 @@
 
     Version dependence: .NET 10 switches the default to a strict W3C propagator
     (`baggage` header out, strict encoding, `CreatePreW3CPropagator()` to opt
-    back) — an uninstrumented .NET service changes its propagation behaviour on
-    a runtime upgrade. Harness runs used .NET 8 until 2026-11-10 and .NET 10
+    back), so an uninstrumented .NET service changes its propagation behaviour
+    on a runtime upgrade. Harness runs used .NET 8 until 2026-11-10 and .NET 10
     since (the relay image moved with dotnet/sdk and dotnet/aspnet 10.0); on
     .NET 10 every cell above passes, so this is recorded as fixed in the
     runtime rather than in any agent.

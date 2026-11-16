@@ -1,4 +1,4 @@
-# New Relic — root causes for the non-pass cells of newrelic-* variants.
+# New Relic: root causes for the non-pass cells of newrelic-* variants.
 #
 # All seven agents were run with a real license key and primed (agents only
 # emit headers after the collector connect handshake supplies account
@@ -17,7 +17,7 @@
   cause: "Baggage is not part of New Relic's distributed-tracing model (traceparent, tracestate, newrelic); no agent forwards the header and no feature request exists."
   explanation: |
     New Relic's "How distributed tracing works" defines the complete header
-    model as exactly three headers — `traceparent`, `tracestate` and the vendor
+    model as exactly three headers: `traceparent`, `tracestate` and the vendor
     `newrelic` header. The seeded W3C `baggage` member is neither extracted nor
     re-emitted by any of the seven agents on any of the 16 boundaries, even
     where trace context continues perfectly (Python is 16/16 for trace
@@ -26,7 +26,7 @@
     An org-wide search for "baggage" across all New Relic agent repositories
     returns three unrelated hits; no feature request for W3C baggage exists in
     any of the seven agent repos. If you route on baggage, New Relic contributes
-    nothing on any protocol — carry it as an application header yourself.
+    nothing on any protocol; carry it as an application header yourself.
   status: by-design
   links:
     - { title: "How New Relic distributed tracing works", url: "https://docs.newrelic.com/docs/distributed-tracing/concepts/how-new-relic-distributed-tracing-works/" }
@@ -53,7 +53,7 @@
     the consume side (see `newrelic-java-messaging-inbound-never-accepted`).
   status: config
   links:
-    - { title: "New Relic Java agent — instrument Kafka message queues", url: "https://docs.newrelic.com/docs/apm/agents/java-agent/instrumentation/java-agent-instrument-kafka-message-queues/" }
+    - { title: "New Relic Java agent: instrument Kafka message queues", url: "https://docs.newrelic.com/docs/apm/agents/java-agent/instrumentation/java-agent-instrument-kafka-message-queues/" }
     - { title: "kafka-clients-spans-0.11.0.0 instrumentation module", url: "https://github.com/newrelic/newrelic-java-agent/tree/main/instrumentation/kafka-clients-spans-0.11.0.0" }
 
 - id: newrelic-java-messaging-inbound-never-accepted
@@ -71,7 +71,7 @@
     (`http->rabbitmq`, `grpc->rabbitmq` pass).
 
     Mechanism found in source: the agent has only `rabbit-amqp-2.7.0/5.0.0` and
-    `spring-kafka` modules — no spring-rabbit module at all. DT accept is woven
+    `spring-kafka` modules (no spring-rabbit module at all). DT accept is woven
     around `Consumer.handleDelivery` inside a transaction on the AMQP connection
     thread, while spring-rabbit's listener container processes the message on a
     different thread, outside that transaction. The Kafka consumer never
@@ -79,7 +79,7 @@
 
     Workaround: in the listener, start a transaction with the New Relic agent
     API and accept the message headers into it manually. No upstream issue
-    covers either gap — filing candidate.
+    covers either gap (filing candidate).
   status: open
   links:
     - { title: "newrelic-java-agent rabbit-amqp-5.0.0 Consumer_Instrumentation.java", url: "https://github.com/newrelic/newrelic-java-agent/blob/main/instrumentation/rabbit-amqp-5.0.0/src/main/java/com/rabbitmq/client/Consumer_Instrumentation.java" }
@@ -102,8 +102,8 @@
 
     Empirically confirmed: rerunning with
     `NEW_RELIC_FEATURE_FLAG_KAFKAJS_INSTRUMENTATION=true` flips all seven Kafka
-    boundaries to pass (W3C headers both directions) — 16/16, one environment
-    variable apart. Run archived at
+    boundaries to pass (W3C headers both directions), which gives 16/16 with
+    one environment variable changed. Run archived at
     `results/experiments/newrelic-node-kafkajs-flag.json`.
   status: config
   links:
@@ -127,19 +127,19 @@
     visible bug in `nrsarama/producer.go`: it builds a carrier whose `Set` would
     copy headers into `msg.Headers`, but then calls
     `txn.InsertDistributedTraceHeaders(carrier.Header)` on the plain embedded
-    `http.Header` — bypassing `Set`, so the DT headers land in a discarded map
+    `http.Header`, bypassing `Set`, so the DT headers land in a discarded map
     and never reach the Kafka message.
 
     The consumer side (`nrsarama/consumer.go`) never calls
     `AcceptDistributedTraceHeaders` either (it even calls *Insert* on the
     consumed headers), and neither does the official example; the relay's manual
-    accept on consume is why `kafka->http/grpc/rabbitmq` pass here — that went
-    beyond the documented flow.
+    accept on consume, which went beyond the documented flow, is why
+    `kafka->http/grpc/rabbitmq` pass here.
 
     Workaround: call `txn.InsertDistributedTraceHeaders` yourself into a carrier
     that writes `msg.Headers`, and accept manually on consume. Neither bug is
-    reported upstream (only the original 2019/2020 feature requests #98/#160) —
-    strong filing candidates.
+    reported upstream (only the original 2019/2020 feature requests #98/#160);
+    both are strong filing candidates.
   status: open
   links:
     - { title: "go-agent nrsarama/producer.go", url: "https://github.com/newrelic/go-agent/blob/master/v3/integrations/nrsarama/producer.go" }
@@ -167,9 +167,10 @@
     The compatibility docs' "7.1.2 verified" claim refers to the hybrid-agent
     path (#2885: "RabbitMQ 7+ versions are supported with the new hybrid agent
     feature in agent versions 10.49.0+"), which picks up the client's native
-    `ActivitySource` — but it is disabled by default and, per New Relic's docs,
+    `ActivitySource`, but it is disabled by default and, per New Relic's docs,
     "Distributed tracing works differently (span links vs. parent/child
-    relationships)". Default config: dead, exactly as measured.
+    relationships)". With the default configuration the RabbitMQ legs are dead,
+    as measured.
 
     What a user can do: enable the hybrid agent (accepting links rather than
     continuity), pin RabbitMQ.Client <7, or insert/accept DT headers manually
@@ -240,8 +241,8 @@
     injects nothing; `kafka->kafka` and `rabbitmq->kafka` additionally fail on
     the consume side (see `newrelic-php-cli-consumers-never-accept`).
 
-    Docker footgun worth knowing: `newrelic-install` symlinks the extension into
-    the extracted tarball directory by default — deleting the tarball leaves a
+    Docker footgun: `newrelic-install` symlinks the extension into the
+    extracted tarball directory by default. Deleting the tarball leaves a
     dangling symlink and a silently uninstrumented app; build with
     `NR_INSTALL_USE_CP_NOT_LN=1`.
   status: open
