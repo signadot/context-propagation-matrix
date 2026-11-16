@@ -1,4 +1,4 @@
-# Datadog — root causes for the non-pass cells of datadog-* variants.
+# Datadog: root causes for the non-pass cells of datadog-* variants.
 #
 # Causes shared with other tools live in cross-cutting.yaml: PHP gRPC server
 # absence (grpc->* undelivered), PHP gRPC client (no instrumentation in any
@@ -20,8 +20,8 @@
     With `DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage` (and with
     agent defaults), dd-trace-java 1.65.1 propagates W3C `baggage` on
     `http->http` only. `traceparent`, `tracestate`, `ot-baggage-*` and
-    `x-datadog-*` cross all 16 boundaries — the trace survives, the baggage does
-    not, which makes the failure invisible to trace-waterfall debugging.
+    `x-datadog-*` cross all 16 boundaries. The trace survives and the baggage
+    does not, which makes the failure invisible to trace-waterfall debugging.
 
     Root cause: Kafka/AMQP producer and non-HTTP client instrumentations call
     `defaultPropagator().inject(span, ...)`. Baggage lives on the thread-local
@@ -39,7 +39,7 @@
     boundaries in this agent, or inject `baggage` manually at messaging and gRPC
     call sites. Upstream fix: inject from `Context.current()` at the messaging
     and gRPC inject sites. Only the Kafka case is reported (#11286); the gRPC
-    and RabbitMQ measurements appear unreported — filing candidate.
+    and RabbitMQ measurements appear unreported (filing candidate).
   status: open
   links:
     - { title: "dd-trace-java #11286", url: "https://github.com/DataDog/dd-trace-java/issues/11286" }
@@ -65,7 +65,7 @@
     way in PR #7434 "to prevent any unexpected changes to users' kafka tracing".
 
     Setting `DD_KAFKA_PROPAGATION_ENABLED=true` turns on full W3C injection
-    including baggage — the `datadog-python-kafkaprop` variant measures this and
+    including baggage. The `datadog-python-kafkaprop` variant measures this and
     passes `http->kafka` and `grpc->kafka`. The consume side remains broken with
     the flag on (see `datadog-python-kafka-consume-no-activation`).
   status: config
@@ -126,8 +126,7 @@
     `rabbitmq->rabbitmq`) nothing is. Workaround: inject into message properties
     on publish and use the same manual
     `tracer.context_provider.activate(Propagator.extract(...))` pattern as the
-    Kafka workaround in the consumer callback. Uninstrumented library ⇒ silent
-    total loss.
+    Kafka workaround in the consumer callback.
   status: open
   links:
     - { title: "Datadog Python compatibility docs", url: "https://docs.datadoghq.com/tracing/trace_collection/compatibility/python/" }
@@ -146,12 +145,12 @@
     dd-trace-py's `propagation/http.py` handles `ot-baggage-*` only when
     `config._propagation_http_baggage_enabled` is true. The flag
     `DD_TRACE_PROPAGATION_HTTP_BAGGAGE_ENABLED` defaults to False; it was added
-    in v2.4.0 (PR #6072) explicitly "to have baggage item support … compatible
+    in v2.4.0 (PR #6072) "to have baggage item support … compatible
     with other language DataDog tracing libs e.g. java, nodejs". The other
     historical `ot-baggage` path, the OpenTracing bridge, was removed in v3.0.0.
 
-    The seeded `ot-baggage-*` header is therefore ignored — neither extracted nor
-    re-emitted — on all 16 boundaries. The values still flow via W3C `baggage`
+    The seeded `ot-baggage-*` header is therefore ignored (neither extracted nor
+    re-emitted) on all 16 boundaries. The values still flow via W3C `baggage`
     where that works. Enabling the flag is expected to restore the header on
     HTTP; the harness has not measured the flag, and whether it applies to
     non-HTTP carriers is not covered by our references. Datadog's propagation
@@ -179,17 +178,17 @@
     dd-trace-java, dd-trace-js and dd-trace-go carry `ot-baggage-*` across all
     16 boundaries; these four tracers ignore the seeded header (not extracted,
     not re-emitted). Datadog's propagation reference lists the styles `datadog`,
-    `tracecontext`, `b3single`, `b3multi`, `baggage`, `none` — `ot-baggage`
+    `tracecontext`, `b3single`, `b3multi`, `baggage`, `none`; `ot-baggage`
     appears nowhere, so the headers the first group emits are legacy behaviour
     of their `datadog` style rather than a configurable format.
 
     Per tracer: dd-trace-rb removed OpenTracing (and with it `ot-baggage-*`) in
-    2.0 (PR #3443; maintainer confirmation in #4055 — W3C baggage landed later in
-    2.13.0 via #4493/#4505). dd-trace-dotnet never had it — a code search for
+    2.0 (PR #3443; maintainer confirmation in #4055; W3C baggage landed later in
+    2.13.0 via #4493/#4505). dd-trace-dotnet never had it: a code search for
     `ot-baggage` returns zero results. datadog-opentelemetry (Rust) has no
     `ot-baggage-*` style. dd-trace-php *can* emit `ot-baggage-*` in some
     configurations (#3614, nginx rejecting `ot-baggage-true-client-ip`), so
-    "never emits" would overstate — but at 1.25.0 with the harness configuration
+    "never emits" would overstate, but at 1.25.0 with the harness configuration
     it measured absent on every delivered boundary.
 
     The values still flow via W3C `baggage` wherever that header works for the
@@ -229,7 +228,7 @@
     tags, so the cells here contradict the first claim directly; the second is
     contradicted by the merged PR #223.
 
-    What a user can do: on 0.4.0+ nothing — baggage is on by default (set
+    What a user can do: on 0.4.0+ nothing; baggage is on by default (set
     `DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext` to turn it off). On 0.3.x
     there is no flag to enable it; upgrade. The legacy `ot-baggage-*` headers
     are a separate matter (`datadog-ot-baggage-not-implemented`).
@@ -260,7 +259,7 @@
 
     Workaround: inject the trace context into message headers on publish and
     continue the trace from them in the consumer block yourself. No feature
-    request for bunny exists upstream at all — filing candidate. Same class as
+    request for bunny exists upstream at all (filing candidate). Same class as
     dd-trace-py/pika: canonical client, zero coverage.
   status: open
   links:
@@ -280,7 +279,7 @@
     `kafka->*` starts a new trace and baggage is gone. The mechanism is visible
     in `KafkaIntegration.php`: the consume hook opens a new trace root, attaches
     the extracted headers to *that span*, and calls `close_span()` inside the
-    `consume()` call itself — before application code ever sees the message.
+    `consume()` call itself, before application code ever sees the message.
 
     `DD_TRACE_KAFKA_DISTRIBUTED_TRACING` defaults to true (`configuration.h`), so
     the gap is the scoping, not the flag. The historical rdkafka request (#639)
@@ -290,7 +289,7 @@
     the trace from them manually before outbound calls. Upstream fix: keep the
     consume span (and the extracted context) active until the application has
     processed the message. No upstream issue reports that consumed Kafka context
-    does not reach post-consume user code — filing candidate.
+    does not reach post-consume user code (filing candidate).
   status: open
   links:
     - { title: "dd-trace-php KafkaIntegration.php", url: "https://github.com/DataDog/dd-trace-php/blob/master/src/DDTrace/Integrations/Kafka/KafkaIntegration.php" }
@@ -325,7 +324,7 @@
     context-carrying producer API, or weaver support for goroutine-local context
     at sites with no ctx parameter. A related operational note: `orchestrion
     pin` prints a spurious "removing unnecessary import" warning against the
-    published `all/v2` module; cosmetic, build unaffected — filing candidate.
+    published `all/v2` module; cosmetic, build unaffected (filing candidate).
   status: open
   links:
     - { title: "Orchestrion", url: "https://github.com/DataDog/orchestrion" }

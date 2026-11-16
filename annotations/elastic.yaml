@@ -1,4 +1,4 @@
-# Elastic APM — root causes for the non-pass cells of elastic-* variants.
+# Elastic APM: root causes for the non-pass cells of elastic-* variants.
 #
 # The Java agent (1.56.0) is the only non-OTel agent to carry traceparent,
 # tracestate and W3C baggage across all 16 boundaries; its only non-pass cells
@@ -22,7 +22,7 @@
     moment"), and `apmot/span.go` states "SetBaggageItem is a no-op; we do not
     support baggage" (`apmot/doc.go`: "Things not implemented by this tracer:
     binary propagation format, baggage, logging"). A repo-wide search hits
-    baggage only in the OpenTracing bridge — there is no W3C baggage code.
+    baggage only in the OpenTracing bridge; there is no W3C baggage code.
 
     This contradicts Elastic's own agent spec ("Agents MUST parse, validate, and
     attach the `baggage` header according to the W3C specification"). A user who
@@ -33,7 +33,7 @@
     - { title: "apm-agent-go #537 (closed not-planned)", url: "https://github.com/elastic/apm-agent-go/issues/537" }
     - { title: "apmot/span.go (SetBaggageItem is a no-op)", url: "https://github.com/elastic/apm-agent-go/blob/main/module/apmot/span.go#L127-L136" }
     - { title: "apmot/doc.go", url: "https://github.com/elastic/apm-agent-go/blob/main/module/apmot/doc.go" }
-    - { title: "Elastic agent spec — distributed tracing", url: "https://github.com/elastic/apm/blob/main/specs/agents/tracing-distributed-tracing.md" }
+    - { title: "Elastic agent spec: distributed tracing", url: "https://github.com/elastic/apm/blob/main/specs/agents/tracing-distributed-tracing.md" }
 
 - id: elastic-agents-no-w3c-baggage
   title: "Elastic Node, Python, Ruby and PHP agents do not propagate W3C baggage on any boundary"
@@ -62,8 +62,8 @@
     these agents.
   status: open
   links:
-    - { title: "Elastic agent spec — distributed tracing", url: "https://github.com/elastic/apm/blob/main/specs/agents/tracing-distributed-tracing.md" }
-    - { title: "Elastic Node.js agent — distributed tracing docs", url: "https://www.elastic.co/docs/reference/apm/agents/nodejs/distributed-tracing" }
+    - { title: "Elastic agent spec: distributed tracing", url: "https://github.com/elastic/apm/blob/main/specs/agents/tracing-distributed-tracing.md" }
+    - { title: "Elastic Node.js agent: distributed tracing docs", url: "https://www.elastic.co/docs/reference/apm/agents/nodejs/distributed-tracing" }
 
 - id: elastic-node-amqplib-not-instrumented
   title: "elastic-apm-node does not instrument amqplib; RabbitMQ legs carry nothing"
@@ -85,8 +85,8 @@
     start the consumer transaction with the received `traceparent`.
   status: open
   links:
-    - { title: "Elastic Node.js agent — supported technologies", url: "https://www.elastic.co/docs/reference/apm/agents/nodejs/supported-technologies" }
-    - { title: "Elastic Node.js agent — distributed tracing docs", url: "https://www.elastic.co/docs/reference/apm/agents/nodejs/distributed-tracing" }
+    - { title: "Elastic Node.js agent: supported technologies", url: "https://www.elastic.co/docs/reference/apm/agents/nodejs/supported-technologies" }
+    - { title: "Elastic Node.js agent: distributed tracing docs", url: "https://www.elastic.co/docs/reference/apm/agents/nodejs/distributed-tracing" }
     - { title: "apm-agent-nodejs #1188", url: "https://github.com/elastic/apm-agent-nodejs/issues/1188" }
     - { title: "apm-agent-nodejs #1791", url: "https://github.com/elastic/apm-agent-nodejs/issues/1791" }
 
@@ -103,15 +103,15 @@
     `tracestate` entries: the outbound `tracestate` header emitted after a gRPC
     hop is the literal string `tracestate`. The root cause is a one-line bug in
     `elasticapm/contrib/grpc/server_interceptor.py` (v6.26.2, lines 66–73):
-    `elif metadata.key == "tracestate": tracestate = metadata.key` — the header
+    `elif metadata.key == "tracestate": tracestate = metadata.key`. The header
     *name* is assigned instead of its value. Still unfixed on main (file last
     touched Oct 2023).
 
-    Bonus finding for the same report: the async variant
+    Additional finding for the same report: the async variant
     (`async_server_interceptor.py`) never reads `invocation_metadata` at all, so
-    the async gRPC server path does not extract trace context, period.
+    the async gRPC server path does not extract trace context.
 
-    Unreported upstream — filing candidate with the one-line fix
+    Unreported upstream; filing candidate with the one-line fix
     (`metadata.key` → `metadata.value`). This is the only tracestate corruption
     observed among all tracers that continued a trace.
   status: open
@@ -131,7 +131,7 @@
     The Python supported-technologies page lists `kafka-python` (>=2.0,<3) as
     its only messaging client; confluent-kafka and pika appear nowhere. On
     elastic-apm 6.26.2 nothing is injected into produced Kafka records or
-    published AMQP messages, and consumers start no transaction — so even the
+    published AMQP messages, and consumers start no transaction, so even the
     outbound HTTP/gRPC calls after a consume carry no headers at all (absent,
     not a new trace).
 
@@ -142,7 +142,7 @@
     on produce/publish.
   status: open
   links:
-    - { title: "Elastic Python agent — supported technologies", url: "https://www.elastic.co/docs/reference/apm/agents/python/supported-technologies" }
+    - { title: "Elastic Python agent: supported technologies", url: "https://www.elastic.co/docs/reference/apm/agents/python/supported-technologies" }
     - { title: "apm-agent-python #678 (RabbitMQ request, open since 2019)", url: "https://github.com/elastic/apm-agent-python/issues/678" }
 
 - id: elastic-dotnet-kafka-profiler-deployment-only
@@ -165,7 +165,7 @@
     Confluent.Kafka has no native `ActivitySource` for the agent's OpenTelemetry
     bridge to pick up, so Kafka measures fully absent: `*->kafka` injects
     nothing and `kafka->*` starts a new trace. (RabbitMQ trace context still
-    flows via RabbitMQ.Client 7.x's native ActivitySource — see
+    flows via RabbitMQ.Client 7.x's native ActivitySource; see
     `elastic-dotnet-rabbitmq-native-no-baggage` for the baggage half.)
 
     Workaround: inject/extract `traceparent`/`tracestate` manually around
@@ -186,9 +186,9 @@
   cause: "The Elastic agent has no RabbitMQ.Client 7 instrumentation; the client's own default consume path restores trace id and tracestate only, never baggage."
   explanation: |
     `*->rabbitmq` injection and `rabbitmq->*` continuation both pass for
-    `traceparent`/`tracestate` on elastic-apm-dotnet 1.36.0 — not because the
-    agent instruments RabbitMQ (its own instrumentation is profiler-only and
-    caps at `RabbitMQ.Client <7.0.0`), but because RabbitMQ.Client 7.x ships
+    `traceparent`/`tracestate` on elastic-apm-dotnet 1.36.0. The agent's own
+    RabbitMQ instrumentation is profiler-only and caps at
+    `RabbitMQ.Client <7.0.0`; these legs pass because RabbitMQ.Client 7.x ships
     native `ActivitySource` instrumentation (PR #1261) that the agent's
     OpenTelemetry bridge picks up.
 
@@ -228,11 +228,10 @@
     the outbound leg.
 
     What a user can do: wire the client interceptor into every stub. Nothing
-    documented covers the server side. The accurate claim is "no zero-code
-    gRPC", not "no gRPC at all".
+    documented covers the server side.
   status: open
   links:
-    - { title: "Elastic Ruby agent — supported technologies", url: "https://www.elastic.co/docs/reference/apm/agents/ruby/supported-technologies" }
+    - { title: "Elastic Ruby agent: supported technologies", url: "https://www.elastic.co/docs/reference/apm/agents/ruby/supported-technologies" }
 
 - id: elastic-ruby-no-client-kafka-or-bunny
   title: "Elastic Ruby: no bunny or client-level Kafka instrumentation, and the Racecar spy never reads headers"
@@ -260,7 +259,7 @@
     `trace_parent`.
   status: open
   links:
-    - { title: "Elastic Ruby agent — supported technologies", url: "https://www.elastic.co/docs/reference/apm/agents/ruby/supported-technologies" }
+    - { title: "Elastic Ruby agent: supported technologies", url: "https://www.elastic.co/docs/reference/apm/agents/ruby/supported-technologies" }
     - { title: "apm-agent-ruby racecar.rb spy (no trace_parent)", url: "https://github.com/elastic/apm-agent-ruby/blob/main/lib/elastic_apm/spies/racecar.rb" }
     - { title: "apm-agent-ruby PR #1284", url: "https://github.com/elastic/apm-agent-ruby/pull/1284" }
 

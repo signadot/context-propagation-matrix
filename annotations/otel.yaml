@@ -1,4 +1,4 @@
-# OpenTelemetry — root causes for the non-pass cells of otel-* variants.
+# OpenTelemetry: root causes for the non-pass cells of otel-* variants.
 #
 # Causes shared with other tools live in cross-cutting.yaml: PHP gRPC server
 # absence (grpc->* undelivered), PHP gRPC client (no instrumentation in any
@@ -19,12 +19,12 @@
     The `poll()` wrapper in `opentelemetry-instrumentation-confluent-kafka` (0.65b0)
     calls `_create_new_consume_span`, which does `start_span(..., links=links)`
     with the extracted producer context as a *link*. The package never calls
-    `opentelemetry.context.attach()`, so the extracted context — and the baggage
-    riding on it — is never made current for the code that processes the message.
+    `opentelemetry.context.attach()`, so the extracted context, and the baggage
+    riding on it, is never made current for the code that processes the message.
     Every `kafka->*` leg therefore starts a new trace, and `baggage` and the
     foreign `tracestate` entry are gone. All eight RabbitMQ boundaries pass via
     `opentelemetry-instrumentation-pika`, whose per-message callback wrapper
-    extracts *and attaches* before invoking the handler — the failure is a
+    extracts *and attaches* before invoking the handler. The failure is a
     per-instrumentation design choice, not a language limitation.
 
     Reported at least four times since 2023 across confluent-kafka, kafka-python
@@ -36,7 +36,7 @@
     yourself before making outbound calls. Upstream fix: attach the extracted
     context (or make the consume span current) in the instrumentation, as the
     pika instrumentation already does. No upstream issue names the *baggage*
-    loss specifically — filing candidate.
+    loss specifically (filing candidate).
   status: open
   links:
     - { title: "opentelemetry-python-contrib #1674", url: "https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1674" }
@@ -71,7 +71,7 @@
     Applications that need continuity or baggage across a Kafka hop must extract
     the record headers and set the context themselves before making outbound
     calls. All `*->kafka` injection, baggage included, works. No upstream issue
-    names the Kafka *baggage* loss — filing candidate.
+    names the Kafka *baggage* loss (filing candidate).
   status: by-design
   links:
     - { title: "opentelemetry-dotnet-instrumentation #3434", url: "https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/issues/3434" }
@@ -94,7 +94,7 @@
     On `rabbitmq->*` the trace continues (`traceparent` and `tracestate` pass) but
     `baggage` is dropped. The propagation here is RabbitMQ.Client's own, not
     OTel's: 7.x ships native `ActivitySource` instrumentation (PR #1261) whose
-    `DefaultContextExtractor` calls `ExtractTraceIdAndState(...)` only — the word
+    `DefaultContextExtractor` calls `ExtractTraceIdAndState(...)` only; the word
     "baggage" does not appear in the propagation code.
 
     Baggage was addressed only via an opt-in companion package (PR #1528: "Making
@@ -159,19 +159,18 @@
   explanation: |
     The contrib gRPC instrumentation (donated from
     hibachrach/opentelemetry-instrumentation-grpc via PR #1164, Sep 2024,
-    answering a request open since 2020) is explicitly client-only — its README
-    warns "Right now, the gem only instruments outbound requests to gRPC
-    services". It *is* bundled in `opentelemetry-instrumentation-all`, so the
-    accurate statement is "loaded but client-only", and even client injection
-    requires manually wiring the interceptor into stubs. Server spans exist only
-    for the Gruf framework.
+    answering a request open since 2020) is client-only: its README warns
+    "Right now, the gem only instruments outbound requests to gRPC services".
+    It *is* bundled in `opentelemetry-instrumentation-all`, so it is loaded but
+    client-only, and even client injection requires manually wiring the
+    interceptor into stubs. Server spans exist only for the Gruf framework.
 
     With no server-side extraction, `grpc->*` legs run with no incoming context;
     outbound calls start a fresh trace and baggage/tracestate are lost.
 
     Workaround: add a server interceptor that extracts from the call metadata and
     attaches the context. No upstream issue requests server-side `grpc` gem
-    support — filing candidate.
+    support (filing candidate).
   status: open
   links:
     - { title: "opentelemetry-ruby-contrib gRPC README (client-only warning)", url: "https://github.com/open-telemetry/opentelemetry-ruby-contrib/blob/main/instrumentation/grpc/README.md" }
@@ -196,7 +195,7 @@
     expansion was disabled to prevent a segfault (PR #84, formalised in PR #120;
     original crash opentelemetry-php #1155). A naive
     `producev($partition, 0, $payload)` therefore gets no headers at all, while
-    `producev($partition, 0, $payload, null, [])` — an explicit empty array —
+    `producev($partition, 0, $payload, null, [])` (an explicit empty array)
     makes injection (baggage included) work. Verified empirically both ways; the
     drop produced no error_log line in our runs.
 
@@ -212,8 +211,8 @@
     since run-2026-11-09.6 for a separate reason,
     `otel-php-rdkafka-sem-conv-constants`: both hooks of the instrumentation
     now throw before they reach the propagator. The ini setting has not been
-    re-measured with those packages. No upstream issue exists — filing
-    candidate against open-telemetry/opentelemetry-php.
+    re-measured with those packages. No upstream issue exists (filing
+    candidate against open-telemetry/opentelemetry-php).
   status: config
   links:
     - { title: "ExtRdKafkaInstrumentation.php", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/blob/main/src/Instrumentation/ExtRdKafka/src/ExtRdKafkaInstrumentation.php" }
@@ -275,7 +274,7 @@
     Workaround: require `open-telemetry/sem-conv:1.44.0` beside the
     instrumentation, or stay on `opentelemetry-auto-ext-rdkafka` 0.0.5.
     opentelemetry-php-contrib `main` still read the constants on 2026-11-11
-    and we found no upstream issue — filing candidate.
+    and we found no upstream issue (filing candidate).
   status: open
   links:
     - { title: "contrib-auto-ext-rdkafka 0.1.0 ExtRdKafkaInstrumentation.php", url: "https://github.com/opentelemetry-php/contrib-auto-ext-rdkafka/blob/0.1.0/src/ExtRdKafkaInstrumentation.php" }
@@ -302,13 +301,13 @@
     HTTP client is instrumented (`rabbitmq->http`) it injects a fresh trace.
 
     Consumer hooks are structurally hard in PHP (opentelemetry-php #937: "You
-    cannot hook an anonymous function, only methods" — consume callbacks are
+    cannot hook an anonymous function, only methods"; consume callbacks are
     closures).
 
     Workaround: use the OTel PHP propagator API to inject into the message's
     application headers on publish and extract/attach in the consume callback.
-    No upstream feature request for php-amqplib exists — filing candidate
-    (php-amqplib is the dominant PHP AMQP client).
+    No upstream feature request for php-amqplib exists (filing candidate;
+    php-amqplib is the dominant PHP AMQP client).
   status: open
   links:
     - { title: "opentelemetry-php-contrib instrumentation tree", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/tree/main/src/Instrumentation" }
@@ -338,10 +337,10 @@
     (in auto-instrumentations-node 0.47.x) declared `>=0.5.5` with no upper
     bound, so it patched 2.x and happened to work. opentelemetry-js-contrib
     PR #2196 "standardize supported versions and set upper bound limit"
-    (merged 20 June 2024) capped it at `>=0.5.5 <1` — a guard against
-    patching an untested major, long before amqplib 1.0 (March 2026)
-    existed — shipped in instrumentation-amqplib 0.39.0 /
-    auto-instrumentations-node 0.48.0 on 4 July 2024. PR #3491 raised it to
+    (merged 20 June 2024) capped it at `>=0.5.5 <1`, shipped in
+    instrumentation-amqplib 0.39.0 / auto-instrumentations-node 0.48.0 on
+    4 July 2024. The cap was a guard against patching an untested major,
+    long before amqplib 1.0 (March 2026) existed. PR #3491 raised it to
     `<2` for amqplib 1.x (April 2026), and PR #3573 "support amqplib@2"
     (merged 17 June 2026) to `<3`, shipped in 0.67.0 /
     auto-instrumentations-node 0.78.0 on 3 July 2026.
