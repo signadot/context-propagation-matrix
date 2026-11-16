@@ -26,7 +26,9 @@ directly; this harness only observes their behaviour.
 - `NEW_RELIC_LICENSE_KEY` is read from a gitignored `.env` locally and from a
   repository secret in CI. It is never written to results files; results only
   record the *names* of configuration variables and non-secret values.
-- CI workflows that need the secret run only on the default branch and on
-  `workflow_dispatch`, never on pull requests from forks.
+- CI workflows that need the secret run on the default branch, on
+  `workflow_dispatch`, and on pull requests opened from a branch of this
+  repository (which takes write access). Pull requests from forks never
+  receive it: their New Relic variants are skipped.
 - If you believe a key has been committed, rotate it in the New Relic UI
   first, then open an issue so we can purge history.
