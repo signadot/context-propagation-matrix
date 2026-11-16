@@ -33,7 +33,7 @@ schema_version: 1
 # Adding a variant, a tool or a language does not change the contract. Every
 # result records the value it was measured under, and keeps it when a later
 # run carries the measurement over.
-matrix_version: 1
+matrix_version: 2
 
 tools:
   otel:
@@ -142,7 +142,7 @@ headers:
     display_name: "W3C baggage"
     wire_name: baggage
     raw_field: baggage
-    question: "Did the seeded `sd-routing-key` baggage member arrive intact?"
+    question: "Did the seeded `routing-key` baggage member arrive intact?"
     success: [propagated]
     partial: [partial]
     spec: https://www.w3.org/TR/baggage/
@@ -150,7 +150,7 @@ headers:
     display_name: "W3C tracestate"
     wire_name: tracestate
     raw_field: tracestate
-    question: "Did the seeded foreign vendor entry (`sdtest=v1`) survive?"
+    question: "Did the seeded foreign vendor entry (`cptest=v1`) survive?"
     success: [preserved]
     partial: [present_entry_lost]
     spec: https://www.w3.org/TR/trace-context/#tracestate-header
@@ -165,9 +165,9 @@ headers:
     spec: https://www.w3.org/TR/trace-context/#traceparent-header
   ot-baggage:
     display_name: "ot-baggage-* (OpenTracing legacy)"
-    wire_name: ot-baggage-sd-routing-key
+    wire_name: ot-baggage-routing-key
     raw_field: ot_baggage
-    question: "Did `ot-baggage-sd-routing-key` arrive with the seeded value?"
+    question: "Did `ot-baggage-routing-key` arrive with the seeded value?"
     success: [propagated]
     partial: [partial]
     spec: https://github.com/opentracing/specification/blob/master/rfc/trace_identifiers.md

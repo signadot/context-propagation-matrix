@@ -65,7 +65,7 @@ APIs on the request path**. The only exceptions are the `in-code` variants
 wrapper/carrier APIs are the *only* way to propagate; those relays say so in
 their README and the registry marks them `setup_tier: in-code`.
 
-The driver seeds a non-tracing canary header (`x-sd-canary`) on every hop and
+The driver seeds a non-tracing canary header (`x-cp-canary`) on every hop and
 fails the run if it ever arrives at the sink — a relay that proxies headers
 would make every cell green and every cell meaningless.
 

@@ -486,7 +486,7 @@ contributes nothing on any protocol.
   uninstrumented app; build with `NR_INSTALL_USE_CP_NOT_LN=1`.
 
 **`tracestate` hygiene is perfect**: every NR agent that continued a trace
-appended its `@nr` entry and preserved our foreign `sdtest=v1` entry — no
+appended its `@nr` entry and preserved our foreign tracestate entry — no
 corruption in 112 delivered tests.
 
 ## 10. Rust: manual-by-design, and both tools ace it
@@ -653,7 +653,7 @@ a runtime upgrade. Harness runs used .NET 8.
   continued a trace — including all seven New Relic agents, which append
   their `@nr` entry alongside foreign entries — with one exception:
   elastic-apm Python's gRPC path (§8).
-- **Canary**: `x-sd-canary` never leaked in any of the 752 recorded tests
+- **Canary**: the control header never leaked in any of the 752 recorded tests
   (624 instrumented + 128 baseline) — relays re-emit, not proxy.
 
 ## 14. Cross-cutting conclusions
