@@ -118,6 +118,11 @@ jobs:
       # list runs newest first, so the choice is tested. Offline.
       - name: fetch-latest.sh names the newest run
         run: scripts/test-fetch-latest.sh
+      # matrix.yml and backtest.yml publish through this. GitHub sometimes
+      # refuses to tag the measured commit, which cannot be provoked from a
+      # pull request, so the refusal is played by a stand-in `gh`. Offline.
+      - name: create-release.sh publishes when the measured commit cannot be tagged
+        run: scripts/test-create-release.sh
 
   plan:
     name: "Which relays does this change affect?"
