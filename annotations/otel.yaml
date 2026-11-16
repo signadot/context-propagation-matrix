@@ -35,8 +35,8 @@
     Workaround: after `poll()`, run `context.attach(propagate.extract(headers))`
     yourself before making outbound calls. Upstream fix: attach the extracted
     context (or make the consume span current) in the instrumentation, as the
-    pika instrumentation already does. No upstream issue names the *baggage*
-    loss specifically (filing candidate).
+    pika instrumentation already does. We found no upstream issue that names
+    the *baggage* loss specifically.
   status: open
   links:
     - { title: "opentelemetry-python-contrib #1674", url: "https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1674" }
@@ -70,8 +70,8 @@
 
     Applications that need continuity or baggage across a Kafka hop must extract
     the record headers and set the context themselves before making outbound
-    calls. All `*->kafka` injection, baggage included, works. No upstream issue
-    names the Kafka *baggage* loss (filing candidate).
+    calls. All `*->kafka` injection, baggage included, works. We found no
+    upstream issue that names the Kafka *baggage* loss.
   status: by-design
   links:
     - { title: "opentelemetry-dotnet-instrumentation #3434", url: "https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/issues/3434" }
@@ -169,8 +169,8 @@
     outbound calls start a fresh trace and baggage/tracestate are lost.
 
     Workaround: add a server interceptor that extracts from the call metadata and
-    attaches the context. No upstream issue requests server-side `grpc` gem
-    support (filing candidate).
+    attaches the context. We found no upstream issue requesting server-side
+    `grpc` gem support.
   status: open
   links:
     - { title: "opentelemetry-ruby-contrib gRPC README (client-only warning)", url: "https://github.com/open-telemetry/opentelemetry-ruby-contrib/blob/main/instrumentation/grpc/README.md" }
@@ -202,8 +202,8 @@
     Escape hatch, documented only in the extension repo's README:
     `opentelemetry.allow_stack_extension=On`. With that ini set, the naive call
     injects traceparent, tracestate and baggage and `http->kafka` /
-    `kafka->kafka` flip to pass (run archived at
-    `results/experiments/otel-php-allow-stack-extension.json`). Neither the
+    `kafka->kafka` flip to pass (the run is archived in the harness repository
+    as `results/experiments/otel-php-allow-stack-extension.json`). Neither the
     argument requirement nor the ini setting is mentioned in the ExtRdKafka README.
 
     This asymmetry is outbound-only: with the packages of that run (2026-09-06),
@@ -261,9 +261,10 @@
     which 1.45.0 still defines. With 0.1.0 and sem-conv 1.44.0 they pass. The
     other 61 cells are the same in all three builds, and putting the slim or
     the curl instrumentation back to its previous release changes nothing.
-    Runs archived at `results/experiments/otel-php-kafka-http-current.json`,
+    The three runs are archived in the harness repository under
+    `results/experiments/` (`otel-php-kafka-http-current.json`,
     `otel-php-kafka-http-rdkafka-0.0.5.json` and
-    `otel-php-kafka-http-sem-conv-1.44.0.json`; `info.libs` in each names the
+    `otel-php-kafka-http-sem-conv-1.44.0.json`); `info.libs` in each names the
     packages installed.
 
     This matrix moved from 0.0.5 to 0.1.0 on 2026-11-09. That, and not the
@@ -273,8 +274,8 @@
 
     Workaround: require `open-telemetry/sem-conv:1.44.0` beside the
     instrumentation, or stay on `opentelemetry-auto-ext-rdkafka` 0.0.5.
-    opentelemetry-php-contrib `main` still read the constants on 2026-11-11
-    and we found no upstream issue (filing candidate).
+    opentelemetry-php-contrib `main` still read the constants on 2026-11-11,
+    and we found no upstream issue about it.
   status: open
   links:
     - { title: "contrib-auto-ext-rdkafka 0.1.0 ExtRdKafkaInstrumentation.php", url: "https://github.com/opentelemetry-php/contrib-auto-ext-rdkafka/blob/0.1.0/src/ExtRdKafkaInstrumentation.php" }
@@ -306,8 +307,8 @@
 
     Workaround: use the OTel PHP propagator API to inject into the message's
     application headers on publish and extract/attach in the consume callback.
-    No upstream feature request for php-amqplib exists (filing candidate;
-    php-amqplib is the dominant PHP AMQP client).
+    We found no upstream feature request for php-amqplib, although it is the
+    dominant PHP AMQP client.
   status: open
   links:
     - { title: "opentelemetry-php-contrib instrumentation tree", url: "https://github.com/open-telemetry/opentelemetry-php-contrib/tree/main/src/Instrumentation" }

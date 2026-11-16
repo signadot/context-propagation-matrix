@@ -67,7 +67,7 @@
     compatibility tables. OpenTelemetry: the opentelemetry-php-contrib
     instrumentation tree (30 auto-instrumentations) contains no gRPC entry.
     gRPC exists in the OTel PHP ecosystem only as the OTLP *export* transport;
-    no issue proposes instrumenting `ext-grpc` client calls (filing candidate).
+    we found no issue proposing instrumentation of `ext-grpc` client calls.
     Elastic and New Relic list ext-grpc as unsupported.
 
     Workaround: add the propagation headers to the call's metadata array
@@ -114,8 +114,8 @@
     `x-datadog-*`/`traceparent` with a fresh trace-id; baggage, `ot-baggage-*`
     and the foreign tracestate entry are gone. The hand-wired `datadog-go` relay
     passes the same legs with the same library versions by following the
-    dd-trace-go contrib README (extract-and-activate in the handler). No issue
-    reports the Orchestrion sarama consume gap (filing candidate).
+    dd-trace-go contrib README (extract-and-activate in the handler). We found
+    no issue reporting the Orchestrion sarama consume gap.
 
     What a user can do: extract from the record headers and set the context in
     the consume loop/handler yourself, the one step neither weaver can see.
@@ -172,21 +172,53 @@
     - { title: "Orchestrion", url: "https://github.com/DataDog/orchestrion" }
     - { title: "Datadog Go compile-time instrumentation docs", url: "https://docs.datadoghq.com/tracing/trace_collection/automatic_instrumentation/dd_libraries/go/?tab=compiletimeinstrumentation" }
 
-- id: ot-baggage-not-implemented
-  title: "OpenTelemetry, Elastic APM and New Relic never implemented the OpenTracing-era ot-baggage-* headers"
+- id: otel-ot-baggage-not-default
+  title: "OpenTelemetry carries the OpenTracing-era ot-baggage-* headers only with the opt-in ottrace propagator"
   match:
-    - tool: [otel, elastic, newrelic]
+    - tool: otel
       header: ot-baggage
       outcome: fail
-  cause: "ot-baggage-* is a legacy OpenTracing convention; OpenTelemetry, Elastic APM and New Relic each define their propagation header set without it."
+  cause: "ot-baggage-* is a legacy OpenTracing convention. OpenTelemetry's default propagators are tracecontext and baggage; the OT Trace propagator that carries ot-baggage-* has to be selected."
   explanation: |
     The seeded `ot-baggage-routing-key` header is neither extracted nor
-    re-emitted by any OpenTelemetry, Elastic or New Relic variant on any
-    delivered boundary. None of these tools ever emitted the OpenTracing
-    header format: OpenTelemetry standardised on W3C `baggage`; Elastic's agent
-    spec defines `traceparent`, `tracestate`, `baggage` and the binary
+    re-emitted by any OpenTelemetry variant on any delivered boundary. Every
+    variant here runs the SDK's default propagator set, `tracecontext,baggage`,
+    and that set does not include the OpenTracing header format: OpenTelemetry
+    standardised on W3C `baggage`, and the same values travel there instead.
+
+    The OpenTelemetry specification does list an opt-in OT Trace propagator
+    (`OTEL_PROPAGATORS=ottrace`, marked deprecated) that reads and writes
+    `ot-tracer-traceid`, `ot-tracer-spanid`, `ot-tracer-sampled` and
+    `ot-baggage-*`, for applications migrating from OpenTracing. Several SDKs
+    ship it as a separate package; it is never in the default set, and the
+    harness has not measured it, so whether it makes these cells pass is
+    documented, not verified.
+
+    The header outlives its deprecation only in Datadog's Java, Node and Go
+    tracers, where it crosses all 16 boundaries as legacy behaviour of the
+    `datadog` style (see `datadog-ot-baggage-not-implemented` for the Datadog
+    tracers that do not carry it).
+  status: config
+  links:
+    - { title: "OpenTracing trace identifiers RFC (ot-baggage-*)", url: "https://github.com/opentracing/specification/blob/master/rfc/trace_identifiers.md" }
+    - { title: "OpenTelemetry SDK environment variables: known values for OTEL_PROPAGATORS", url: "https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/" }
+    - { title: "OpenTelemetry Java: OT Trace propagator", url: "https://github.com/open-telemetry/opentelemetry-java/tree/main/extensions/trace-propagators" }
+
+- id: ot-baggage-not-implemented
+  title: "Elastic APM and New Relic have no OpenTracing-era ot-baggage-* propagation"
+  match:
+    - tool: [elastic, newrelic]
+      header: ot-baggage
+      outcome: fail
+  cause: "ot-baggage-* is a legacy OpenTracing convention; Elastic APM and New Relic each define their propagation header set without it and offer no option that adds it."
+  explanation: |
+    The seeded `ot-baggage-routing-key` header is neither extracted nor
+    re-emitted by any Elastic or New Relic variant on any delivered boundary.
+    Neither tool writes the OpenTracing header format: Elastic's agent spec
+    defines `traceparent`, `tracestate`, `baggage` and the binary
     `elasticapmtraceparent`; New Relic's distributed-tracing model is
-    `traceparent`, `tracestate` and the vendor `newrelic` header.
+    `traceparent`, `tracestate` and the vendor `newrelic` header. Neither
+    documents a setting that adds `ot-baggage-*`.
 
     The header outlives its deprecation only in Datadog's Java, Node and Go
     tracers, where it crosses all 16 boundaries as legacy behaviour of the
