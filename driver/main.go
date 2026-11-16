@@ -62,11 +62,11 @@ func newSeed(testID string) raw.Seeded {
 		SpanID:     spanID,
 		RoutingKey: rk,
 		Headers: map[string]string{
-			"traceparent":               fmt.Sprintf("00-%s-%s-01", traceID, spanID),
-			"tracestate":                "sdtest=v1",
-			"baggage":                   fmt.Sprintf("sd-routing-key=%s,team=alpha", rk),
-			"ot-baggage-sd-routing-key": rk,
-			"x-sd-canary":               testID,
+			"traceparent":                         fmt.Sprintf("00-%s-%s-01", traceID, spanID),
+			"tracestate":                          eval.TracestateEntry,
+			"baggage":                             fmt.Sprintf("%s=%s,team=alpha", eval.RoutingKeyMember, rk),
+			"ot-baggage-" + eval.RoutingKeyMember: rk,
+			eval.CanaryHeader:                     testID,
 		},
 	}
 }
