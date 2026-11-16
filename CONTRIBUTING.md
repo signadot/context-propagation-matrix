@@ -266,6 +266,10 @@ page uses it to say what was broken in which release. Release notes for each
 - CI (`verify.yml`) runs `go vet`, `cpm validate -strict` against the latest
   published `results.json`, and boots the relays the change affects; it needs
   no secrets, so fork PRs work.
+- A run tests your branch merged with `main` as `main` was when the run was
+  created. One that starts later (held for approval, or run again) fails if
+  `main` has since changed a relay your PR changes: update the branch, and
+  the new run tests today's tree.
 - Include the relevant rows from your local `results/latest/MATRIX.md` in
   the PR description. Results themselves are gitignored and cannot be
   committed; CI measures and publishes on merge.
@@ -283,7 +287,9 @@ page uses it to say what was broken in which release. Release notes for each
   whose inputs changed since it was last measured (`cpm affected -since
   results/latest/results.json`), which covers a run that was cancelled or
   failed and merges that start no run, such as the bot's tracer bumps; a
-  6-hourly schedule does only that. Annotation-only merges go through
+  6-hourly schedule does only that. A variant whose job failed keeps its last
+  result; the run names it at the top of its release notes, and in Slack
+  when `SLACK_WEBHOOK_URL` is set. Annotation-only merges go through
   `republish.yml` instead. The Monday schedule and `workflow_dispatch` run
   the full matrix by default. Try it locally:
   `go run ./cmd/cpm affected -base origin/main`.
@@ -299,7 +305,7 @@ degrades rather than fails without them:
 |---|---|---|
 | `NEW_RELIC_LICENSE_KEY` | New Relic relays (`tool:newrelic`) | New Relic variants are skipped (they appear in `results.json` as registered but not run); every other cell is unaffected. A free-tier key is sufficient. |
 | `NETLIFY_BUILD_HOOK_URL` | `matrix.yml`, `republish.yml` and `backtest.yml` after publishing | contextpropagation.io is not rebuilt until its next scheduled build; the release itself is unaffected. |
-| `SLACK_WEBHOOK_URL` | `matrix.yml` summary step | No Slack summary is posted. |
+| `SLACK_WEBHOOK_URL` | `matrix.yml`: the summary when cells change, and a message when a variant the run was to measure has no result | Nothing is posted to Slack. A variant that cannot be built is then named only in the run's release notes and as a warning on the run's page. |
 
 The step that opens a PR marking resolved annotations fixed also needs
 *Settings → Actions → "Allow GitHub Actions to create and approve pull
