@@ -86,6 +86,15 @@ A push run publishes the latest known state of every cell: `run.partial` and
 `run.reran` in `results.json` say which variants were measured in that run,
 and each variant's `ran_at` says when its own cells were last measured.
 
+Two documents describe this step by step:
+
+- [`docs/results-pipeline.md`](docs/results-pipeline.md): from a measurement
+  to the site. The three kinds of release, what each workflow does, and what
+  the site reads.
+- [`docs/version-updates.md`](docs/version-updates.md): how versions are
+  kept current. Dependabot for the application dependencies,
+  `bump-agents.yml` for the tracers.
+
 ### Bootstrap (once, repository admin)
 
 1. In Netlify, add a build hook for the site's `main` branch and store its URL
@@ -104,6 +113,7 @@ and each variant's `ran_at` says when its own cells were last measured.
 
 ```
 DESIGN.md          the harness contract (read this first)
+docs/              how results are published, how versions are kept current
 FINDINGS.md        root causes and upstream references for notable cells
 variants.yaml      the registry: tools, languages, protocols, headers, variants
 annotations/       per-cell explanations as data (matched into results.json)

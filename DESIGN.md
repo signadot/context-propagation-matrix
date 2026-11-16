@@ -512,6 +512,11 @@ the matrix footnotes.
 
 ## Version pinning & updates
 
+[`docs/version-updates.md`](docs/version-updates.md) describes the two
+update processes step by step, and
+[`docs/results-pipeline.md`](docs/results-pipeline.md) what happens to a
+result after a merge. This section has the rules and the reasons for them.
+
 Nothing in the harness installs "latest": every dependency manifest pins
 exact versions and every curl-fetched agent is a version ARG in its
 Dockerfile, so a rebuild months from now produces the same images and the
