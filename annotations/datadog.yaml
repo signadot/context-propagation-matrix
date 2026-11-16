@@ -260,7 +260,7 @@
     Workaround: inject the trace context into message headers on publish and
     continue the trace from them in the consumer block yourself. We found no
     upstream feature request for bunny at all. Same class as dd-trace-py/pika:
-    canonical client, zero coverage.
+    the canonical client, with no integration.
   status: open
   links:
     - { title: "Datadog Ruby compatibility docs", url: "https://docs.datadoghq.com/tracing/trace_collection/compatibility/ruby/" }

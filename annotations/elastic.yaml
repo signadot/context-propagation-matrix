@@ -24,7 +24,7 @@
     binary propagation format, baggage, logging"). A repo-wide search hits
     baggage only in the OpenTracing bridge; there is no W3C baggage code.
 
-    This contradicts Elastic's own agent spec ("Agents MUST parse, validate, and
+    Elastic's own agent spec requires it ("Agents MUST parse, validate, and
     attach the `baggage` header according to the W3C specification"). A user who
     needs baggage must carry it as an application header on every hop
     themselves.

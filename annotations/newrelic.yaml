@@ -26,8 +26,8 @@
 
     An org-wide search for "baggage" across all New Relic agent repositories
     returns three unrelated hits; no feature request for W3C baggage exists in
-    any of the seven agent repos. If you route on baggage, New Relic contributes
-    nothing on any protocol; carry it as an application header yourself.
+    any of the seven agent repos. New Relic carries no baggage on any protocol;
+    an application that routes on it has to carry the header itself.
   status: by-design
   links:
     - { title: "How New Relic distributed tracing works", url: "https://docs.newrelic.com/docs/distributed-tracing/concepts/how-new-relic-distributed-tracing-works/" }
@@ -97,7 +97,7 @@
       boundary: ["kafka->*", "rabbitmq->*"]
   cause: "No spring-rabbit module: DT accept runs on the AMQP connection thread, not the listener's thread; the Kafka consumer instrumentation never accepts DT headers."
   explanation: |
-    Every messaging-inbound row is dead on newrelic-agent 9.4.0: `kafka->*` and
+    Every messaging-inbound row fails on newrelic-agent 9.4.0: `kafka->*` and
     `rabbitmq->*` outbound calls carry no headers at all (no transaction is
     active, so nothing is injected). spring-rabbit *publish* injects fine
     (`http->rabbitmq`, `grpc->rabbitmq` pass).
@@ -126,7 +126,7 @@
   cause: "feature_flags.js ships kafkajs_instrumentation: false; with it off the agent skips kafkajs entirely, so no headers are injected or accepted on Kafka."
   explanation: |
     newrelic 14.3.10 is 9/16: HTTP, gRPC and RabbitMQ pass in both directions,
-    Kafka is dead in both directions. `lib/feature_flags.js` has
+    Kafka carries nothing in either direction. `lib/feature_flags.js` has
     `kafkajs_instrumentation: false` (still false on main); with the flag off
     the agent logs "skipping instrumentation of kafkajs" and does nothing. The
     instrumentation shipped behind the flag in v11.19.0 (Jun 2024) and was never
@@ -155,7 +155,7 @@
   cause: "nrsarama calls InsertDistributedTraceHeaders on the carrier's embedded http.Header, bypassing the Set method that would copy headers into msg.Headers."
   explanation: |
     go-agent v3.44.2 is 12/16 with manual wiring per vendor docs (nrgrpc,
-    nrsarama, nramqp). All Kafka-outbound legs are dead, and the root cause is a
+    nrsarama, nramqp). All Kafka-outbound legs fail, and the root cause is a
     visible bug in `nrsarama/producer.go`: it builds a carrier whose `Set` would
     copy headers into `msg.Headers`, but then calls
     `txn.InsertDistributedTraceHeaders(carrier.Header)` on the plain embedded
@@ -190,7 +190,7 @@
   cause: "The agent instruments the classic IModel API that RabbitMQ.Client 7 removed; v7 support exists only via the default-off hybrid agent, which emits span links."
   explanation: |
     newrelic-dotnet-agent 10.54.0 injects on all `*->kafka` legs but every
-    `*->rabbitmq` leg is dead, and `rabbitmq->*` never accepts. The agent's
+    `*->rabbitmq` leg carries nothing, and `rabbitmq->*` never accepts. The agent's
     instrumented-methods list is exclusively the classic `IModel.*` surface,
     which RabbitMQ.Client 7 removed entirely; this relay uses 7.2.2's async-only
     `IChannel.BasicPublishAsync`. The v7 async instrumentation PR #2890 was
@@ -201,7 +201,7 @@
     feature in agent versions 10.49.0+"), which picks up the client's native
     `ActivitySource`, but it is disabled by default and, per New Relic's docs,
     "Distributed tracing works differently (span links vs. parent/child
-    relationships)". With the default configuration the RabbitMQ legs are dead,
+    relationships)". With the default configuration the RabbitMQ legs carry nothing,
     as measured.
 
     What a user can do: enable the hybrid agent (accepting links rather than
@@ -224,7 +224,7 @@
   cause: "After a Confluent.Kafka consume, outbound calls carry no headers at all. The measurement is consistent with the consumed record's headers never being accepted into a transaction; the agent's consume path has not been checked in source."
   explanation: |
     All `*->kafka` legs inject on newrelic-dotnet-agent 10.54.0, but every
-    `kafka->*` leg is dead: after a consume, outbound HTTP/gRPC/Kafka calls
+    `kafka->*` leg fails: after a consume, outbound HTTP/gRPC/Kafka calls
     carry no DT headers at all (no active transaction). It belongs with the
     consume-side context-activation failures seen across vendors.
 
@@ -286,8 +286,8 @@
       boundary: ["kafka->*", "rabbitmq->*"]
   cause: "The PHP agent has no rdkafka consume or php-amqplib consume instrumentation, so the CLI worker processes never start a transaction from message headers."
   explanation: |
-    On newrelic-php-agent 12.10.0.39 every `kafka->*` and `rabbitmq->*` leg is
-    dead: the long-running CLI consumer workers never accept inbound context, so
+    On newrelic-php-agent 12.10.0.39 every `kafka->*` and `rabbitmq->*` leg
+    fails: the long-running CLI consumer workers never accept inbound context, so
     outbound calls after a consume carry no headers (no transaction is active).
     php-amqplib coverage is publish-side only, and rdkafka is unsupported
     entirely.
