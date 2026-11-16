@@ -26,10 +26,12 @@ NEW_RELIC_LICENSE_KEY=... ./run.sh tool:newrelic   # New Relic agents need a (fr
 
 go run ./cmd/cpm validate          # variants.yaml ↔ docker-compose.yml ↔ annotations/
 go run ./cmd/cpm aggregate         # re-render results/latest from results/raw
+go run ./cmd/cpm gate results/latest/results.json   # what CI checks before it publishes
 ```
 
 `run.sh` starts Kafka, RabbitMQ and the sink, builds the relay image for each
-variant, runs the driver (16 hops), writes `results/raw/<variant>.json`, and
+variant, runs the driver (one hop per boundary), writes
+`results/raw/<variant>.json`, and
 finally aggregates everything into `results/latest/results.json` and
 `MATRIX.md`. Look at `results/latest/MATRIX.md` for your rows.
 
@@ -38,6 +40,18 @@ Results are never committed: `results/raw`, `results/latest` and
 (`run-YYYY-MM-DD[.N]`) carrying `results.json`, `MATRIX.md`, `changes.json`,
 `raw.tar.gz` and `logs.tar.gz`. `./run.sh fetch -raw` first means your local
 matrix starts complete and a one-variant run only replaces that variant's row.
+
+A run is published only when `cpm gate` passes. It refuses a run in which a
+variant measured in that run leaked the canary, delivered a hop over the
+wrong protocol, or — for an instrumented variant — showed nothing its
+uninstrumented `none-{lang}` baseline does not show as well (the agent did
+not attach). When it refuses, the job fails before the release, the
+per-version filing and the site rebuild, so nothing from that run is
+published; fix the cause and re-run the workflow. A variant carried over from
+an earlier release only warns. `cpm aggregate` records the same verdict on
+the variant as `invalid`; DESIGN.md ("Results schema") has the exact rules.
+The gate also refuses a variant measured in that run that has a boundary no
+hop ran on: the driver and `variants.yaml` disagree about the protocols.
 
 The first build of the Java and .NET images is slow (agent downloads); later
 builds are cached.
@@ -71,9 +85,9 @@ would make every cell green and every cell meaningless.
    `latest`). Add the tracer's pin to `pins.yaml` (which file holds it and
    how it is written); `cpm pins check` in `verify.yml` fails until every
    instrumented variant has one. If an agent is fetched by URL, make the
-   version a Dockerfile `ARG` (`kind: arg`) so `bump-agents.yml` can bump it;
-   the other kinds are Dependabot's, and `backtest.yml` moves any of them
-   backwards through the same entry.
+   version a Dockerfile `ARG` (`kind: arg`); `bump-agents.yml` moves every
+   kind of pin and Dependabot ignores them, and `backtest.yml` moves any of
+   them backwards through the same entry.
 3. **`docker-compose.yml`** — one `relay-{tool}-{lang}` service per target:
    `<<: *relay-common-env`, `profiles: [{variant}]`, `restart: on-failure`,
    `depends_on: *relay-depends`, plus the tool's environment (copy another
@@ -83,6 +97,9 @@ would make every cell green and every cell meaningless.
    display name, `setup_tier`, one-line `attach`, `tracer` coordinates,
    `source`). The baseline `none-{lang}` variant has `setup_tier: null` and
    no tracer.
+   An `in-code` variant also needs `legs`: for every protocol, whether the
+   inbound and the outbound side are wired through a `library` or by the
+   relay's own code (`app`). No other variant may have them.
 5. **Dependabot** — add the manifest directory to `.github/dependabot.yml`
    for the language's ecosystem, and the relay directory to the `docker`
    list.
@@ -105,7 +122,9 @@ per variant). Open an issue first so we can agree the carrier semantics.
    inbound address (`relay-{proto}-{variant}` naming), the sink inbound
    address, declare/warm-up rules. The RabbitMQ sections are the template.
 2. `driver/` — seed headers into the new carrier; the boundary list is
-   protocols², so adding the protocol adds 2n+1 tests per variant.
+   protocols², so adding the protocol adds 2n+1 tests per variant. The
+   driver has its own protocol list: `go test ./driver` fails until
+   `variants.yaml` (step 5) lists the same pairs.
 3. `sink/` — consume/serve the new protocol and record arriving
    headers/metadata verbatim (base64 for non-UTF-8, as today).
 4. Every relay under `relays/*` — one inbound listener plus one
@@ -117,11 +136,20 @@ per variant). Open an issue first so we can agree the carrier semantics.
    `boundaries:` in the column order you want. The registry refuses to load
    unless the boundary count is exactly protocols². contextpropagation.io
    derives its grids, heatmaps, OG images and copy from these `dimensions`,
-   so no site change is needed for a new column.
+   so no site change is needed for a new column. Bump `matrix_version` in
+   the same change: a variant is now scored on more cells, and results from
+   before and after must not be compared cell for cell. `cpm validate`
+   fails until it is bumped (it compares the registry with the latest
+   release).
 6. `docker-compose.yml` — a broker service (with a healthcheck) if needed,
    and any new endpoints in `x-relay-common-env`.
 7. Run everything (`./run.sh all`); the new column will be mostly red at
    first — that is the point. Annotate.
+8. Re-read the annotations, `FINDINGS.md` and `REFERENCES.md`. They state
+   results against the boundaries that existed when they were written
+   ("crosses all 16 boundaries", "9/16"), and nothing derives those numbers.
+   A sentence that still says 16 has not been checked against the new
+   column.
 
 ## Adding a provider (a new tool)
 
@@ -141,6 +169,7 @@ commercial-only agent is not.
    and to `matrix.yml` as a repository secret.
 4. One `variants:` entry per tool × language, with `setup_tier` honestly
    classified (see the tier definitions in `variants.yaml`).
+   An `in-code` variant also needs `legs` (see the `wirings:` definitions).
 5. `annotations/{tool}.yaml` for the cells that do not pass.
 
 ## Adding a variant flavour
@@ -165,9 +194,9 @@ attach mechanism — `datadog-python-kafkaprop` (a feature flag),
 
 `annotations/*.yaml` is where root causes live as data. Every non-pass cell
 should be matched by at least one annotation. `cpm validate` lists the
-failing cells nobody has explained yet; `cpm aggregate` and the Slack summary
-of the weekly run repeat that list so a new regression gets an explanation
-written.
+failing cells nobody has explained yet as a warning (a GitHub annotation in CI)
+that never fails the check, with or without `-strict`; the Slack summary of the
+weekly run repeats that list so a new regression gets an explanation written.
 
 ```yaml
 - id: datadog-java-baggage-non-http
@@ -205,7 +234,10 @@ go run ./cmd/cpm validate -strict  # exactly what PR CI runs
 ```
 
 Once merged, `republish.yml` does the same on the latest release (replacing
-its `results.json` and `MATRIX.md`) and rebuilds the site — no matrix run.
+its `results.json` and `MATRIX.md`), re-annotates every variant's per-version
+bundle so each version's page shows the note too — attached to its failing
+cells on the versions before a fix, as resolved on the versions from
+`fixed_in` on — and rebuilds the site. No matrix run.
 
 ### Lifecycle: write once, let the data retire it
 
@@ -217,6 +249,7 @@ the cell exist?) and then by **outcome** (default: every non-pass outcome).
 | Run shows… | `cpm aggregate` | `cpm validate` (PR CI, `-strict`) | Site |
 |---|---|---|---|
 | some described cells still fail | attaches to those cells | ok | Explanations card |
+| some described cells now pass in a variant while others still fail (partially resolved) | attaches to the failing cells only; **warns** once per variant, naming the cells that now pass | warns (a GitHub annotation in CI) and never fails: narrow the selector, or split the annotation, so it claims only what still fails | Explanations card on the failing cells |
 | every described cell now passes | attaches to the green cells with `resolved: true`; fills `fixed_in` from the variant's reported tracer version if the YAML has none; **warns** | fails until you record `status: fixed` and `fixed_in` | "resolved" card, kept for history |
 | a selector names a cell that does not exist (variant, header or boundary removed) | **fails** — the selector is stale or mistyped | fails | — |
 | a selector names only variants that are registered but have no results in this release (e.g. the New Relic variants when `NEW_RELIC_LICENSE_KEY` is unset, before any release carried their cells over) | notes it, attaches nothing | ok — nothing to check yet | — |
@@ -231,8 +264,12 @@ page uses it to say what was broken in which release. Release notes for each
 ## Pull requests
 
 - CI (`verify.yml`) runs `go vet`, `cpm validate -strict` against the latest
-  published `results.json`, and two smoke variants; it needs no secrets, so
-  fork PRs work.
+  published `results.json`, and boots the relays the change affects; it needs
+  no secrets, so fork PRs work.
+- A run tests your branch merged with `main` as `main` was when the run was
+  created. One that starts later (held for approval, or run again) fails if
+  `main` has since changed a relay your PR changes: update the branch, and
+  the new run tests today's tree.
 - Include the relevant rows from your local `results/latest/MATRIX.md` in
   the PR description. Results themselves are gitignored and cannot be
   committed; CI measures and publishes on merge.
@@ -242,12 +279,20 @@ page uses it to say what was broken in which release. Release notes for each
   a file under `relays/rust/src/` re-runs every Rust variant and one under
   `relays/rust/otel/` only `otel-rust`, `relays/node/Dockerfile`
   every Node variant, a changed `relay-<id>` service or variant definition that
-  variant; anything under `driver/`, `sink/`, `proto/`, `gen/`, `docker/`,
+  variant; anything under `driver/` (and `internal/eval/`, `internal/raw/`,
+  which it is built from), `sink/`, `proto/`, `gen/`, `docker/`,
   `go.mod`/`go.sum` or `matrix.yml` itself re-runs everything. Cells not
   re-measured are carried over from the previous release, and the new release
-  records `run.partial` / `run.reran`. Annotation-only merges go through
-  `republish.yml` instead. The Monday schedule and `workflow_dispatch` always
-  run the full matrix. Try it locally: `go run ./cmd/cpm affected -base origin/main`.
+  records `run.partial` / `run.reran`. The same run also measures any variant
+  whose inputs changed since it was last measured (`cpm affected -since
+  results/latest/results.json`), which covers a run that was cancelled or
+  failed and merges that start no run, such as the bot's tracer bumps; a
+  6-hourly schedule does only that. A variant whose job failed keeps its last
+  result; the run names it at the top of its release notes, and in Slack
+  when `SLACK_WEBHOOK_URL` is set. Annotation-only merges go through
+  `republish.yml` instead. The Monday schedule and `workflow_dispatch` run
+  the full matrix by default. Try it locally:
+  `go run ./cmd/cpm affected -base origin/main`.
 
 ### Repository secrets (maintainers)
 
@@ -259,8 +304,8 @@ degrades rather than fails without them:
 | Secret | Used by | Without it |
 |---|---|---|
 | `NEW_RELIC_LICENSE_KEY` | New Relic relays (`tool:newrelic`) | New Relic variants are skipped (they appear in `results.json` as registered but not run); every other cell is unaffected. A free-tier key is sufficient. |
-| `NETLIFY_BUILD_HOOK_URL` | `matrix.yml` and `republish.yml` after publishing | contextpropagation.io is not rebuilt until its next scheduled build; the release itself is unaffected. |
-| `SLACK_WEBHOOK_URL` | `matrix.yml` summary step | No Slack summary is posted. |
+| `NETLIFY_BUILD_HOOK_URL` | `matrix.yml`, `republish.yml` and `backtest.yml` after publishing | contextpropagation.io is not rebuilt until its next scheduled build; the release itself is unaffected. |
+| `SLACK_WEBHOOK_URL` | `matrix.yml`: the summary when cells change, and a message when a variant the run was to measure has no result | Nothing is posted to Slack. A variant that cannot be built is then named only in the run's release notes and as a warning on the run's page. |
 
 The step that opens a PR marking resolved annotations fixed also needs
 *Settings → Actions → "Allow GitHub Actions to create and approve pull

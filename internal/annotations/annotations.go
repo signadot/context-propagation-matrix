@@ -121,12 +121,16 @@ func LoadDir(dir string) ([]*Annotation, error) {
 // Problem is a validation finding. Fatal problems stop aggregation; warnings
 // are reported and, under `cpm validate -strict`, fail a pull request; Info
 // problems are reported only — they describe this release, not the YAML.
+// An Advisory warning is reported as a warning and never fails, strict or
+// not: it asks for an edit that a published run made necessary, so it must
+// not stop unrelated pull requests (the tracer bumps merge themselves).
 type Problem struct {
 	Annotation string
 	File       string
 	Fatal      bool
 	Message    string
 	Info       bool
+	Advisory   bool
 }
 
 func (p Problem) String() string {
@@ -165,6 +169,26 @@ func (p Problem) String() string {
 // state one, and a warning asks the maintainer to record `status: fixed` /
 // `fixed_in`. Warnings never fail aggregation; `cpm validate --strict` turns
 // them into errors on pull requests so the YAML is kept honest.
+//
+// When only some of the cells an annotation covers now pass, it is partially
+// resolved: the explanation is still right for the failing cells and wrong for
+// the passing ones. An Advisory warning is raised per variant, naming the
+// cells that now pass, so a maintainer can narrow the selector. The rule is
+// deliberately narrow so that it fires on drift only:
+//
+//   - only cells covered by a selector without an explicit `outcome:` list
+//     count. Such a selector claims every non-pass outcome, so a passing cell
+//     inside its shape is a claim that no longer holds. A selector with an
+//     explicit list claims only the cells with those outcomes; a passing cell
+//     it does not list was never claimed, so it says nothing about drift
+//     (a selector whose listed outcome has vanished has its own warning).
+//   - the annotation must still describe at least one failing cell somewhere;
+//     with none left it is resolved outright and gets the warning above.
+//   - an annotation with `status: fixed` is quiet: passing cells are what
+//     fixed means, and failing ones already warn as a regression.
+//   - one variant may be fixed while another is not; that is exactly the case
+//     to flag, since the text still claims the fixed variant is broken.
+//   - not_run and undelivered cells are not passes and never count.
 func Apply(res *results.Results, anns []*Annotation) []Problem {
 	var problems []Problem
 	res.Annotations = res.Annotations[:0]
@@ -173,6 +197,11 @@ func Apply(res *results.Results, anns []*Annotation) []Problem {
 		structural := map[string]bool{} // cells matched ignoring outcome
 		activeVars := map[string]bool{}
 		structVars := map[string]bool{}
+		// Cells that a selector without an explicit outcome list covers and
+		// that pass, per variant: what the explanation claims is broken but
+		// is not. See the partial-resolution comment on Apply.
+		passingClaimed := map[string]map[string]bool{}
+		var passingOrder []string // variants in results order
 		anyNonPassStructural := false
 		for _, sel := range a.Match {
 			nStruct, nActive, nPresent := 0, 0, 0
@@ -204,6 +233,12 @@ func Apply(res *results.Results, anns []*Annotation) []Problem {
 						nActive++
 						active[c.CellID] = true
 						activeVars[v.ID] = true
+					} else if c.Outcome == results.OutcomePass && len(sel.Outcome) == 0 {
+						if passingClaimed[v.ID] == nil {
+							passingClaimed[v.ID] = map[string]bool{}
+							passingOrder = append(passingOrder, v.ID)
+						}
+						passingClaimed[v.ID][c.CellID] = true
 					}
 				}
 			}
@@ -235,6 +270,8 @@ func Apply(res *results.Results, anns []*Annotation) []Problem {
 			ann.Variants = keys(activeVars)
 			if a.Status == "fixed" {
 				problems = append(problems, Problem{Annotation: a.ID, File: a.sourceFile, Message: fmt.Sprintf("status is fixed but %d matched cell(s) do not pass — regression?", len(active))})
+			} else {
+				problems = append(problems, partiallyResolved(a, passingClaimed, passingOrder, active)...)
 			}
 		case len(structural) > 0 && !anyNonPassStructural:
 			// Everything it describes passes: keep it, attached to the green cells.
@@ -262,6 +299,38 @@ func Apply(res *results.Results, anns []*Annotation) []Problem {
 		res.Annotations = append(res.Annotations, ann)
 	}
 	return problems
+}
+
+// partiallyResolved reports, per variant, the cells an annotation still covers
+// that now pass while it still describes failing cells elsewhere. passing is
+// keyed by variant, in the order given by order; active is every cell the
+// annotation still describes as a problem.
+func partiallyResolved(a *Annotation, passing map[string]map[string]bool, order []string, active map[string]bool) []Problem {
+	stillFailing := map[string]int{}
+	for id := range active {
+		v, _, _ := strings.Cut(id, "/")
+		stillFailing[v]++
+	}
+	var out []Problem
+	for _, v := range order {
+		var short []string
+		for _, id := range keys(passing[v]) {
+			if !active[id] {
+				short = append(short, strings.TrimPrefix(id, v+"/"))
+			}
+		}
+		if len(short) == 0 {
+			continue
+		}
+		where := fmt.Sprintf("%d other cell(s) of it still fail", stillFailing[v])
+		if stillFailing[v] == 0 {
+			where = "it still describes failing cells in other variants"
+		}
+		out = append(out, Problem{Annotation: a.ID, File: a.sourceFile, Advisory: true,
+			Message: fmt.Sprintf("partially resolved: %d cell(s) it covers now pass in %s (%s) while %s; narrow the selector or record the fix for that variant",
+				len(short), v, strings.Join(short, ", "), where)})
+	}
+	return out
 }
 
 // tracerVersions returns the tracer (or weaver) version reported by the given

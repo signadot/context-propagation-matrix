@@ -1,7 +1,9 @@
 package affected
 
 import (
+	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -26,7 +28,7 @@ func fixture() *registry.Registry {
 		},
 		ToolOrder: []string{"otel", "datadog", "none"},
 		Languages: map[string]*registry.Language{
-			"java": {ID: "java", Order: 1}, "node": {ID: "node", Order: 2}, "rust": {ID: "rust", Order: 3}, "ruby": {ID: "ruby", Order: 4},
+			"java": {ID: "java", Order: 1}, "node": {ID: "node", Order: 2}, "go": {ID: "go", Order: 3}, "rust": {ID: "rust", Order: 4}, "ruby": {ID: "ruby", Order: 5},
 		},
 		Variants: []*registry.Variant{
 			{ID: "otel-java", Tool: "otel", Language: "java", Flavour: "default", SetupTier: tier, Attach: "-javaagent", Tracer: pkg("otel-java"), Source: "relays/java"},
@@ -38,6 +40,12 @@ func fixture() *registry.Registry {
 			// As in the real registry, the Node baseline's source is the
 			// directory the tool sources live under.
 			{ID: "none-node", Tool: "none", Language: "node", Flavour: "default", Source: "relays/node"},
+			// Go keeps one module per hand-wired tool under relays/go over the
+			// shared relays/go/internal; the build-time weavers are separate
+			// directories whose names share the "relays/go" prefix.
+			{ID: "otel-go", Tool: "otel", Language: "go", Flavour: "default", SetupTier: tier, Tracer: pkg("otel-go"), Source: "relays/go/otel"},
+			{ID: "otel-go-compiletime", Tool: "otel", Language: "go", Flavour: "compiletime", SetupTier: tier, Tracer: pkg("otelc"), Source: "relays/go-otelc"},
+			{ID: "none-go", Tool: "none", Language: "go", Flavour: "default", Source: "relays/go/none"},
 			// Rust keeps one crate per tool over shared source, like Ruby.
 			{ID: "otel-rust", Tool: "otel", Language: "rust", Flavour: "default", SetupTier: tier, Tracer: pkg("otel-rust"), Source: "relays/rust/otel"},
 			{ID: "datadog-rust", Tool: "datadog", Language: "rust", Flavour: "default", SetupTier: tier, Tracer: pkg("dd-rust"), Source: "relays/rust/datadog"},
@@ -68,6 +76,9 @@ func TestPaths(t *testing.T) {
 		{"one rust tool crate", []string{"relays/rust/otel/Cargo.toml", "relays/rust/otel/Cargo.lock"}, []string{"otel-rust"}, false},
 		{"rust shared source and build script", []string{"relays/rust/src/lib.rs", "relays/rust/build.rs"}, []string{"otel-rust", "datadog-rust", "none-rust"}, false},
 		{"rust shared dockerfile", []string{"relays/rust/Dockerfile"}, []string{"otel-rust", "datadog-rust", "none-rust"}, false},
+		{"one go tool module", []string{"relays/go/otel/go.mod", "relays/go/otel/go.sum"}, []string{"otel-go"}, false},
+		{"go shared package and dockerfile reach the hand-wired tools, not the weavers", []string{"relays/go/internal/common/common.go", "relays/go/Dockerfile"}, []string{"otel-go", "none-go"}, false},
+		{"go weaver directory stands alone", []string{"relays/go-otelc/go.mod"}, []string{"otel-go-compiletime"}, false},
 		{"java app code", []string{"relays/java/src/main/java/Relay.java"}, []string{"otel-java", "datadog-java", "none-java"}, false},
 		{"one node tool", []string{"relays/node/tools/datadog/package.json"}, []string{"datadog-node", "datadog-node-defaults"}, false},
 		{"node shared dockerfile is an ancestor of the tool sources", []string{"relays/node/Dockerfile"}, []string{"otel-node", "datadog-node", "datadog-node-defaults", "none-node"}, false},
@@ -75,6 +86,8 @@ func TestPaths(t *testing.T) {
 		{"node shared code in a subdirectory", []string{"relays/node/lib/hop.js"}, []string{"otel-node", "datadog-node", "datadog-node-defaults", "none-node"}, false},
 		{"app code beside the per-tool sources", []string{"relays/ruby/app/relay.rb"}, []string{"otel-ruby", "none-ruby"}, false},
 		{"driver", []string{"driver/main.go"}, allIDs(reg), true},
+		{"packages the driver is built from", []string{"internal/eval/eval.go"}, allIDs(reg), true},
+		{"result types the driver writes", []string{"internal/raw/raw.go"}, allIDs(reg), true},
 		{"proto", []string{"proto/hop.proto", "gen/cpmatrix/hop.pb.go"}, allIDs(reg), true},
 		{"shared go image", []string{"docker/go.Dockerfile"}, allIDs(reg), true},
 		{"go.mod", []string{"go.mod", "go.sum"}, allIDs(reg), true},
@@ -102,7 +115,11 @@ func TestPaths(t *testing.T) {
 func TestRegistryDiff(t *testing.T) {
 	base, head := fixture(), fixture()
 	head.Variants[0].Attach = "-javaagent -Dotel.propagators=b3" // otel-java
-	head.Variants[7].Tracer = &registry.Package{Name: "otel-rust", Registry: "r", Package: "otel-rust", TagPrefix: "v"}
+	for _, v := range head.Variants {
+		if v.ID == "otel-rust" {
+			v.Tracer = &registry.Package{Name: "otel-rust", Registry: "r", Package: "otel-rust", TagPrefix: "v"}
+		}
+	}
 	head.Variants = append(head.Variants, &registry.Variant{
 		ID: "otel-php", Tool: "otel", Language: "php", Flavour: "default", SetupTier: str("zero_code"), Source: "relays/php",
 	})
@@ -127,6 +144,40 @@ func TestRegistryDiff(t *testing.T) {
 	got = Compute(Inputs{Paths: []string{"variants.yaml"}, Head: head2, Base: nil})
 	if !got.All {
 		t.Fatalf("nil base should re-run everything: %v", got.Reasons)
+	}
+}
+
+// Adding the wirings block and the legs of the in-code variants to the
+// registry re-measures those variants and no others. The base revision is
+// the checked-in registry with that block and those legs stripped: if it
+// failed to parse, Compute would re-run every variant.
+func TestRegistryDiff_Legs(t *testing.T) {
+	b, err := os.ReadFile("../../variants.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	head, err := registry.Parse(b, "head")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := regexp.MustCompile(`(?m)^wirings:\n(  .*\n)+|^    legs:\n(      .*\n)+`).ReplaceAll(b, nil)
+	if len(old) == len(b) {
+		t.Fatal("nothing stripped from the registry")
+	}
+	base, err := registry.Parse(old, "base")
+	if err != nil {
+		t.Fatalf("a revision without legs must still parse: %v", err)
+	}
+
+	var want []string
+	for _, v := range head.SortedVariants() {
+		if v.SetupTier != nil && *v.SetupTier == "in-code" {
+			want = append(want, v.ID)
+		}
+	}
+	got := Compute(Inputs{Paths: []string{"variants.yaml"}, Head: head, Base: base})
+	if got.All || !reflect.DeepEqual(got.Variants, want) {
+		t.Fatalf("got all=%v %v, want %v\n%s", got.All, got.Variants, want, strings.Join(got.Reasons, "\n"))
 	}
 }
 
@@ -207,4 +258,114 @@ func TestComposeDiff(t *testing.T) {
 			t.Fatal("nil base compose should re-run everything")
 		}
 	})
+}
+
+// measuredAll records every variant of reg as last measured at commit c.
+func measuredAll(reg *registry.Registry, c string) map[string]string {
+	m := map[string]string{}
+	for _, v := range reg.Variants {
+		m[v.ID] = c
+	}
+	return m
+}
+
+func TestSince(t *testing.T) {
+	reg := fixture()
+	// The history under test, oldest first: commit "a", then a Java tracer
+	// bump, commit "b", then a change to the Rust otel crate, then head.
+	javaBump := []string{"relays/java/Dockerfile"}
+	rustOtel := []string{"relays/rust/otel/Cargo.toml"}
+	diffs := map[string][]string{
+		"a":    append(append([]string{}, javaBump...), rustOtel...),
+		"b":    rustOtel,
+		"head": nil,
+	}
+	calls := map[string]int{}
+	diff := func(base string) Result {
+		calls[base]++
+		paths, ok := diffs[base]
+		if !ok {
+			return Result{All: true, Reasons: []string{"git diff " + base + " failed, every variant"}}
+		}
+		return Compute(Inputs{Paths: paths, Head: reg})
+	}
+	java := []string{"otel-java", "datadog-java", "none-java"}
+
+	t.Run("a merge that started no run is picked up by the next one", func(t *testing.T) {
+		// Everything was measured at "a". The Java bump was merged by the
+		// bot and measured by nobody; the push under test only touched Rust.
+		got := Since(reg, measuredAll(reg, "a"), diff)
+		want := []string{"otel-java", "otel-rust", "datadog-java", "none-java"} // registry order
+		if got.All || !reflect.DeepEqual(got.Variants, want) {
+			t.Fatalf("got all=%v %v, want %v\nreasons: %s", got.All, got.Variants, want, strings.Join(got.Reasons, "; "))
+		}
+	})
+	t.Run("each variant is diffed from its own measurement", func(t *testing.T) {
+		// A run at "b" measured the Java bump; the Rust variants are still
+		// at "a". Java must not run again, otel-rust must.
+		m := measuredAll(reg, "a")
+		for _, id := range java {
+			m[id] = "b"
+		}
+		got := Since(reg, m, diff)
+		if got.All || !reflect.DeepEqual(got.Variants, []string{"otel-rust"}) {
+			t.Fatalf("got all=%v %v\nreasons: %s", got.All, got.Variants, strings.Join(got.Reasons, "; "))
+		}
+	})
+	t.Run("measured at head selects nothing", func(t *testing.T) {
+		got := Since(reg, measuredAll(reg, "head"), diff)
+		if got.All || len(got.Variants) != 0 {
+			t.Fatalf("got all=%v %v", got.All, got.Variants)
+		}
+	})
+	t.Run("a variant with no published measurement always runs", func(t *testing.T) {
+		m := measuredAll(reg, "head")
+		delete(m, "otel-go-compiletime") // new in the registry
+		m["none-ruby"] = ""              // in the release, but never measured
+		got := Since(reg, m, diff)
+		if got.All || !reflect.DeepEqual(got.Variants, []string{"otel-go-compiletime", "none-ruby"}) {
+			t.Fatalf("got all=%v %v", got.All, got.Variants)
+		}
+	})
+	t.Run("an unknown commit is conservative for the variants measured there only", func(t *testing.T) {
+		m := measuredAll(reg, "head")
+		m["otel-node"] = "gone" // force-pushed away
+		got := Since(reg, m, diff)
+		if got.All || !reflect.DeepEqual(got.Variants, []string{"otel-node"}) {
+			t.Fatalf("got all=%v %v", got.All, got.Variants)
+		}
+	})
+	t.Run("one diff per distinct commit", func(t *testing.T) {
+		clear(calls)
+		Since(reg, measuredAll(reg, "a"), diff)
+		if calls["a"] != 1 || len(calls) != 1 {
+			t.Fatalf("diff calls: %v", calls)
+		}
+	})
+	t.Run("everything stale reports All", func(t *testing.T) {
+		got := Since(reg, map[string]string{}, diff)
+		if !got.All || !reflect.DeepEqual(got.Variants, allIDs(reg)) {
+			t.Fatalf("got all=%v %v", got.All, got.Variants)
+		}
+	})
+}
+
+func TestUnion(t *testing.T) {
+	reg := fixture()
+	a := Result{Variants: []string{"otel-rust"}, Reasons: []string{"a"}}
+	b := Result{Variants: []string{"otel-java", "otel-rust"}, Reasons: []string{"b"}}
+	got := Union(reg, a, b)
+	// Registry order, each id once, reasons from both.
+	if got.All || !reflect.DeepEqual(got.Variants, []string{"otel-java", "otel-rust"}) || !reflect.DeepEqual(got.Reasons, []string{"a", "b"}) {
+		t.Fatalf("got %+v", got)
+	}
+	// Compute leaves Variants to the caller's registry when a shared
+	// component changed in a diff it could not read; All must survive.
+	got = Union(reg, Result{All: true}, b)
+	if !got.All || !reflect.DeepEqual(got.Variants, allIDs(reg)) {
+		t.Fatalf("got %+v", got)
+	}
+	if got = Union(reg, Result{}, Result{}); got.All || len(got.Variants) != 0 {
+		t.Fatalf("got %+v", got)
+	}
 }

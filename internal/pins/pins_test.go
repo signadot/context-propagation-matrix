@@ -24,6 +24,23 @@ func stubCargo(t *testing.T, dir string) string {
 	return args
 }
 
+// stubBundle puts a `bundle` on PATH that appends its arguments to
+// dir/bundle.args, one line per run, and fails a run whose arguments are a
+// line of dir/bundle.fail, so bundler write paths (and a version that does
+// not resolve) can be tested without Ruby or the network. It does not touch
+// Gemfile.lock.
+func stubBundle(t *testing.T, dir string) string {
+	t.Helper()
+	args := filepath.Join(dir, "bundle.args")
+	fail := filepath.Join(dir, "bundle.fail")
+	bin := write(t, dir, "bin/bundle", "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+args+"'\n! grep -qxF -- \"$*\" '"+fail+"' 2>/dev/null\n")
+	if err := os.Chmod(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return args
+}
+
 func write(t *testing.T, dir, name, body string) string {
 	t.Helper()
 	path := filepath.Join(dir, name)
@@ -105,11 +122,116 @@ func TestPip(t *testing.T) {
 	roundTrip(t, p, "0.65b0", "0.64b0", "# comment\nopentelemetry-distro==0.64b0\nopentelemetry-instrumentation-flask==0.64b0\nflask==3.1.0\n")
 }
 
+// gemLock is a Gemfile.lock as Bundler writes one for a Gemfile pinning
+// sinatra 4.2.1, grpc 1.85.0 and datadog at the given version: a spec per
+// gem (one per platform for a gem with precompiled variants), the gems
+// each depends on indented below it, and the Gemfile's own requirements
+// under DEPENDENCIES.
+func gemLock(datadog string) string {
+	return "GEM\n  remote: https://rubygems.org/\n  specs:\n" +
+		"    datadog (" + datadog + ")\n      libdatadog (~> 46.1.0.1.1)\n      logger\n" +
+		"    grpc (1.85.0-aarch64-linux-gnu)\n    grpc (1.85.0-x86_64-linux-gnu)\n" +
+		"    libdatadog (46.1.0.1.1-aarch64-linux)\n    libdatadog (46.1.0.1.1-x86_64-linux)\n" +
+		"    logger (1.7.0)\n    sinatra (4.2.1)\n      logger (>= 1.6.0)\n" +
+		"\nPLATFORMS\n  aarch64-linux\n  x86_64-linux\n" +
+		"\nDEPENDENCIES\n  datadog (= " + datadog + ")\n  grpc (= 1.85.0)\n  sinatra (= 4.2.1)\n" +
+		"\nBUNDLED WITH\n   2.5.22\n"
+}
+
 func TestBundler(t *testing.T) {
 	dir := t.TempDir()
-	f := write(t, dir, "Gemfile", "source 'https://rubygems.org'\ngem 'sinatra', '4.2.1'\ngem 'datadog', '2.42.0' # tracer\n")
+	f := write(t, dir, "Gemfile", "source 'https://rubygems.org'\ngem 'sinatra', '4.2.1'\ngem 'grpc', '1.85.0'\ngem 'datadog', '2.42.0' # tracer\n")
+	lock := write(t, dir, "Gemfile.lock", gemLock("2.42.0"))
+	argsFile := stubBundle(t, dir)
 	p := &Pin{ID: "dd", Kind: KindBundler, File: f, Packages: []string{"datadog"}}
-	roundTrip(t, p, "2.42.0", "2.41.0", "source 'https://rubygems.org'\ngem 'sinatra', '4.2.1'\ngem 'datadog', '2.41.0' # tracer\n")
+	if got := p.Files(); len(got) != 2 || got[0] != f || got[1] != lock {
+		t.Fatalf("Files = %v, want the Gemfile and its lock", got)
+	}
+	if err := p.Check(); err != nil {
+		t.Fatalf("Check with the lock at the pinned version: %v", err)
+	}
+	roundTrip(t, p, "2.42.0", "2.41.0", "source 'https://rubygems.org'\ngem 'sinatra', '4.2.1'\ngem 'grpc', '1.85.0'\ngem 'datadog', '2.41.0' # tracer\n")
+	// The lock is moved by Bundler, for the pinned gem only, in the
+	// Gemfile's directory.
+	if got, want := strings.TrimSpace(read(t, argsFile)), "lock --update datadog"; got != want {
+		t.Fatalf("bundle ran with %q, want %q", got, want)
+	}
+
+	// The stub left the lock at 2.42.0 under a Gemfile that now pins 2.41.0,
+	// the state a frozen install refuses: Check names both versions.
+	if err := p.Check(); err == nil || !strings.Contains(err.Error(), "pins datadog 2.41.0") || !strings.Contains(err.Error(), "holds 2.42.0") {
+		t.Fatalf("Check with the lock behind the Gemfile: got %v, want an error naming both versions", err)
+	}
+	write(t, dir, "Gemfile.lock", gemLock("2.41.0"))
+	if err := p.Check(); err != nil {
+		t.Fatalf("Check after the lock moved: %v", err)
+	}
+
+	// A gem with a spec per platform is one version. The lines that name a
+	// gem as another's dependency (`libdatadog (~> 46.1.0.1.1)`) or under
+	// DEPENDENCIES (`datadog (= 2.41.0)`) are not specs.
+	for gem, want := range map[string]string{"grpc": "1.85.0", "libdatadog": "46.1.0.1.1", "datadog": "2.41.0", "nope": ""} {
+		if got := strings.Join(gemLockVersions(read(t, lock), gem), ","); got != want {
+			t.Errorf("gemLockVersions(%s) = %q, want %q", gem, got, want)
+		}
+	}
+	p.Packages = []string{"grpc"}
+	if err := p.Check(); err != nil {
+		t.Fatalf("Check of a gem locked per platform: %v", err)
+	}
+}
+
+// Without a lock the image cannot be built, and `bundle lock` would create
+// one for the wrong platforms: Check fails, and Write fails before it
+// changes the Gemfile or runs bundle.
+func TestBundlerNoLock(t *testing.T) {
+	dir := t.TempDir()
+	body := "gem 'datadog', '2.42.0'\n"
+	f := write(t, dir, "Gemfile", body)
+	argsFile := stubBundle(t, dir)
+	p := &Pin{ID: "dd", Kind: KindBundler, File: f, Packages: []string{"datadog"}}
+	if err := p.Check(); err == nil || !strings.Contains(err.Error(), "Gemfile.lock") {
+		t.Fatalf("Check without a lock: got %v, want an error naming it", err)
+	}
+	if _, err := p.Write(context.Background(), "2.41.0", nil); err == nil || !strings.Contains(err.Error(), "Gemfile.lock") {
+		t.Fatalf("Write without a lock: got %v, want an error naming it", err)
+	}
+	if read(t, f) != body {
+		t.Fatal("a failed Write changed the Gemfile")
+	}
+	if _, err := os.Stat(argsFile); err == nil {
+		t.Fatalf("bundle ran without a lock: %s", read(t, argsFile))
+	}
+	// A lock that does not list the pinned gem at all.
+	write(t, dir, "Gemfile.lock", "GEM\n  specs:\n    sinatra (4.2.1)\n      datadog (2.42.0)\n\nDEPENDENCIES\n  datadog (= 2.42.0)\n")
+	if err := p.Check(); err == nil || !strings.Contains(err.Error(), "does not list it") {
+		t.Fatalf("Check with a lock that lacks the gem: got %v", err)
+	}
+}
+
+// A version Bundler cannot resolve is an error naming the command. Nothing
+// is tried a second time: resolving the whole Gemfile again would move the
+// application's gems inside a tracer change.
+func TestBundlerLockFails(t *testing.T) {
+	dir := t.TempDir()
+	f := write(t, dir, "Gemfile", "gem 'opentelemetry-sdk', '1.13.1'\ngem 'opentelemetry-instrumentation-rack', '0.31.2'\n")
+	write(t, dir, "Gemfile.lock", "GEM\n  specs:\n    opentelemetry-sdk (1.13.1)\n")
+	argsFile := stubBundle(t, dir)
+	p := &Pin{ID: "otel", Kind: KindBundler, File: f, Packages: []string{"opentelemetry-sdk"}}
+
+	write(t, dir, "bundle.fail", "lock --update opentelemetry-sdk\n")
+	if _, err := p.Write(context.Background(), "1.2.1", nil); err == nil || !strings.Contains(err.Error(), "bundle lock --update opentelemetry-sdk") {
+		t.Fatalf("Write of a version that does not resolve: got %v, want the command that failed", err)
+	}
+	if got, want := read(t, argsFile), "lock --update opentelemetry-sdk\n"; got != want {
+		t.Fatalf("bundle ran with %q, want %q", got, want)
+	}
+
+	// No bundle on PATH is an error too, not a Gemfile moved without its lock.
+	t.Setenv("PATH", t.TempDir())
+	if _, err := p.Write(context.Background(), "1.4.0", nil); err == nil || !strings.Contains(err.Error(), "bundle lock --update opentelemetry-sdk") {
+		t.Fatalf("Write without bundle on PATH: got %v, want the command that could not start", err)
+	}
 }
 
 func TestGoModRead(t *testing.T) {
@@ -300,6 +422,9 @@ pins:
 		"follow-kind":    "pins:\n  - {id: a, kind: arg, file: f, arg: X, follow: {x: [y]}, source: {registry: r, package: p}}\n",
 		"follow-empty":   "pins:\n  - {id: a, kind: cargo, dir: d, packages: [x], follow: {y: []}, source: {registry: r, package: p}}\n",
 		"follow-overlap": "pins:\n  - {id: a, kind: cargo, dir: d, packages: [x, y], follow: {z: [y]}, source: {registry: r, package: p}}\n",
+		// companions is gomod-only and cannot name a pinned module.
+		"companions-kind":    "pins:\n  - {id: a, kind: cargo, dir: d, packages: [x], companions: [y], source: {registry: r, package: p}}\n",
+		"companions-overlap": "pins:\n  - {id: a, kind: gomod, dir: d, modules: [x, y], companions: [y], source: {registry: r, package: p}}\n",
 	} {
 		f := write(t, dir, name+".yaml", body)
 		if _, err := Load(f); err == nil {

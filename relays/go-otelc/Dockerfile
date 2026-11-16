@@ -9,8 +9,7 @@
 # dependency, pinned in go.mod, so Dependabot bumps it). With no committed
 # otel.instrumentation.go file, otelc analyzes the dependency graph and
 # enables every instrumentation it has for the libraries the app imports
-# (net/http, grpc, segmentio/kafka-go — it has none for amqp091/RabbitMQ,
-# which the rabbitmq legs of the matrix measure).
+# (net/http, grpc, segmentio/kafka-go and, since otelc 1.2.0, amqp091-go).
 
 # go.mod is the source of truth for the Go version; the image is a bootstrap
 # (see docker/go.Dockerfile and scripts/check-toolchains.sh).
@@ -19,9 +18,9 @@ ENV GOTOOLCHAIN=auto
 WORKDIR /src
 # Both modules' manifests first, for layer-cached dependency downloads. The
 # relays/go-otelc module has a `replace
-# github.com/signadot/context-propagation-matrix => ../../` directive, so the
-# root go.mod must be in place.
-COPY go.mod go.sum ./
+# github.com/signadot/context-propagation-matrix/gen => ../../gen` directive,
+# so the stubs' go.mod must be in place.
+COPY gen/go.mod gen/go.sum ./gen/
 COPY relays/go-otelc/go.mod relays/go-otelc/go.sum ./relays/go-otelc/
 RUN --mount=type=cache,target=/go/pkg/mod cd relays/go-otelc && go mod download
 # Now the source.
@@ -32,7 +31,12 @@ COPY relays/go-otelc ./relays/go-otelc
 # instrumentation packages), which is fine inside the image.
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     cd relays/go-otelc && \
-    CGO_ENABLED=0 GOFLAGS=-buildvcs=false go tool otelc go build -o /relay . && \
+    # Stamp the otelc version into the binary: otelc is a `tool` dependency,
+    # not a dependency of the binary, so debug.ReadBuildInfo cannot see it;
+    # /info reports it via this ldflag (the SDK it weaves in is visible and
+    # goes under libs). This is the version the variant is filed under.
+    OTELC=$(go list -m -f '{{.Version}}' go.opentelemetry.io/otelc) && \
+    CGO_ENABLED=0 GOFLAGS=-buildvcs=false go tool otelc go build -ldflags "-X main.tracerVersion=$OTELC" -o /relay . && \
     # Fail the build if weaving silently did not happen: the woven binary must
     # contain OTel SDK + kafka-go instrumentation symbols (injected at link
     # time; they do NOT appear in `go version -m` output).

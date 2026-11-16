@@ -49,6 +49,10 @@ type VersionEntry struct {
 	MatrixVersion  int               `json:"matrix_version"`
 	Counts         map[string]*Count `json:"counts"`
 	CanaryLeaks    int               `json:"canary_leaks"`
+	// Invalid is the document's Variant.Invalid: with it a reader of the
+	// index can tell an agent that never attached from one that propagates
+	// nothing, which have the same counts.
+	Invalid []Problem `json:"invalid,omitempty"`
 }
 
 // safeVersion is what may appear in an asset file name: registries hand out
@@ -56,12 +60,130 @@ type VersionEntry struct {
 // space or a leading dot.
 var safeVersion = regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z.+_-]*$`)
 
+// Release assets that are not per-version documents.
+const (
+	IndexAsset  = "index.json"
+	BundleAsset = "versions.json"
+)
+
 // AssetName is the per-version document's file name for a version.
 func AssetName(version string) (string, error) {
 	if !safeVersion.MatchString(version) {
 		return "", fmt.Errorf("version %q cannot name a release asset", version)
 	}
+	if n := version + ".json"; n == IndexAsset || n == BundleAsset {
+		return "", fmt.Errorf("version %q would collide with the release's %s", version, n)
+	}
 	return version + ".json", nil
+}
+
+// VersionBundleSchema is the schema_version of versions.json.
+const VersionBundleSchema = 1
+
+// VersionBundle is versions.json: the index and every per-version document
+// of one variant in a single asset, so that a consumer rebuilding the whole
+// history (the site, on every build) needs one download per variant rather
+// than one per version. Documents are kept as written, keyed by version,
+// and always agree with Index: Sync enforces it.
+type VersionBundle struct {
+	SchemaVersion int                        `json:"schema_version"`
+	Index         *VersionIndex              `json:"index"`
+	Documents     map[string]json.RawMessage `json:"documents"`
+}
+
+// LoadVersionBundle reads versions.json for the variant described by v; a
+// missing file yields an empty bundle, which Sync then reports as lacking
+// every document the index lists.
+func LoadVersionBundle(path string, v *Variant) (*VersionBundle, error) {
+	b := &VersionBundle{SchemaVersion: VersionBundleSchema, Documents: map[string]json.RawMessage{}}
+	raw, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return b, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(raw, b); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	if b.SchemaVersion != VersionBundleSchema {
+		return nil, fmt.Errorf("%s: schema_version %d, want %d", path, b.SchemaVersion, VersionBundleSchema)
+	}
+	if b.Index != nil && b.Index.Variant != v.ID {
+		return nil, fmt.Errorf("%s: is for %s, not %s", path, b.Index.Variant, v.ID)
+	}
+	if b.Documents == nil {
+		b.Documents = map[string]json.RawMessage{}
+	}
+	return b, nil
+}
+
+// Put stores the document for a version, as written to its asset.
+func (b *VersionBundle) Put(version string, doc []byte) {
+	b.Documents[version] = json.RawMessage(doc)
+}
+
+// Each decodes every document in the bundle, oldest version first, hands it
+// to fn and stores it back as fn left it. It is how the bundle is
+// re-annotated: the cells of a document never change after it is filed, but
+// the annotations follow annotations/*.yaml and are re-derived on every
+// publish, so the bundle — what the site renders — always carries the
+// current explanation of each version, while the {version}.json asset keeps
+// the one it was filed with.
+func (b *VersionBundle) Each(fn func(version string, doc *Results) error) error {
+	vs := make([]string, 0, len(b.Documents))
+	for v := range b.Documents {
+		vs = append(vs, v)
+	}
+	sort.Slice(vs, func(i, j int) bool { return versions.Compare(vs[i], vs[j]) < 0 })
+	for _, v := range vs {
+		var doc Results
+		if err := json.Unmarshal(b.Documents[v], &doc); err != nil {
+			return fmt.Errorf("%s.json in bundle: %w", v, err)
+		}
+		if err := fn(v, &doc); err != nil {
+			return fmt.Errorf("%s.json: %w", v, err)
+		}
+		raw, err := doc.Encode()
+		if err != nil {
+			return err
+		}
+		b.Documents[v] = json.RawMessage(raw)
+	}
+	return nil
+}
+
+// Sync makes the bundle follow idx: documents for versions the index no
+// longer lists are dropped, and the versions the index lists without a
+// document in the bundle are returned (the caller must supply them before
+// writing, or the bundle would be incomplete).
+func (b *VersionBundle) Sync(idx *VersionIndex) (missing []string) {
+	listed := map[string]bool{}
+	for _, e := range idx.Versions {
+		listed[e.Version] = true
+		if _, ok := b.Documents[e.Version]; !ok {
+			missing = append(missing, e.Version)
+		}
+	}
+	for v := range b.Documents {
+		if !listed[v] {
+			delete(b.Documents, v)
+		}
+	}
+	b.Index = idx
+	return missing
+}
+
+// Write serialises the bundle compactly (it is machine-read and large).
+func (b *VersionBundle) Write(path string) error {
+	if b.Index == nil {
+		return fmt.Errorf("bundle has no index")
+	}
+	raw, err := json.Marshal(b)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(raw, '\n'), 0o644)
 }
 
 // MeasuredHere reports whether v's hops ran in r's own run, as opposed to
@@ -116,6 +238,11 @@ func (r *Results) Extract(id string) (*Results, error) {
 			s.CanaryLeaks = append(s.CanaryLeaks, l)
 		}
 	}
+	for _, p := range r.Summary.TraceparentPassthroughs {
+		if strings.HasPrefix(p, id+" ") {
+			s.TraceparentPassthroughs = append(s.TraceparentPassthroughs, p)
+		}
+	}
 	s.Scorecard = []Score{}
 	for _, sc := range r.Summary.Scorecard {
 		if sc.Variant == id {
@@ -157,7 +284,8 @@ func (r *Results) Entry(version string) (VersionEntry, error) {
 	}
 	e := VersionEntry{Version: version, Asset: asset, Kind: r.Run.Kind,
 		MeasuredIn: v.MeasuredIn, MeasuredAt: v.RanAt, MeasuredCommit: v.MeasuredCommit,
-		MatrixVersion: v.MatrixVersion, Counts: v.Counts, CanaryLeaks: len(r.Summary.CanaryLeaks)}
+		MatrixVersion: v.MatrixVersion, Counts: v.Counts, CanaryLeaks: len(r.Summary.CanaryLeaks),
+		Invalid: v.Invalid}
 	if v.Tracer != nil {
 		e.Reported = v.Tracer.Version
 	}

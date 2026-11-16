@@ -1,4 +1,4 @@
-// Command driver runs the 16 protocol-boundary tests against one relay
+// Command driver runs one test per protocol boundary against one relay
 // variant, seeding context propagation headers on the inbound side and
 // evaluating what the sink observed on the outbound side.
 //
@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -18,12 +17,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	pb "github.com/signadot/context-propagation-matrix/gen/cpmatrix"
+	"github.com/signadot/context-propagation-matrix/internal/eval"
+	"github.com/signadot/context-propagation-matrix/internal/raw"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/grpc"
@@ -32,47 +32,6 @@ import (
 )
 
 var protocols = []string{"http", "grpc", "kafka", "rabbitmq"}
-
-type Seeded struct {
-	TraceID    string            `json:"trace_id"`
-	SpanID     string            `json:"span_id"`
-	RoutingKey string            `json:"routing_key"`
-	Headers    map[string]string `json:"headers"`
-}
-
-type Observed struct {
-	Transport string              `json:"transport"`
-	Headers   map[string][]string `json:"headers"`
-}
-
-type Status struct {
-	Traceparent   string `json:"traceparent"`
-	Tracestate    string `json:"tracestate"`
-	Baggage       string `json:"baggage"`
-	OTBaggage     string `json:"ot_baggage"`
-	DatadogNative string `json:"datadog_native"`
-	CanaryLeak    bool   `json:"canary_leak"`
-}
-
-type TestResult struct {
-	Boundary  string    `json:"boundary"`
-	TestID    string    `json:"test_id"`
-	Delivered bool      `json:"delivered"`
-	Seeded    Seeded    `json:"seeded"`
-	Observed  *Observed `json:"observed,omitempty"`
-	Status    *Status   `json:"status,omitempty"`
-	Error     string    `json:"error,omitempty"`
-}
-
-type VariantResult struct {
-	Variant  string         `json:"variant"`
-	Tool     string         `json:"tool"`
-	Language string         `json:"language"`
-	Config   map[string]any `json:"config,omitempty"`
-	Info     map[string]any `json:"info,omitempty"`
-	RanAt    time.Time      `json:"ran_at"`
-	Tests    []TestResult   `json:"tests"`
-}
 
 type Env struct {
 	Variant          string
@@ -94,11 +53,11 @@ func randHex(nBytes int) string {
 	return hex.EncodeToString(b)
 }
 
-func newSeed(testID string) Seeded {
+func newSeed(testID string) raw.Seeded {
 	traceID := randHex(16)
 	spanID := randHex(8)
 	rk := "rk-" + randHex(4)
-	return Seeded{
+	return raw.Seeded{
 		TraceID:    traceID,
 		SpanID:     spanID,
 		RoutingKey: rk,
@@ -114,7 +73,7 @@ func newSeed(testID string) Seeded {
 
 // ---- inbound senders ----
 
-func (e *Env) sendHTTP(seed Seeded, testID, forwardVia string) error {
+func (e *Env) sendHTTP(seed raw.Seeded, testID, forwardVia string) error {
 	body, _ := json.Marshal(map[string]string{"test_id": testID, "forward_via": forwardVia})
 	req, err := http.NewRequest("POST", e.RelayHTTP+"/relay", bytes.NewReader(body))
 	if err != nil {
@@ -135,7 +94,7 @@ func (e *Env) sendHTTP(seed Seeded, testID, forwardVia string) error {
 	return nil
 }
 
-func (e *Env) sendGRPC(seed Seeded, testID, forwardVia string) error {
+func (e *Env) sendGRPC(seed raw.Seeded, testID, forwardVia string) error {
 	conn, err := grpc.NewClient(e.RelayGRPC, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
@@ -152,7 +111,7 @@ func (e *Env) sendGRPC(seed Seeded, testID, forwardVia string) error {
 	return err
 }
 
-func (e *Env) sendKafka(seed Seeded, testID, forwardVia string) error {
+func (e *Env) sendKafka(seed raw.Seeded, testID, forwardVia string) error {
 	value, _ := json.Marshal(map[string]string{"test_id": testID, "forward_via": forwardVia})
 	rec := &kgo.Record{Topic: e.RelayTopic, Value: value}
 	for k, v := range seed.Headers {
@@ -163,7 +122,7 @@ func (e *Env) sendKafka(seed Seeded, testID, forwardVia string) error {
 	return e.Kafka.ProduceSync(ctx, rec).FirstErr()
 }
 
-func (e *Env) sendRabbit(seed Seeded, testID, forwardVia string) error {
+func (e *Env) sendRabbit(seed raw.Seeded, testID, forwardVia string) error {
 	body, _ := json.Marshal(map[string]string{"test_id": testID, "forward_via": forwardVia})
 	headers := amqp.Table{}
 	for k, v := range seed.Headers {
@@ -178,7 +137,7 @@ func (e *Env) sendRabbit(seed Seeded, testID, forwardVia string) error {
 	})
 }
 
-func (e *Env) send(inbound string, seed Seeded, testID, forwardVia string) error {
+func (e *Env) send(inbound string, seed raw.Seeded, testID, forwardVia string) error {
 	switch inbound {
 	case "http":
 		return e.sendHTTP(seed, testID, forwardVia)
@@ -194,7 +153,7 @@ func (e *Env) send(inbound string, seed Seeded, testID, forwardVia string) error
 
 // ---- sink polling ----
 
-func (e *Env) pollSink(testID string, timeout time.Duration) (*Observed, error) {
+func (e *Env) pollSink(testID string, timeout time.Duration) (*raw.Observed, error) {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		resp, err := e.HTTP.Get(e.SinkURL + "/observations?test_id=" + testID)
@@ -209,116 +168,12 @@ func (e *Env) pollSink(testID string, timeout time.Duration) (*Observed, error) 
 			resp.Body.Close()
 			if err == nil && len(out.Observations) > 0 {
 				o := out.Observations[0]
-				return &Observed{Transport: o.Transport, Headers: o.Headers}, nil
+				return &raw.Observed{Transport: o.Transport, Headers: o.Headers}, nil
 			}
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
 	return nil, fmt.Errorf("no observation within %s", timeout)
-}
-
-// ---- evaluation ----
-
-func first(h map[string][]string, key string) (string, bool) {
-	vs, ok := h[key]
-	if !ok || len(vs) == 0 {
-		return "", false
-	}
-	return vs[0], true
-}
-
-func evalTraceparent(h map[string][]string, seed Seeded) string {
-	v, ok := first(h, "traceparent")
-	if !ok {
-		return "absent"
-	}
-	parts := strings.Split(strings.TrimSpace(v), "-")
-	if len(parts) >= 3 && strings.EqualFold(parts[1], seed.TraceID) {
-		return "same_trace"
-	}
-	return "new_trace"
-}
-
-func evalTracestate(h map[string][]string, seed Seeded) string {
-	v, ok := first(h, "tracestate")
-	if !ok {
-		return "absent"
-	}
-	for _, entry := range strings.Split(v, ",") {
-		if strings.TrimSpace(entry) == "sdtest=v1" {
-			return "preserved"
-		}
-	}
-	return "present_entry_lost"
-}
-
-func parseBaggage(v string) map[string]string {
-	out := map[string]string{}
-	for _, member := range strings.Split(v, ",") {
-		member = strings.TrimSpace(member)
-		// strip properties (";" suffix)
-		if i := strings.Index(member, ";"); i >= 0 {
-			member = member[:i]
-		}
-		kv := strings.SplitN(member, "=", 2)
-		if len(kv) == 2 {
-			out[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
-		}
-	}
-	return out
-}
-
-func evalBaggage(h map[string][]string, seed Seeded) string {
-	v, ok := first(h, "baggage")
-	if !ok {
-		return "absent"
-	}
-	items := parseBaggage(v)
-	if items["sd-routing-key"] == seed.RoutingKey {
-		return "propagated"
-	}
-	return "partial"
-}
-
-func evalOTBaggage(h map[string][]string, seed Seeded) string {
-	v, ok := first(h, "ot-baggage-sd-routing-key")
-	if ok && v == seed.RoutingKey {
-		return "propagated"
-	}
-	if ok {
-		return "partial"
-	}
-	return "absent"
-}
-
-func evalDatadogNative(h map[string][]string, seed Seeded) string {
-	v, ok := first(h, "x-datadog-trace-id")
-	if !ok {
-		return "absent"
-	}
-	// x-datadog-trace-id is the decimal low 64 bits of the (128-bit) trace id
-	low := seed.TraceID[16:]
-	b, err := hex.DecodeString(low)
-	if err != nil || len(b) != 8 {
-		return "present_new_trace"
-	}
-	want := strconv.FormatUint(binary.BigEndian.Uint64(b), 10)
-	if strings.TrimSpace(v) == want {
-		return "present_same_trace"
-	}
-	return "present_new_trace"
-}
-
-func evaluate(obs *Observed, seed Seeded) *Status {
-	_, canary := first(obs.Headers, "x-sd-canary")
-	return &Status{
-		Traceparent:   evalTraceparent(obs.Headers, seed),
-		Tracestate:    evalTracestate(obs.Headers, seed),
-		Baggage:       evalBaggage(obs.Headers, seed),
-		OTBaggage:     evalOTBaggage(obs.Headers, seed),
-		DatadogNative: evalDatadogNative(obs.Headers, seed),
-		CanaryLeak:    canary,
-	}
 }
 
 // ---- orchestration ----
@@ -439,7 +294,7 @@ func main() {
 	log.Printf("relay info: %v", info)
 
 	parts := strings.SplitN(*variant, "-", 3)
-	result := &VariantResult{
+	result := &raw.VariantResult{
 		Variant: *variant,
 		Tool:    parts[0],
 		RanAt:   time.Now().UTC(),
@@ -465,7 +320,7 @@ func main() {
 			boundary := in + "->" + out
 			testID := fmt.Sprintf("%s--%s-%s--%s", *variant, in, out, randHex(4))
 			seed := newSeed(testID)
-			tr := TestResult{Boundary: boundary, TestID: testID, Seeded: seed}
+			tr := raw.TestResult{Boundary: boundary, TestID: testID, Seeded: &seed}
 			log.Printf("test %-14s id=%s", boundary, testID)
 			if err := env.send(in, seed, testID, out); err != nil {
 				tr.Error = "send: " + err.Error()
@@ -474,7 +329,7 @@ func main() {
 			} else {
 				tr.Delivered = true
 				tr.Observed = obs
-				tr.Status = evaluate(obs, seed)
+				tr.Status = eval.Evaluate(obs.Headers, seed)
 				log.Printf("  -> traceparent=%s tracestate=%s baggage=%s ot_baggage=%s dd=%s canary=%v",
 					tr.Status.Traceparent, tr.Status.Tracestate, tr.Status.Baggage,
 					tr.Status.OTBaggage, tr.Status.DatadogNative, tr.Status.CanaryLeak)

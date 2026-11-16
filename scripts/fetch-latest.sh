@@ -37,13 +37,25 @@ if ! command -v gh >/dev/null 2>&1; then
 fi
 
 if [[ -z "$tag" ]]; then
-  # Newest first (creation order), paging through every release: the monthly
-  # back-test publishes 100+ backtest-* releases in one go, so a fixed
-  # `--limit` can return no run-* at all (2026-11-02 published with nothing
-  # carried over and no changes.json for exactly that reason). `sed -n 1p`
-  # reads all of stdin, so gh never sees a closed pipe under pipefail.
+  # The newest run is the one with the latest date and, within a date, the
+  # highest .N (matrix.yml numbers a day's runs run-D, run-D.1, run-D.2, …).
+  # Order by those two keys rather than by the order the API lists releases
+  # in: that order is not publication order (run-2026-11-10.9 was listed
+  # ahead of .10 to .22, so twelve runs carried over and diffed against .9),
+  # and created_at is the tagged commit's date, which runs on the same commit
+  # share.
+  #
+  # Page through every release: the monthly back-test publishes 100+
+  # backtest-* releases in one go, so a fixed `--limit` can return no run-*
+  # at all (2026-11-02 published with nothing carried over and no
+  # changes.json for exactly that reason). Every stage reads all of its
+  # input, so gh never sees a closed pipe under pipefail.
   tag=$(gh api --paginate "repos/$repo/releases?per_page=100" \
-          --jq '.[] | select(.draft | not) | .tag_name | select(startswith("run-"))' | sed -n 1p)
+          --jq '.[] | select(.draft | not) | .tag_name
+                | select(test("^run-[0-9]{4}-[0-9]{2}-[0-9]{2}(\\.[0-9]+)?$"))' \
+        | awk -F. '{ printf "%s\t%d\t%s\n", $1, $2, $0 }' \
+        | LC_ALL=C sort -t $'\t' -k1,1r -k2,2nr \
+        | sed -n 1p | cut -f3)
   if $tag_only; then
     printf '%s\n' "$tag"
     exit 0

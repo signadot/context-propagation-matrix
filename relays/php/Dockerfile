@@ -40,8 +40,18 @@ RUN sed -ri 's/^Listen 80$/Listen 8080/' /etc/apache2/ports.conf
 COPY relays/php/docker/vhost.conf /etc/apache2/sites-available/000-default.conf
 COPY relays/php/docker/relay.ini /usr/local/etc/php/conf.d/zz-relay.ini
 
+# The application's own dependencies are locked: composer.json pins the direct
+# ones exactly and composer.lock pins every transitive one, so two builds of
+# the same commit contain the same code. `composer install` installs exactly
+# the lock. Dependabot updates composer.json and composer.lock together. The
+# lock is generated without the PECL extensions this image compiles, in the
+# official composer image (same PHP minor as the base image above):
+#   docker run --rm -v "$PWD/relays/php:/app" -w /app composer:2 \
+#     composer update --no-install --no-dev --no-interaction \
+#       --ignore-platform-req=ext-grpc --ignore-platform-req=ext-rdkafka \
+#       --ignore-platform-req=ext-sockets
 WORKDIR /app
-COPY relays/php/composer.json ./
+COPY relays/php/composer.json relays/php/composer.lock ./
 RUN composer install --no-dev --no-interaction --no-autoloader
 
 COPY relays/php/public ./public
@@ -69,6 +79,10 @@ ENTRYPOINT ["/entrypoint.sh"]
 FROM app AS otel
 # Extension + instrumentation packages pinned exactly (composer requires in
 # a Dockerfile are not Dependabot-visible; bump manually per DESIGN.md).
+# The tracer is NOT locked: `composer require` resolves these packages and
+# whatever they pull in at build time, because the tracer version is the
+# variable being measured. It rewrites composer.json and composer.lock inside
+# the image only; the application's locked packages above must not move.
 RUN install-php-extensions opentelemetry-1.5.0
 RUN composer require --no-interaction \
       open-telemetry/sdk:1.15.0 \
@@ -84,7 +98,7 @@ ENV OTEL_PHP_AUTOLOAD_ENABLED=true \
 # (each release's setup script installs that release's tracer). Tracer
 # version is read at runtime via phpversion('ddtrace') for /info.
 FROM app AS datadog
-ARG DD_PHP_TRACER_VERSION=1.27.1
+ARG DD_PHP_TRACER_VERSION=1.27.2
 RUN curl -fLo /tmp/datadog-setup.php \
       "https://github.com/DataDog/dd-trace-php/releases/download/${DD_PHP_TRACER_VERSION}/datadog-setup.php" \
  && php /tmp/datadog-setup.php --php-bin=all \

@@ -51,8 +51,10 @@ func TestApply_AttachesToFailingCells(t *testing.T) {
 	res := fixture(map[string]results.Outcome{"datadog-java/baggage/http-http": results.OutcomePass})
 	a := ann("dd-java-baggage", "open", Selector{Tool: []string{"datadog"}, Language: []string{"java"}, Header: []string{"baggage"}})
 	ps := Apply(res, []*Annotation{a})
-	if fatal(ps) != 0 || len(ps) != 0 {
-		t.Fatalf("unexpected problems: %v", ps)
+	// One of the four cells it covers passes: partially resolved, a warning
+	// (see TestApply_PartiallyResolvedWarnsNamingVariantAndCells).
+	if fatal(ps) != 0 || len(ps) != 1 || !strings.Contains(ps[0].Message, "partially resolved") {
+		t.Fatalf("want one partial-resolution warning, nothing else: %v", ps)
 	}
 	got := res.Annotations[0]
 	if got.Resolved || len(got.Cells) != 3 {
@@ -190,6 +192,135 @@ func TestApply_ExplicitOutcomeNoLongerPresentWarns(t *testing.T) {
 	got := res.Annotations[0]
 	if got.Resolved || len(got.Cells) != 0 {
 		t.Fatalf("cells with a different failure must not be attached or count as resolved: %+v", got)
+	}
+}
+
+// warnings returns the non-fatal, non-info problems.
+func warnings(ps []Problem) (out []Problem) {
+	for _, p := range ps {
+		if !p.Fatal && !p.Info {
+			out = append(out, p)
+		}
+	}
+	return
+}
+
+func TestApply_PartiallyResolvedWarnsNamingVariantAndCells(t *testing.T) {
+	res := fixture(map[string]results.Outcome{
+		"datadog-java/baggage/http-kafka":  results.OutcomePass,
+		"datadog-java/baggage/kafka-kafka": results.OutcomePass,
+	})
+	a := ann("dd-baggage", "open", Selector{Tool: []string{"datadog"}, Header: []string{"baggage"}})
+	ps := Apply(res, []*Annotation{a})
+	if fatal(ps) != 0 || len(ps) != 1 {
+		t.Fatalf("want exactly one non-fatal warning (only datadog-java drifted); got %v", ps)
+	}
+	p := ps[0]
+	if p.Annotation != "dd-baggage" || p.Info || p.Fatal || !p.Advisory {
+		t.Fatalf("want an advisory warning attributed to the annotation; got %+v", p)
+	}
+	for _, want := range []string{"partially resolved", "datadog-java", "baggage/http-kafka", "baggage/kafka-kafka", "2 other cell(s)"} {
+		if !strings.Contains(p.Message, want) {
+			t.Fatalf("message lacks %q: %s", want, p.Message)
+		}
+	}
+	if strings.Contains(p.Message, "datadog-node") || strings.Contains(p.Message, "baggage/http-http") {
+		t.Fatalf("message must name only the drifted variant and the passing cells: %s", p.Message)
+	}
+	if !strings.Contains(p.String(), "dd-baggage") {
+		t.Fatalf("rendered problem must carry the annotation id: %s", p)
+	}
+	got := res.Annotations[0]
+	if got.Resolved || len(got.Cells) != 6 {
+		t.Fatalf("still attached to the six failing cells and not resolved; got resolved=%v cells=%v", got.Resolved, got.Cells)
+	}
+}
+
+func TestApply_PartialIsQuietWithExplicitOutcomeThatStillMatches(t *testing.T) {
+	// The selector claims only `fail` cells. A passing cell inside its shape
+	// was never claimed, and a cell with another failure outcome is not its
+	// business either: nothing it says has become false.
+	res := fixture(map[string]results.Outcome{
+		"datadog-java/baggage/http-kafka":  results.OutcomePass,
+		"datadog-java/baggage/kafka-kafka": results.OutcomeNewTrace,
+	})
+	a := ann("dd-java-baggage-fail", "open", Selector{Tool: []string{"datadog"}, Language: []string{"java"}, Header: []string{"baggage"}, Outcome: []string{"fail"}})
+	ps := Apply(res, []*Annotation{a})
+	if len(ps) != 0 {
+		t.Fatalf("an outcome filter that still matches must not warn about passing cells: %v", ps)
+	}
+	if got := res.Annotations[0]; got.Resolved || len(got.Cells) != 2 {
+		t.Fatalf("want the two fail cells attached; got resolved=%v cells=%v", got.Resolved, got.Cells)
+	}
+}
+
+func TestApply_PartialIgnoresExplicitOutcomeSelectorButNotItsDefaultSibling(t *testing.T) {
+	// One annotation, two selectors: the explicit-outcome one (datadog-node)
+	// stays quiet over its passing cell, the default one (datadog-java) warns.
+	res := fixture(map[string]results.Outcome{
+		"datadog-node/baggage/http-http":    results.OutcomePass,
+		"datadog-java/tracestate/http-http": results.OutcomePass,
+	})
+	a := ann("mixed", "open",
+		Selector{Tool: []string{"datadog"}, Language: []string{"node"}, Header: []string{"baggage"}, Outcome: []string{"fail"}},
+		Selector{Tool: []string{"datadog"}, Language: []string{"java"}, Header: []string{"tracestate"}})
+	ws := warnings(Apply(res, []*Annotation{a}))
+	if len(ws) != 1 || !strings.Contains(ws[0].Message, "datadog-java") || strings.Contains(ws[0].Message, "datadog-node") {
+		t.Fatalf("want one warning, for datadog-java only; got %v", ws)
+	}
+}
+
+func TestApply_PartialMultiVariantOneFixedOneNot(t *testing.T) {
+	out := map[string]results.Outcome{}
+	for _, b := range []string{"http-http", "http-kafka", "kafka-http", "kafka-kafka"} {
+		out["datadog-java/tracestate/"+b] = results.OutcomePass // java fixed, node still fails
+	}
+	res := fixture(out)
+	a := ann("dd-tracestate", "open", Selector{Tool: []string{"datadog"}, Header: []string{"tracestate"}})
+	ps := Apply(res, []*Annotation{a})
+	if fatal(ps) != 0 || len(ps) != 1 {
+		t.Fatalf("want one warning for the fixed variant; got %v", ps)
+	}
+	m := ps[0].Message
+	if !strings.Contains(m, "datadog-java") || strings.Contains(m, "datadog-node") || !strings.Contains(m, "tracestate/kafka-http") {
+		t.Fatalf("warning must name the fixed variant and its four cells only: %s", m)
+	}
+	if !strings.Contains(m, "other variants") {
+		t.Fatalf("a fully passing variant has no failing cells of its own; message should say the annotation still applies elsewhere: %s", m)
+	}
+	got := res.Annotations[0]
+	if got.Resolved || len(got.Variants) != 1 || got.Variants[0] != "datadog-node" || len(got.Cells) != 4 {
+		t.Fatalf("the annotation stays attached to datadog-node's failing cells only; got %+v", got)
+	}
+	// Once the other variant passes too, the all-pass warning takes over and
+	// the per-variant one is not repeated.
+	for _, b := range []string{"http-http", "http-kafka", "kafka-http", "kafka-kafka"} {
+		out["datadog-node/tracestate/"+b] = results.OutcomePass
+	}
+	res = fixture(out)
+	ps = Apply(res, []*Annotation{ann("dd-tracestate", "open", Selector{Tool: []string{"datadog"}, Header: []string{"tracestate"}})})
+	if len(ps) != 1 || !strings.Contains(ps[0].Message, "set status: fixed") {
+		t.Fatalf("want only the all-pass warning; got %v", ps)
+	}
+}
+
+func TestApply_PartialIsQuietWhenStatusFixedOrCellsAreNotPasses(t *testing.T) {
+	// status: fixed expects passing cells; failing ones already warn as a
+	// regression, so the partial warning would only repeat it.
+	res := fixture(map[string]results.Outcome{"datadog-java/baggage/http-kafka": results.OutcomePass})
+	a := ann("dd-java-baggage", "fixed", Selector{Tool: []string{"datadog"}, Language: []string{"java"}, Header: []string{"baggage"}})
+	ps := Apply(res, []*Annotation{a})
+	if len(ps) != 1 || !strings.Contains(ps[0].Message, "regression") {
+		t.Fatalf("want only the regression warning; got %v", ps)
+	}
+	// undelivered and not_run are not passes: a harness limit is not drift.
+	res = fixture(map[string]results.Outcome{
+		"datadog-java/baggage/http-kafka":  results.OutcomeUndelivered,
+		"datadog-java/baggage/kafka-kafka": results.OutcomeNotRun,
+	})
+	a = ann("dd-java-baggage", "open", Selector{Tool: []string{"datadog"}, Language: []string{"java"}, Header: []string{"baggage"}})
+	if ps := Apply(res, []*Annotation{a}); len(ps) != 0 {
+		t.Fatalf("undelivered and not_run cells must not read as fixed: %v", ps)
 	}
 }
 

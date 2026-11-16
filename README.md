@@ -22,7 +22,8 @@ GitHub Release (`run-YYYY-MM-DD[.N]`) carrying `results.json`, `MATRIX.md`,
 [latest release](https://github.com/signadot/context-propagation-matrix/releases/latest)
 or browse them at **https://contextpropagation.io**. The same measurements
 are also filed by tracer version, one rolling release per variant
-(`variant-otel-java`: `2.33.1.json`, `2.32.0.json`, …, `index.json`), so a
+(`variant-otel-java`: `2.33.1.json`, `2.32.0.json`, …, `index.json`, and
+`versions.json` bundling them all), so a
 result can be looked up by the version it was measured at. Nothing is committed to
 the tree by the harness; the design/contract is in [`DESIGN.md`](DESIGN.md).
 
@@ -70,11 +71,15 @@ merge to main (relays/**, variants.yaml, ...)  ──▶ matrix.yml: cpm affecte
                                                    the previous release's raw.tar.gz, aggregates
                                                    ──▶ Release run-YYYY-MM-DD[.N] ──▶ Netlify hook
 Monday 06:17 UTC / workflow_dispatch           ──▶ matrix.yml: every variant, same publish path
+every 6 hours                                  ──▶ matrix.yml: the variants whose inputs changed since
+                                                   they were last measured (a bot-merged tracer bump,
+                                                   a cancelled or failed run); nothing when up to date
 merge to main touching annotations/**          ──▶ republish.yml: re-aggregate the latest release's
                                                    raw.tar.gz at this commit, replace its
-                                                   results.json + MATRIX.md ──▶ Netlify hook
+                                                   results.json + MATRIX.md, re-annotate every
+                                                   variant's versions.json ──▶ Netlify hook
 pull request                                   ──▶ verify.yml: fetch the latest results.json,
-                                                   cpm validate -strict, two smoke variants
+                                                   cpm validate -strict, smoke the affected relays
 ```
 
 A push run publishes the latest known state of every cell: `run.partial` and
@@ -87,7 +92,8 @@ and each variant's `ran_at` says when its own cells were last measured.
    as the `NETLIFY_BUILD_HOOK_URL` repository secret. Without it runs still
    publish releases; the site simply is not rebuilt.
 2. Optional secrets: `NEW_RELIC_LICENSE_KEY` (New Relic variants are skipped
-   without it) and `SLACK_WEBHOOK_URL` (a summary when cells change).
+   without it) and `SLACK_WEBHOOK_URL` (a summary when cells change, and a
+   message when a variant could not be built or measured).
 3. Settings → Actions → "Allow GitHub Actions to create and approve pull
    requests", so a run can open the PR that marks resolved annotations fixed.
 4. Dispatch `matrix.yml` once (Actions → matrix → Run workflow) for the first
@@ -104,7 +110,7 @@ annotations/       per-cell explanations as data (matched into results.json)
 proto/             relay/sink gRPC definitions
 sink/              uninstrumented Go recorder (HTTP + gRPC + Kafka + RabbitMQ)
 driver/            uninstrumented Go test driver (seeds headers, evaluates results)
-cmd/cpm/           CLI: list | affected | validate | aggregate | diff | summary | coords | annotations
+cmd/cpm/           CLI: list | affected | validate | aggregate | diff | summary | coords | annotations | pins | discover | versions
 internal/          registry loader, results schema v2, annotations, affected-variant rules, renderer
 matrixgen/         compatibility wrapper around `cpm aggregate` (MATRIX.md only)
 scripts/           fetch-latest.sh: restore results/latest (+ results/raw) from a release

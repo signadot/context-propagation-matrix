@@ -12,6 +12,10 @@
 #   - go run ./cmd/cpm pins       (which pin in pins.yaml backs each variant)
 #   - the contextpropagation.io site (via results.json, never directly)
 #
+# The driver does not read it. It runs every pair of its own protocol list
+# (driver/main.go), and driver/registry_test.go fails when those pairs are
+# not the `boundaries:` below.
+#
 # Versions are deliberately NOT here. Exact pins live in the manifests and
 # Dockerfile ARGs next to each relay (Dependabot / bump-agents.yml bump them;
 # pins.yaml says where each one is); the aggregator records the
@@ -23,6 +27,9 @@ schema_version: 1
 # variant is scored on (headers × boundaries) and what each outcome means.
 # Bump it by hand when a dimension or an outcome's semantics change, so that
 # results measured under different values are not compared cell for cell.
+# `cpm validate` fails when the protocols, the boundaries, the headers or a
+# header's scoring lists below differ from the latest release and this has
+# not moved. It cannot see a change in what an outcome means.
 # Adding a variant, a tool or a language does not change the contract. Every
 # result records the value it was measured under, and keeps it when a later
 # run carries the measurement over.
@@ -85,6 +92,28 @@ protocols:
   grpc:     { display_name: gRPC,     carrier: "gRPC metadata" }
   kafka:    { display_name: Kafka,    carrier: "Kafka record headers", async: true }
   rabbitmq: { display_name: RabbitMQ, short_name: rmq, carrier: "AMQP 0-9-1 message headers", async: true }
+
+# Wirings say whose code moves the context on one leg of an in-code variant's
+# relay (a leg is one protocol in one direction). Each in-code variant lists
+# every protocol under `legs:` with an inbound and an outbound wiring. This
+# records how the relay is wired, not whether propagation works; the cells
+# measure that. Variants in every other tier have no legs: their application
+# has no propagation code to describe.
+wirings:
+  library:
+    display_name: library
+    description: >-
+      Propagation is left to an instrumentation library that the application
+      wraps its client or server with (the vendor's contrib package, or a
+      plugin shipped with the client). The application's own code does not
+      touch the tracing headers.
+  app:
+    display_name: application code
+    description: >-
+      The application's own code moves the context. It calls the tracer's API
+      (a propagator's inject or extract, or the vendor's equivalent) to read
+      the tracing headers from the incoming message or to write them to the
+      outgoing one, with a carrier from a library or one it wrote.
 
 # Boundaries are every inbound × outbound protocol pair through one relay.
 # Order here is the column order in every table.
@@ -177,6 +206,8 @@ setup_tiers:
 #                    maven | npm | pypi | goproxy | nuget | rubygems | pecl |
 #                    packagist | crates | github-releases | newrelic-download
 #   tracer.package   the coordinate in that registry
+#   docs             the vendor's page for this agent in this language (the
+#                    site's per-language "Docs" link; flavours share it)
 #   source           relay directory (relative) whose manifests pin the version
 # ---------------------------------------------------------------------------
 variants:
@@ -189,6 +220,7 @@ variants:
     setup_tier: zero-code
     attach: "-javaagent:opentelemetry-javaagent.jar"
     tracer: { name: opentelemetry-javaagent, registry: maven, package: "io.opentelemetry.javaagent:opentelemetry-javaagent", github: open-telemetry/opentelemetry-java-instrumentation }
+    docs: https://opentelemetry.io/docs/zero-code/java/agent/
     source: relays/java
   - id: otel-node
     tool: otel
@@ -198,6 +230,7 @@ variants:
     setup_tier: zero-code
     attach: "--require @opentelemetry/auto-instrumentations-node/register"
     tracer: { name: "@opentelemetry/auto-instrumentations-node", registry: npm, package: "@opentelemetry/auto-instrumentations-node", github: open-telemetry/opentelemetry-js-contrib }
+    docs: https://opentelemetry.io/docs/zero-code/js/
     source: relays/node/tools/otel
   - id: otel-python
     tool: otel
@@ -207,6 +240,7 @@ variants:
     setup_tier: zero-code
     attach: "opentelemetry-instrument python app.py"
     tracer: { name: opentelemetry-distro, registry: pypi, package: opentelemetry-distro, github: open-telemetry/opentelemetry-python-contrib }
+    docs: https://opentelemetry.io/docs/zero-code/python/
     source: relays/python
   - id: otel-go
     tool: otel
@@ -214,9 +248,15 @@ variants:
     flavour: default
     display_name: Go
     setup_tier: in-code
-    attach: "otelhttp / otelgrpc wrappers + hand-written Kafka and AMQP carriers"
+    attach: "otelhttp / otelgrpc wrappers + franz-go kotel hooks + hand-written AMQP carrier"
     tracer: { name: go.opentelemetry.io/otel, registry: goproxy, package: go.opentelemetry.io/otel, github: open-telemetry/opentelemetry-go }
-    source: relays/go
+    docs: https://opentelemetry.io/docs/languages/go/instrumentation/
+    source: relays/go/otel
+    legs:
+      http:     { inbound: library, outbound: library }
+      grpc:     { inbound: library, outbound: library }
+      kafka:    { inbound: library, outbound: library }
+      rabbitmq: { inbound: app,     outbound: app }
   - id: otel-go-compiletime
     tool: otel
     language: go
@@ -225,6 +265,7 @@ variants:
     setup_tier: build-time
     attach: "go tool otelc go build (source untouched)"
     tracer: { name: go.opentelemetry.io/otelc, registry: goproxy, package: go.opentelemetry.io/otelc, github: open-telemetry/opentelemetry-go-compile-instrumentation }
+    docs: https://opentelemetry.io/docs/zero-code/go/
     source: relays/go-otelc
   - id: otel-dotnet
     tool: otel
@@ -232,8 +273,9 @@ variants:
     flavour: default
     display_name: .NET
     setup_tier: zero-code
-    attach: "CLR profiler env (OpenTelemetry.AutoInstrumentation)"
+    attach: "instrument.sh env: CLR profiler + DOTNET_STARTUP_HOOKS (OpenTelemetry.AutoInstrumentation)"
     tracer: { name: OpenTelemetry.AutoInstrumentation, registry: github-releases, package: open-telemetry/opentelemetry-dotnet-instrumentation, tag_prefix: v, github: open-telemetry/opentelemetry-dotnet-instrumentation }
+    docs: https://opentelemetry.io/docs/zero-code/dotnet/
     source: relays/dotnet
   - id: otel-ruby
     tool: otel
@@ -241,8 +283,9 @@ variants:
     flavour: default
     display_name: Ruby
     setup_tier: init-only
-    attach: "require 'opentelemetry/sdk'; OpenTelemetry::SDK.configure { use_all }"
+    attach: "require 'opentelemetry/sdk' and six instrumentation gems; SDK.configure with c.use for each"
     tracer: { name: opentelemetry-sdk, registry: rubygems, package: opentelemetry-sdk, github: open-telemetry/opentelemetry-ruby }
+    docs: https://opentelemetry.io/docs/languages/ruby/
     source: relays/ruby/gemfiles/otel
   - id: otel-php
     tool: otel
@@ -250,8 +293,9 @@ variants:
     flavour: default
     display_name: PHP
     setup_tier: zero-code
-    attach: "ext-opentelemetry + auto-* packages via php.ini"
+    attach: "ext-opentelemetry + auto-* composer packages, OTEL_PHP_AUTOLOAD_ENABLED=true"
     tracer: { name: opentelemetry (ext), registry: pecl, package: opentelemetry, github: open-telemetry/opentelemetry-php-instrumentation }
+    docs: https://opentelemetry.io/docs/zero-code/php/
     source: relays/php
   - id: otel-rust
     tool: otel
@@ -259,9 +303,15 @@ variants:
     flavour: default
     display_name: Rust
     setup_tier: in-code
-    attach: "opentelemetry propagator API + hand-written carriers"
+    attach: "opentelemetry propagator API, opentelemetry-http for HTTP + hand-written gRPC/Kafka/AMQP carriers"
     tracer: { name: opentelemetry, registry: crates, package: opentelemetry, github: open-telemetry/opentelemetry-rust }
+    docs: https://opentelemetry.io/docs/languages/rust/
     source: relays/rust/otel
+    legs:
+      http:     { inbound: app,     outbound: app }
+      grpc:     { inbound: app,     outbound: app }
+      kafka:    { inbound: app,     outbound: app }
+      rabbitmq: { inbound: app,     outbound: app }
 
   # ---- Datadog ------------------------------------------------------------
   - id: datadog-java
@@ -272,6 +322,7 @@ variants:
     setup_tier: zero-code
     attach: "-javaagent:dd-java-agent.jar, DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage"
     tracer: { name: dd-java-agent, registry: maven, package: "com.datadoghq:dd-java-agent", github: DataDog/dd-trace-java }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/java/
     source: relays/java
   - id: datadog-java-defaults
     tool: datadog
@@ -281,6 +332,7 @@ variants:
     setup_tier: zero-code
     attach: "-javaagent:dd-java-agent.jar, propagation style left at agent default"
     tracer: { name: dd-java-agent, registry: maven, package: "com.datadoghq:dd-java-agent", github: DataDog/dd-trace-java }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/java/
     source: relays/java
   - id: datadog-node
     tool: datadog
@@ -290,6 +342,7 @@ variants:
     setup_tier: zero-code
     attach: "--require dd-trace/init"
     tracer: { name: dd-trace, registry: npm, package: dd-trace, github: DataDog/dd-trace-js }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/nodejs/
     source: relays/node/tools/datadog
   - id: datadog-node-defaults
     tool: datadog
@@ -299,6 +352,7 @@ variants:
     setup_tier: zero-code
     attach: "--require dd-trace/init, propagation style left at default"
     tracer: { name: dd-trace, registry: npm, package: dd-trace, github: DataDog/dd-trace-js }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/nodejs/
     source: relays/node/tools/datadog
   - id: datadog-python
     tool: datadog
@@ -308,6 +362,7 @@ variants:
     setup_tier: zero-code
     attach: "ddtrace-run python app.py"
     tracer: { name: ddtrace, registry: pypi, package: ddtrace, github: DataDog/dd-trace-py }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/python/
     source: relays/python
   - id: datadog-python-defaults
     tool: datadog
@@ -317,6 +372,7 @@ variants:
     setup_tier: zero-code
     attach: "ddtrace-run, propagation style left at default"
     tracer: { name: ddtrace, registry: pypi, package: ddtrace, github: DataDog/dd-trace-py }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/python/
     source: relays/python
   - id: datadog-python-kafkaprop
     tool: datadog
@@ -326,6 +382,7 @@ variants:
     setup_tier: zero-code
     attach: "ddtrace-run, DD_KAFKA_PROPAGATION_ENABLED=true"
     tracer: { name: ddtrace, registry: pypi, package: ddtrace, github: DataDog/dd-trace-py }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/python/
     source: relays/python
   - id: datadog-go
     tool: datadog
@@ -333,18 +390,30 @@ variants:
     flavour: default
     display_name: Go
     setup_tier: in-code
-    attach: "dd-trace-go contrib wrappers (net/http, grpc, sarama) + hand-written AMQP carrier"
+    attach: "dd-trace-go contribs (net/http, grpc, sarama) + tracer.Inject/Extract for Kafka; hand-written AMQP carrier"
     tracer: { name: dd-trace-go, registry: goproxy, package: github.com/DataDog/dd-trace-go/v2, github: DataDog/dd-trace-go }
-    source: relays/go
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/go/
+    source: relays/go/datadog
+    legs:
+      http:     { inbound: library, outbound: library }
+      grpc:     { inbound: library, outbound: library }
+      kafka:    { inbound: app,     outbound: app }
+      rabbitmq: { inbound: app,     outbound: app }
   - id: datadog-go-defaults
     tool: datadog
     language: go
     flavour: defaults
     display_name: Go (defaults)
     setup_tier: in-code
-    attach: "dd-trace-go contribs, propagation style left at default"
+    attach: "dd-trace-go contribs + tracer.Inject/Extract for Kafka, propagation style left at default"
     tracer: { name: dd-trace-go, registry: goproxy, package: github.com/DataDog/dd-trace-go/v2, github: DataDog/dd-trace-go }
-    source: relays/go
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/go/
+    source: relays/go/datadog
+    legs:
+      http:     { inbound: library, outbound: library }
+      grpc:     { inbound: library, outbound: library }
+      kafka:    { inbound: app,     outbound: app }
+      rabbitmq: { inbound: app,     outbound: app }
   - id: datadog-go-orchestrion
     tool: datadog
     language: go
@@ -353,6 +422,7 @@ variants:
     setup_tier: build-time
     attach: "orchestrion go build (source untouched)"
     tracer: { name: dd-trace-go, registry: goproxy, package: github.com/DataDog/dd-trace-go/v2, github: DataDog/dd-trace-go }
+    docs: https://datadoghq.dev/orchestrion/
     weaver: { name: orchestrion, registry: goproxy, package: github.com/DataDog/orchestrion, github: DataDog/orchestrion }
     source: relays/go-orchestrion
   - id: datadog-dotnet
@@ -363,6 +433,7 @@ variants:
     setup_tier: zero-code
     attach: "CLR profiler env (Datadog.Trace), DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage"
     tracer: { name: dd-trace-dotnet, registry: github-releases, package: DataDog/dd-trace-dotnet, tag_prefix: v, github: DataDog/dd-trace-dotnet }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/dotnet-core/
     source: relays/dotnet
   - id: datadog-dotnet-defaults
     tool: datadog
@@ -372,6 +443,7 @@ variants:
     setup_tier: zero-code
     attach: "CLR profiler env, propagation style left at default"
     tracer: { name: dd-trace-dotnet, registry: github-releases, package: DataDog/dd-trace-dotnet, tag_prefix: v, github: DataDog/dd-trace-dotnet }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/dotnet-core/
     source: relays/dotnet
   - id: datadog-ruby
     tool: datadog
@@ -379,8 +451,9 @@ variants:
     flavour: default
     display_name: Ruby
     setup_tier: init-only
-    attach: "require 'datadog/auto_instrument'; Datadog.configure"
+    attach: "require 'datadog'; c.tracing.instrument per integration, karafka/waterdrop distributed_tracing: true"
     tracer: { name: datadog (gem), registry: rubygems, package: datadog, github: DataDog/dd-trace-rb }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/ruby/
     source: relays/ruby/gemfiles/datadog
   - id: datadog-ruby-defaults
     tool: datadog
@@ -388,8 +461,9 @@ variants:
     flavour: defaults
     display_name: Ruby (defaults)
     setup_tier: init-only
-    attach: "require 'datadog/auto_instrument', propagation style left at default"
+    attach: "require 'datadog'; same boot file as datadog-ruby, propagation style left at default"
     tracer: { name: datadog (gem), registry: rubygems, package: datadog, github: DataDog/dd-trace-rb }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/ruby/
     source: relays/ruby/gemfiles/datadog
   - id: datadog-php
     tool: datadog
@@ -399,6 +473,7 @@ variants:
     setup_tier: zero-code
     attach: "datadog-setup.php installer (ddtrace extension)"
     tracer: { name: dd-trace-php, registry: github-releases, package: DataDog/dd-trace-php, github: DataDog/dd-trace-php }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/php/
     source: relays/php
   - id: datadog-rust
     tool: datadog
@@ -408,7 +483,13 @@ variants:
     setup_tier: in-code
     attach: "datadog-opentelemetry crate + opentelemetry propagator API"
     tracer: { name: datadog-opentelemetry, registry: crates, package: datadog-opentelemetry, github: DataDog/libdatadog }
+    docs: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/rust/
     source: relays/rust/datadog
+    legs:
+      http:     { inbound: app,     outbound: app }
+      grpc:     { inbound: app,     outbound: app }
+      kafka:    { inbound: app,     outbound: app }
+      rabbitmq: { inbound: app,     outbound: app }
 
   # ---- Elastic APM (classic agents) ---------------------------------------
   - id: elastic-java
@@ -419,6 +500,7 @@ variants:
     setup_tier: zero-code
     attach: "-javaagent:elastic-apm-agent.jar"
     tracer: { name: elastic-apm-agent, registry: maven, package: "co.elastic.apm:elastic-apm-agent", github: elastic/apm-agent-java }
+    docs: https://www.elastic.co/docs/reference/apm/agents/java
     source: relays/java
   - id: elastic-node
     tool: elastic
@@ -428,6 +510,7 @@ variants:
     setup_tier: zero-code
     attach: "--require elastic-apm-node/start"
     tracer: { name: elastic-apm-node, registry: npm, package: elastic-apm-node, github: elastic/apm-agent-nodejs }
+    docs: https://www.elastic.co/docs/reference/apm/agents/nodejs
     source: relays/node/tools/elastic
   - id: elastic-python
     tool: elastic
@@ -435,8 +518,9 @@ variants:
     flavour: default
     display_name: Python
     setup_tier: init-only
-    attach: "ElasticAPM(app) Flask middleware + instrument()"
+    attach: "python boot_elastic.py (instrument() + ElasticAPM(app) Flask middleware)"
     tracer: { name: elastic-apm, registry: pypi, package: elastic-apm, github: elastic/apm-agent-python }
+    docs: https://www.elastic.co/docs/reference/apm/agents/python
     source: relays/python
   - id: elastic-go
     tool: elastic
@@ -446,15 +530,22 @@ variants:
     setup_tier: in-code
     attach: "apmhttp / apmgrpc wrappers + hand-written carriers"
     tracer: { name: go.elastic.co/apm, registry: goproxy, package: go.elastic.co/apm/v2, github: elastic/apm-agent-go }
-    source: relays/go
+    docs: https://www.elastic.co/docs/reference/apm/agents/go
+    source: relays/go/elastic
+    legs:
+      http:     { inbound: library, outbound: library }
+      grpc:     { inbound: library, outbound: library }
+      kafka:    { inbound: app,     outbound: app }
+      rabbitmq: { inbound: app,     outbound: app }
   - id: elastic-dotnet
     tool: elastic
     language: dotnet
     flavour: default
     display_name: .NET
     setup_tier: zero-code
-    attach: "CLR profiler env (Elastic.Apm.Profiler.Managed)"
+    attach: "DOTNET_STARTUP_HOOKS (ElasticApmAgentStartupHook.dll)"
     tracer: { name: elastic-apm-dotnet, registry: github-releases, package: elastic/apm-agent-dotnet, tag_prefix: v, github: elastic/apm-agent-dotnet }
+    docs: https://www.elastic.co/docs/reference/apm/agents/dotnet
     source: relays/dotnet
   - id: elastic-ruby
     tool: elastic
@@ -462,8 +553,9 @@ variants:
     flavour: default
     display_name: Ruby
     setup_tier: init-only
-    attach: "require 'elastic_apm'; ElasticAPM.start"
+    attach: "require 'elastic-apm'; HttpApp.use ElasticAPM::Middleware; ElasticAPM::Sinatra.start(HttpApp)"
     tracer: { name: elastic-apm (gem), registry: rubygems, package: elastic-apm, github: elastic/apm-agent-ruby }
+    docs: https://www.elastic.co/docs/reference/apm/agents/ruby
     source: relays/ruby/gemfiles/elastic
   - id: elastic-php
     tool: elastic
@@ -473,6 +565,7 @@ variants:
     setup_tier: zero-code
     attach: "apm-agent-php .deb (elastic_apm extension)"
     tracer: { name: elastic-apm-php, registry: github-releases, package: elastic/apm-agent-php, tag_prefix: v, github: elastic/apm-agent-php }
+    docs: https://www.elastic.co/docs/reference/apm/agents/php
     source: relays/php
 
   # ---- New Relic ----------------------------------------------------------
@@ -484,6 +577,7 @@ variants:
     setup_tier: zero-code
     attach: "-javaagent:newrelic.jar"
     tracer: { name: newrelic-agent, registry: maven, package: "com.newrelic.agent.java:newrelic-agent", github: newrelic/newrelic-java-agent }
+    docs: https://docs.newrelic.com/docs/apm/agents/java-agent/
     source: relays/java
   - id: newrelic-node
     tool: newrelic
@@ -493,6 +587,7 @@ variants:
     setup_tier: zero-code
     attach: "--require newrelic"
     tracer: { name: newrelic (npm), registry: npm, package: newrelic, github: newrelic/node-newrelic }
+    docs: https://docs.newrelic.com/docs/apm/agents/nodejs-agent/
     source: relays/node/tools/newrelic
   - id: newrelic-python
     tool: newrelic
@@ -502,6 +597,7 @@ variants:
     setup_tier: zero-code
     attach: "newrelic-admin run-program python app.py"
     tracer: { name: newrelic (pypi), registry: pypi, package: newrelic, github: newrelic/newrelic-python-agent }
+    docs: https://docs.newrelic.com/docs/apm/agents/python-agent/
     source: relays/python
   - id: newrelic-go
     tool: newrelic
@@ -511,7 +607,13 @@ variants:
     setup_tier: in-code
     attach: "go-agent WrapHandle + nrgrpc + nrsarama + nramqp"
     tracer: { name: go-agent, registry: goproxy, package: github.com/newrelic/go-agent/v3, github: newrelic/go-agent }
-    source: relays/go
+    docs: https://docs.newrelic.com/docs/apm/agents/go-agent/
+    source: relays/go/newrelic
+    legs:
+      http:     { inbound: library, outbound: library }
+      grpc:     { inbound: library, outbound: library }
+      kafka:    { inbound: app,     outbound: library }
+      rabbitmq: { inbound: library, outbound: library }
   - id: newrelic-dotnet
     tool: newrelic
     language: dotnet
@@ -520,6 +622,7 @@ variants:
     setup_tier: zero-code
     attach: "CLR profiler env (New Relic .NET agent)"
     tracer: { name: newrelic-dotnet-agent, registry: github-releases, package: newrelic/newrelic-dotnet-agent, tag_prefix: v, github: newrelic/newrelic-dotnet-agent }
+    docs: https://docs.newrelic.com/docs/apm/agents/net-agent/
     source: relays/dotnet
   - id: newrelic-ruby
     tool: newrelic
@@ -529,6 +632,7 @@ variants:
     setup_tier: init-only
     attach: "require 'newrelic_rpm'"
     tracer: { name: newrelic_rpm, registry: rubygems, package: newrelic_rpm, github: newrelic/newrelic-ruby-agent }
+    docs: https://docs.newrelic.com/docs/apm/agents/ruby-agent/
     source: relays/ruby/gemfiles/newrelic
   - id: newrelic-php
     tool: newrelic
@@ -538,13 +642,14 @@ variants:
     setup_tier: zero-code
     attach: "newrelic-install (newrelic extension + daemon)"
     tracer: { name: newrelic-php-agent, registry: newrelic-download, package: php_agent, github: newrelic/newrelic-php-agent }
+    docs: https://docs.newrelic.com/docs/apm/agents/php-agent/
     source: relays/php
 
   # ---- Baseline: no instrumentation --------------------------------------
   - { id: none-java,   tool: none, language: java,   flavour: default, display_name: Java,    setup_tier: null, source: relays/java }
   - { id: none-node,   tool: none, language: node,   flavour: default, display_name: Node.js, setup_tier: null, source: relays/node }
   - { id: none-python, tool: none, language: python, flavour: default, display_name: Python,  setup_tier: null, source: relays/python }
-  - { id: none-go,     tool: none, language: go,     flavour: default, display_name: Go,      setup_tier: null, source: relays/go }
+  - { id: none-go,     tool: none, language: go,     flavour: default, display_name: Go,      setup_tier: null, source: relays/go/none }
   - { id: none-dotnet, tool: none, language: dotnet, flavour: default, display_name: .NET,    setup_tier: null, source: relays/dotnet }
   - { id: none-ruby,   tool: none, language: ruby,   flavour: default, display_name: Ruby,    setup_tier: null, source: relays/ruby/gemfiles/none }
   - { id: none-php,    tool: none, language: php,    flavour: default, display_name: PHP,     setup_tier: null, source: relays/php }

@@ -10,12 +10,12 @@
 # absence is a measured finding. See README.
 source 'https://rubygems.org'
 
-gem 'bunny', '3.5.0'
+gem 'bunny', '3.6.0'
 gem 'grpc', '1.85.0'
 gem 'karafka', '2.6.1'
 gem 'puma', '8.0.2'
 gem 'rackup', '2.3.1'
 gem 'sinatra', '4.2.1'
-gem 'waterdrop', '2.10.9'
+gem 'waterdrop', '2.10.10'
 
-gem 'datadog', '2.48.0'
+gem 'datadog', '2.49.0'

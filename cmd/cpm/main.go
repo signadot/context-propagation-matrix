@@ -2,11 +2,13 @@
 // output into the published results contract.
 //
 //	cpm list [-tool otel] [-secret|-no-secret] [-json]
-//	cpm affected -base <rev> [-head HEAD] [-json]
+//	cpm boundaries [-json]
+//	cpm affected (-base <rev> | -since results.json) [-head HEAD] [-json]
 //	cpm validate [-results results/latest/results.json]
-//	cpm aggregate [-raw results/raw] [-out results/latest] [-run-id id] [-prev results.json] [-reran ids]
+//	cpm aggregate [-raw results/raw] [-out results/latest] [-run-id id] [-prev results.json] [-reran ids] [-republish results.json]
 //	cpm diff <from.json> <to.json> [-out changes.json]
-//	cpm summary <results.json> [-changes changes.json]
+//	cpm summary <results.json> [-changes changes.json] [-not-measured ids]
+//	cpm gate [-reran ids] [-baseline results.json] <results.json>
 //	cpm annotations mark-fixed <id> -fixed-in <version>
 //	cpm annotations resolved <results.json>
 //	cpm coords [-results results.json]
@@ -48,12 +50,16 @@ func main() {
 	switch os.Args[1] {
 	case "list":
 		err = cmdList(os.Args[2:])
+	case "boundaries":
+		err = cmdBoundaries(os.Args[2:])
 	case "affected":
 		err = cmdAffected(os.Args[2:])
 	case "validate":
 		err = cmdValidate(os.Args[2:])
 	case "aggregate":
 		err = cmdAggregate(os.Args[2:])
+	case "gate":
+		err = cmdGate(os.Args[2:])
 	case "diff":
 		err = cmdDiff(os.Args[2:])
 	case "summary":
@@ -81,14 +87,19 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `usage: cpm <list|affected|validate|aggregate|diff|summary|coords|annotations|pins|discover|versions> [flags]
+	fmt.Fprintln(os.Stderr, `usage: cpm <list|boundaries|affected|validate|aggregate|gate|diff|summary|coords|annotations|pins|discover|versions> [flags]
 
   list       print variant ids from variants.yaml (one per line, or -json)
-  affected   variant ids whose measurement a change could alter: -base <rev> [-head HEAD]
+  boundaries print the boundaries variants.yaml lists, in its order (one per line, or -json)
+  affected   variant ids to re-measure: -base <rev> (what a change could alter) and/or
+             -since <results.json> (what changed since each was last measured) [-head HEAD]
   validate   check variants.yaml, docker-compose.yml and annotations/ agree
   aggregate  results/raw/*.json -> results.json + MATRIX.md (+ changes.json)
+  gate       exit 1 if a results.json must not be published (canary leak, wrong transport,
+             agent not attached, a boundary not run): [-reran ids] [-baseline results.json] <results.json>
   diff       compare two results.json files into changes.json
-  summary    markdown summary of a results.json for CI/Slack
+  summary    markdown summary of a results.json for CI/Slack [-changes changes.json]
+             [-not-measured ids: variants the run was to measure and got no result for]
   coords     tracer package coordinates per variant as JSON (for version discovery)
   annotations mark-fixed <id> -fixed-in <version>   record an upstream fix in annotations/
   annotations resolved <results.json>              list resolved-but-unmarked annotations (id<TAB>version)
@@ -206,57 +217,78 @@ func cmdList(args []string) error {
 
 // ---------------------------------------------------------------------------
 
-// cmdAffected prints the variants a change between two git revisions could
-// re-measure differently (see internal/affected). matrix.yml runs it for
-// pushes to main so a tracer bump re-runs its own variants and carries the
-// rest over from the previous release. Reasons go to stderr; the id list to
-// stdout, every id when a shared component changed. Anything that stops the
-// diff from being computed (unknown base after a force-push, shallow clone)
-// selects every variant rather than guessing.
+// cmdBoundaries prints the boundaries the registry lists, in its order: the
+// hops one run of a variant has to record. verify.yml checks a smoked relay's
+// raw result against this list instead of a count of its own.
+func cmdBoundaries(args []string) error {
+	fs := flag.NewFlagSet("boundaries", flag.ExitOnError)
+	regPath := regFlag(fs)
+	asJSON := fs.Bool("json", false, "emit a JSON array (for a workflow output)")
+	fs.Parse(args)
+
+	reg, err := registry.Load(*regPath)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		// One line, and "http->kafka" rather than "http-\u003ekafka".
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetEscapeHTML(false)
+		return enc.Encode(reg.Boundaries)
+	}
+	for _, b := range reg.Boundaries {
+		fmt.Println(b)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+
+// cmdAffected prints the variants to re-measure (see internal/affected).
+// Reasons go to stderr; the id list to stdout.
+//
+// -base selects what a change between two git revisions could measure
+// differently, every id when a shared component changed. -since selects what
+// changed after each variant's own latest published measurement, read from
+// that release's results.json; it also covers what an earlier run should
+// have measured and did not. Given both, a variant either one selects is
+// selected: matrix.yml does that for pushes to main, and carries every other
+// variant over from the previous release.
+//
+// Anything that stops a diff from being computed (unknown revision after a
+// force-push, shallow clone) selects every variant that diff would have
+// decided for, rather than guessing.
 func cmdAffected(args []string) error {
 	fs := flag.NewFlagSet("affected", flag.ExitOnError)
 	regPath := regFlag(fs)
 	composePath := fs.String("compose", "docker-compose.yml", "compose file")
-	base := fs.String("base", "", "revision before the change (required)")
+	base := fs.String("base", "", "revision before the change")
+	since := fs.String("since", "", "results.json of the latest release: select what changed after each variant's measured_commit")
 	head := fs.String("head", "HEAD", "revision after the change")
 	asJSON := fs.Bool("json", false, "emit a JSON array")
 	fs.Parse(args)
-	if *base == "" {
-		return fmt.Errorf("usage: cpm affected -base <rev> [-head HEAD]")
+	if *base == "" && *since == "" {
+		return fmt.Errorf("usage: cpm affected (-base <rev> | -since <results.json>) [-head HEAD]")
 	}
 
 	reg, err := registry.Load(*regPath)
 	if err != nil {
 		return err
 	}
-	in := affected.Inputs{Head: reg}
-	var res affected.Result
+	between := func(base string) affected.Result {
+		return affectedBetween(reg, base, *head, filepath.ToSlash(*regPath), filepath.ToSlash(*composePath))
+	}
 
-	if strings.Trim(*base, "0") == "" {
-		// A branch's first push has no "before" commit.
-		res = affected.Result{All: true, Reasons: []string{"no base revision, every variant"}}
-	} else if out, err := git("diff", "--name-only", *base, *head); err != nil {
-		res = affected.Result{All: true, Reasons: []string{fmt.Sprintf("git diff %s..%s failed (%v), every variant", *base, *head, err)}}
-	} else {
-		in.Paths = strings.Fields(out)
-		for _, p := range in.Paths {
-			switch p {
-			case filepath.ToSlash(*regPath):
-				if b, err := git("show", *base+":"+p); err == nil {
-					in.Base, _ = registry.Parse([]byte(b), *base+":"+p)
-				}
-			case filepath.ToSlash(*composePath):
-				// A revision that fails to parse stays nil, which Compute
-				// treats as "re-run everything".
-				if b, err := git("show", *base+":"+p); err == nil {
-					_ = yaml.Unmarshal([]byte(b), &in.BaseCompose)
-				}
-				if b, err := git("show", *head+":"+p); err == nil {
-					_ = yaml.Unmarshal([]byte(b), &in.HeadCompose)
-				}
-			}
+	var res affected.Result
+	if *base != "" {
+		res = between(*base)
+	}
+	if *since != "" {
+		prev, err := results.Load(*since)
+		if err != nil {
+			return err
 		}
-		res = affected.Compute(in)
+		res = affected.Union(reg, res, affected.Since(reg, measuredAt(prev), between))
 	}
 	if res.All {
 		for _, v := range reg.SortedVariants() {
@@ -278,6 +310,55 @@ func cmdAffected(args []string) error {
 		fmt.Println(id)
 	}
 	return nil
+}
+
+// affectedBetween applies the path rules to `git diff base..head`.
+func affectedBetween(reg *registry.Registry, base, head, regPath, composePath string) affected.Result {
+	if strings.Trim(base, "0") == "" {
+		// A branch's first push has no "before" commit.
+		return affected.Result{All: true, Reasons: []string{"no base revision, every variant"}}
+	}
+	out, err := git("diff", "--name-only", base, head)
+	if err != nil {
+		return affected.Result{All: true, Reasons: []string{fmt.Sprintf("git diff %s..%s failed (%v), every variant", base, head, err)}}
+	}
+	in := affected.Inputs{Head: reg, Paths: strings.Fields(out)}
+	for _, p := range in.Paths {
+		switch p {
+		case regPath:
+			if b, err := git("show", base+":"+p); err == nil {
+				in.Base, _ = registry.Parse([]byte(b), base+":"+p)
+			}
+		case composePath:
+			// A revision that fails to parse stays nil, which Compute
+			// treats as "re-run everything".
+			if b, err := git("show", base+":"+p); err == nil {
+				_ = yaml.Unmarshal([]byte(b), &in.BaseCompose)
+			}
+			if b, err := git("show", head+":"+p); err == nil {
+				_ = yaml.Unmarshal([]byte(b), &in.HeadCompose)
+			}
+		}
+	}
+	return affected.Compute(in)
+}
+
+// measuredAt reads, for every variant a release holds a measurement of, the
+// harness commit that measurement was made at. Releases from before
+// measured_commit was recorded only know the commit of the run that
+// contained the variant, which is as precise as their data allows.
+func measuredAt(res *results.Results) map[string]string {
+	out := map[string]string{}
+	for _, v := range res.Variants {
+		if v.Missing {
+			continue
+		}
+		out[v.ID] = v.MeasuredCommit
+		if out[v.ID] == "" {
+			out[v.ID] = res.Run.HarnessCommit
+		}
+	}
+	return out
 }
 
 func git(args ...string) (string, error) {
@@ -400,7 +481,7 @@ func cmdValidate(args []string) error {
 	composePath := fs.String("compose", "docker-compose.yml", "compose file")
 	annDir := fs.String("annotations", "annotations", "annotations directory")
 	resPath := fs.String("results", "results/latest/results.json", "results.json to validate annotations against (skipped if missing)")
-	strict := fs.Bool("strict", false, "treat annotation warnings as errors")
+	strict := fs.Bool("strict", false, "treat annotation warnings as errors (partially resolved annotations and failing cells without an annotation stay warnings)")
 	fs.Parse(args)
 
 	reg, err := registry.Load(*regPath)
@@ -441,13 +522,10 @@ func cmdValidate(args []string) error {
 	}
 	fmt.Printf("annotations: %d loaded\n", len(anns))
 	if res, err := results.Load(*resPath); err == nil {
+		errs = append(errs, contractErrors(reg, res)...)
 		problems := annotations.Apply(res, anns)
-		for _, p := range problems {
-			fmt.Println("  " + p.String())
-			if p.Fatal || (*strict && !p.Info) {
-				errs = append(errs, p.String())
-			}
-		}
+		gh := os.Getenv("GITHUB_ACTIONS") == "true"
+		errs = append(errs, reportProblems(os.Stdout, gh, *strict, problems)...)
 		fmt.Printf("annotations: matched against %s (%d problems)\n", *resPath, len(problems))
 		resolved := 0
 		for _, a := range res.Annotations {
@@ -458,17 +536,12 @@ func cmdValidate(args []string) error {
 		if resolved > 0 {
 			fmt.Printf("annotations: %d resolved (every described cell now passes)\n", resolved)
 		}
-		// Coverage: failing cells nobody has explained yet. Informational —
-		// a new variant legitimately arrives unexplained — but surfaced here
-		// and in the Slack summary so an explanation gets written.
-		if un := annotations.Unexplained(res); len(un) > 0 {
-			fmt.Printf("annotations: %d non-pass cell(s) have no annotation:\n", len(un))
-			for _, line := range unexplainedLines(un, 20) {
-				fmt.Println("  " + line)
-			}
-		} else {
-			fmt.Println("annotations: every non-pass cell is explained")
-		}
+		// Coverage: failing cells nobody has explained yet. A warning that
+		// never fails validation, strict or not — a new upstream regression
+		// or a new variant legitimately arrives unexplained and must not block
+		// publishing — surfaced here and in the Slack summary so an
+		// explanation gets written.
+		reportUnexplained(os.Stdout, gh, annotations.Unexplained(res))
 	} else if !os.IsNotExist(err) {
 		return err
 	} else {
@@ -480,6 +553,30 @@ func cmdValidate(args []string) error {
 	}
 	fmt.Println("ok")
 	return nil
+}
+
+// contractErrors checks matrix_version against the latest release: res is
+// that release's results.json, written with the registry of its time. When
+// the cells a variant is scored on differ from it (results.ContractDiff:
+// protocols, boundaries, headers and how each header is scored), results
+// measured before and after are not comparable cell for cell, and the
+// version that says so has to have moved. Nothing else makes anyone bump
+// it: a registry with a fifth protocol and the old matrix_version loads,
+// aggregates and publishes.
+func contractErrors(reg *registry.Registry, res *results.Results) []string {
+	was := res.Run.MatrixVersion
+	if was == 0 {
+		was = 1 // documents written before the field existed
+	}
+	if reg.MatrixVersion < was {
+		return []string{fmt.Sprintf("matrix_version is %d in variants.yaml, lower than the %d that %s was measured under", reg.MatrixVersion, was, res.Run.RunID)}
+	}
+	diff := results.ContractDiff(reg, &res.Dimensions)
+	if len(diff) == 0 || reg.MatrixVersion > was {
+		return nil
+	}
+	return []string{fmt.Sprintf("the measurement contract differs from the one %s was measured under, but matrix_version is still %d. Bump matrix_version in variants.yaml:\n      %s",
+		res.Run.RunID, was, strings.Join(diff, "\n      "))}
 }
 
 // ---------------------------------------------------------------------------
@@ -498,9 +595,19 @@ func cmdAggregate(args []string) error {
 	prev := fs.String("prev", "", "previous results.json to diff against (writes changes.json)")
 	legacyMD := fs.String("matrix-md", "", "also write MATRIX.md to this path (legacy location)")
 	reran := fs.String("reran", "", "variant ids measured in this run (space/comma separated); the rest are carried over and run.partial is set")
+	republish := fs.String("republish", "", "results.json of the release being rendered again from its own raw results (republish.yml): nothing is measured, so the run keeps its commit, partial and reran, and every variant the provenance recorded there; excludes -prev, -reran and -commit")
 	ignoreUnknown := fs.Bool("ignore-unknown", false, "skip raw results for variants no longer in variants.yaml (carried over from an older release) instead of failing")
 	pinsPath := fs.String("pins", "pins.yaml", "pins manifest; the version each measured variant's tracer pin holds in this checkout is recorded as tracer.pinned (\"\" to skip)")
+	baseline := fs.String("baseline", "", "results.json to take a language's uninstrumented baseline from when the raw results hold none (a back-test); used to record variant.invalid")
 	fs.Parse(args)
+	if *republish != "" {
+		// -commit defaults to GITHUB_SHA, so only an explicit one conflicts.
+		given := map[string]bool{}
+		fs.Visit(func(f *flag.Flag) { given[f.Name] = true })
+		if given["prev"] || given["reran"] || given["commit"] {
+			return fmt.Errorf("aggregate: -republish takes the run's commit and measured set from the release; it excludes -prev, -reran and -commit")
+		}
+	}
 
 	reg, err := registry.Load(*regPath)
 	if err != nil {
@@ -529,6 +636,17 @@ func cmdAggregate(args []string) error {
 	}
 	run := results.Run{Kind: *kind, HarnessRepo: harnessRepo, HarnessCommit: *commit, Notes: *notes,
 		Generator: "cpm aggregate (schema v" + fmt.Sprint(results.SchemaVersion) + ")"}
+	var from *results.Results
+	if *republish != "" {
+		// The checkout this runs in holds newer annotations (or a newer
+		// aggregator), not the code that was measured: the run stays the
+		// one the release describes.
+		if from, err = results.Load(*republish); err != nil {
+			return err
+		}
+		run.HarnessCommit = from.Run.HarnessCommit
+		run.MatrixVersion = from.Run.MatrixVersion
+	}
 	if c, err := loadCompose(*composePath); err == nil {
 		run.BrokerVersions = brokerVersions(c)
 	}
@@ -540,14 +658,18 @@ func cmdAggregate(args []string) error {
 		*runID = "run-" + res.Run.FinishedAt.UTC().Format("2006-01-02")
 	}
 	res.Run.RunID = *runID
-	var from *results.Results
 	if *prev != "" {
 		if from, err = results.Load(*prev); err != nil {
 			return err
 		}
 	}
 	var measured map[string]bool
-	if ids := strings.FieldsFunc(*reran, func(r rune) bool { return r == ' ' || r == ',' || r == '\n' }); len(ids) > 0 {
+	if *republish != "" {
+		// Empty, not nil: no variant was measured here, so each takes its
+		// provenance (and pinned tracer version) from the release.
+		measured = map[string]bool{}
+		res.Run.Reran, res.Run.Partial = from.Run.Reran, from.Run.Partial
+	} else if ids := strings.FieldsFunc(*reran, func(r rune) bool { return r == ' ' || r == ',' || r == '\n' }); len(ids) > 0 {
 		sort.Strings(ids)
 		res.Run.Reran = ids
 		measured = map[string]bool{}
@@ -584,6 +706,9 @@ func cmdAggregate(args []string) error {
 	if err := res.SetProvenance(from, measured, pinned); err != nil {
 		return err
 	}
+	if err := recordValidity(res, *baseline); err != nil {
+		return err
+	}
 
 	if anns, err := annotations.LoadDir(*annDir); err != nil {
 		return err
@@ -614,7 +739,9 @@ func cmdAggregate(args []string) error {
 	fmt.Printf("wrote %s/results.json and MATRIX.md (%s: %d variants, %d hops, %d cells)\n",
 		*outDir, res.Run.RunID, res.Summary.VariantCount, res.Summary.HopCount, res.Summary.CellCount)
 
-	if from != nil {
+	// A republish keeps the release's changes.json: nothing was measured, so
+	// there is nothing new to compare.
+	if from != nil && *republish == "" {
 		ch := results.Diff(from, res)
 		if err := ch.Write(filepath.Join(*outDir, "changes.json")); err != nil {
 			return err
@@ -678,9 +805,10 @@ func cmdSummary(args []string) error {
 	fs := flag.NewFlagSet("summary", flag.ExitOnError)
 	changesPath := fs.String("changes", "", "changes.json to include")
 	siteURL := fs.String("site", "https://contextpropagation.io", "site base URL for permalinks")
+	notMeasured := fs.String("not-measured", "", "variant ids this run was to measure and got no result for (space/comma separated)")
 	pos, err := parsePositionals(fs, args, 1)
 	if err != nil {
-		return fmt.Errorf("usage: cpm summary <results.json> [-changes changes.json] [-site url]")
+		return fmt.Errorf("usage: cpm summary <results.json> [-changes changes.json] [-not-measured ids] [-site url]")
 	}
 	res, err := results.Load(pos[0])
 	if err != nil {
@@ -690,6 +818,13 @@ func cmdSummary(args []string) error {
 	fmt.Fprintf(&sb, "## Context propagation matrix — %s\n\n", res.Run.RunID)
 	fmt.Fprintf(&sb, "%d variants · %d hops · %d cells · finished %s\n\n",
 		res.Summary.VariantCount, res.Summary.HopCount, res.Summary.CellCount, res.Run.FinishedAt.UTC().Format(time.RFC3339))
+	// A variant whose job failed changes no cell: its last result is carried
+	// over like that of a variant the run was never to measure, and nothing
+	// else in this summary tells the two apart. First, so that it is read.
+	if ids := strings.FieldsFunc(*notMeasured, func(r rune) bool { return r == ' ' || r == ',' || r == '\n' }); len(ids) > 0 {
+		fmt.Fprintf(&sb, "**Could not be measured in this run: %d variant(s)** — %s. The job of each failed, was cancelled or timed out; each keeps the result it had before this run, if it had one.\n\n",
+			len(ids), strings.Join(ids, ", "))
+	}
 	if res.Run.Partial {
 		carried := 0
 		for _, v := range res.Variants {

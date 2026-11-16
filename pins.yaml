@@ -32,10 +32,22 @@
 #   kind: gomod    dir + modules: the vendor's version-locked family, `go get`
 #                  together then `go mod tidy`. Modules with their own version
 #                  line (otelhttp/otelgrpc, New Relic integrations, OTel Ruby
-#                  instrumentation gems) are deliberately not listed.
+#                  instrumentation gems) are deliberately not listed. `set`
+#                  fails if go.mod does not hold the version after tidy (tidy
+#                  can pull the family back up: a dependency's tests import a
+#                  package from a module nothing requires, so tidy adds that
+#                  module at latest). Optional companions [modules]: same
+#                  version line, `go get` with the family so tidy finds the
+#                  package at the pinned version, but not required in go.mod.
 #   kind: npm      file (package.json) + packages
 #   kind: pip      file (requirements-*.txt) + packages (globs; every `pkg==`)
-#   kind: bundler  file (Gemfile) + packages (gem names)
+#   kind: bundler  file (Gemfile) + packages (gem names): the `gem` lines
+#                  rewritten and the Gemfile.lock beside the file moved with
+#                  `bundle lock --update <gems>` (the gems and what they
+#                  depend on; the rest of the lock stays unless it conflicts
+#                  with them), so the Dockerfile's frozen install still
+#                  applies. `check` also requires the lock to hold the
+#                  version the Gemfile pins (relays/ruby/README.md).
 #   kind: cargo    dir + packages (crates): Cargo.toml requirement set exact
 #                  and Cargo.lock moved with `cargo update`, so the
 #                  Dockerfile's `--locked` build still applies. Optional
@@ -159,24 +171,29 @@ pins:
     # (Back-test 2026-11-09: 1.8.3–1.12.0 fail, 1.13.0 builds.)
     backtest: { min: 1.13.0 }
 
-  # ---- Go (go.mod module families) ---------------------------------------
+  # ---- Go (go.mod module families; one module per tool under relays/go,
+  #      so pinning one tracer never moves another) -------------------------
   - id: otel-go
     kind: gomod
-    dir: relays/go
+    dir: relays/go/otel
     modules:
       - go.opentelemetry.io/otel
       - go.opentelemetry.io/otel/sdk
       - go.opentelemetry.io/otel/trace
+    # kotel 1.5.0 (the plugin version otel 1.27.0–1.30.0 resolve to) imports
+    # otel/sdk/metric in its tests without requiring it, so `go mod tidy`
+    # fetched sdk/metric at latest and that dragged the family back to
+    # 1.47.0: back-tests 1.27.0–1.30.0 in run-2026-11-10.17 measured 1.47.0.
+    # Getting sdk/metric at the pinned version first keeps the pin.
+    companions:
+      - go.opentelemetry.io/otel/sdk/metric
     source: { registry: goproxy, package: go.opentelemetry.io/otel }
     variants: [otel-go]
-    # relays/go is one module for every Go tracer, so `go get otel@<old>`
-    # must also downgrade dd-trace-go (v2.12.0 requires otel ≥ 1.45) to a
-    # release that accepts the older otel. Below 1.40.0 that lands on a
-    # -dev tag of dd-trace-go whose datadog-agent requirements are
-    # placeholder versions, and `go mod tidy` fails. Measuring older
-    # otel-go needs the Go relays split into one module per tool.
-    # (Back-test 2026-11-09: 1.33.0–1.39.0 fail, 1.40.0 builds.)
-    backtest: { min: 1.40.0 }
+    # The relay's gRPC legs use the otelgrpc stats handlers
+    # (NewServerHandler / NewClientHandler), which arrived in otelgrpc
+    # v0.45.0 = otel 1.19.0; 1.16.0–1.18.0 do not compile.
+    # (Local pin trial 2026-11-10 after the per-tool module split.)
+    backtest: { min: 1.19.0 }
   - id: otelc
     kind: gomod
     dir: relays/go-otelc
@@ -188,7 +205,7 @@ pins:
     backtest: { min: 1.0.1 }
   - id: dd-trace-go
     kind: gomod
-    dir: relays/go
+    dir: relays/go/datadog
     modules:
       - github.com/DataDog/dd-trace-go/v2
       - github.com/DataDog/dd-trace-go/contrib/net/http/v2
@@ -213,7 +230,7 @@ pins:
     backtest: { skip: [2.1.0, 2.2.0, 2.2.1] }
   - id: newrelic-go-agent
     kind: gomod
-    dir: relays/go
+    dir: relays/go/newrelic
     modules: [github.com/newrelic/go-agent/v3]
     source: { registry: goproxy, package: github.com/newrelic/go-agent/v3 }
     variants: [newrelic-go]
@@ -226,7 +243,7 @@ pins:
     backtest: { min: 3.35.0, skip: [3.43.0] }
   - id: elastic-apm-go
     kind: gomod
-    dir: relays/go
+    dir: relays/go/elastic
     modules:
       - go.elastic.co/apm/v2
       - go.elastic.co/apm/module/apmgrpc/v2
@@ -372,5 +389,8 @@ pins:
       opentelemetry: [opentelemetry, opentelemetry-http]
     source: { registry: crates, package: datadog-opentelemetry }
     variants: [datadog-rust]
-    # 0.0.0 is an empty name reservation with no dependencies.
-    backtest: { min: 0.1.0 }
+    # 0.1.0–0.2.1 no longer build: their libdd-trace-utils (Datadog's own
+    # dependency) fails to compile against the prost it resolves to
+    # (`AgentPayload: Message` not satisfied). 0.0.0 is an empty name
+    # reservation. (Back-test 2026-11-10: 0.1.0–0.2.1 fail, 0.3.0 builds.)
+    backtest: { min: 0.3.0 }

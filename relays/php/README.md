@@ -96,16 +96,19 @@ Notes on the choices:
   `OTEL_TRACES_EXPORTER=none` (image defaults; compose can override).
   Propagation (`tracecontext,baggage`) is the SDK default and independent of
   export.
-- **datadog**: the documented `datadog-setup.php` installer from the latest
-  dd-trace-php release, `--php-bin=all`. Version reported at runtime via
+- **datadog**: the documented `datadog-setup.php` installer from the
+  dd-trace-php release pinned by `DD_PHP_TRACER_VERSION` in the `datadog`
+  stage of the Dockerfile, `--php-bin=all`. Version reported at runtime via
   `phpversion('ddtrace')` in `/info`.
-- **elastic**: `apm-agent-php` **v1.17.0** `.deb` (arch-selected:
-  amd64/arm64 — arm64 packages are marked experimental by Elastic) via the
-  documented `dpkg -i` install. The agent tolerates an unreachable
-  `ELASTIC_APM_SERVER_URL` (logs errors, keeps serving; verified in the
-  smoke test with no APM server present).
-- **newrelic**: latest release tarball from
-  `download.newrelic.com/php_agent/release/` (multi-arch: x64 + aarch64),
+- **elastic**: the `apm-agent-php` `.deb` for the release pinned by
+  `ELASTIC_APM_PHP_VERSION` in the `elastic` stage of the Dockerfile
+  (arch-selected: amd64/arm64 — arm64 packages are marked experimental by
+  Elastic) via the documented `dpkg -i` install. The agent tolerates an
+  unreachable `ELASTIC_APM_SERVER_URL` (logs errors, keeps serving; verified
+  in the smoke test with no APM server present).
+- **newrelic**: the release tarball pinned by `NEWRELIC_PHP_AGENT_VERSION`
+  in the `newrelic` stage of the Dockerfile, fetched from
+  `download.newrelic.com/php_agent/archive/` (multi-arch: x64 + aarch64),
   installed with `NR_INSTALL_SILENT=1 newrelic-install install`. The license
   key is written at container start by `docker/newrelic-entrypoint.sh` from
   `NEW_RELIC_LICENSE_KEY` (it cannot be baked into the image); the agent
@@ -119,12 +122,11 @@ Notes on the choices:
 Generated at image build time (not checked in) into `/app/gen` using
 Debian bookworm's `protobuf-compiler` + `protobuf-compiler-grpc`
 (`grpc_php_plugin`), then autoloaded via composer PSR-4 (`Cpmatrix\`,
-`GPBMetadata\`). The composer `google/protobuf` runtime is `^4.27` (the 3.x
-line is blocked by a Composer security advisory); the 4.x PHP runtime still
-accepts bookworm's protoc 3.21 proto3 gencode — verified in the smoke test
-by round-tripping a `SinkRequest` in the built image. Building from proto at
-image build time keeps the stubs in lockstep with `proto/relay.proto`, same
-as the python/ruby relays.
+`GPBMetadata\`). The composer `google/protobuf` runtime is pinned in
+`composer.json` (the 3.x line is blocked by a Composer security advisory); it
+accepts bookworm's protoc 3.21 proto3 gencode, as the delivered `* -> grpc`
+hops in the published results show. Building from proto at image build time keeps the stubs in lockstep with
+`proto/relay.proto`, same as the python/ruby relays.
 
 ## Environment
 
@@ -138,6 +140,13 @@ as the python/ruby relays.
 `tracer_version`, lib versions, and every
 `DD_*`/`OTEL_*`/`ELASTIC_*`/`NEW_RELIC_*` env var under `config`
 (`NEW_RELIC_LICENSE_KEY` is never echoed).
+
+In the `otel` image, the `libs` entry of each instrumented protocol
+(`server`, `http_client`, `kafka`) also names its Composer instrumentation
+package and the version installed. `libs.propagation` lists
+`open-telemetry/api`, `open-telemetry/context` and `open-telemetry/sem-conv`:
+the Dockerfile does not name those three and nothing locks them, so each
+build installs the newest release.
 
 ## Build
 

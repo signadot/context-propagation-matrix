@@ -9,8 +9,13 @@
 # tracer-bump + auto-merge + dependencies, with squash auto-merge requested.
 # A newer upstream release rewrites that branch (main + one commit) and the
 # PR in place; any older PR for the same pin is closed as superseded.
-# Merging touches relays/**, which triggers matrix.yml → new release → site
-# rebuild → changelog entry.
+# Merging touches relays/**, and matrix.yml measures the bumped variants →
+# new release → site rebuild → changelog entry. How soon depends on the
+# token: a merge made with the workflow's own GITHUB_TOKEN starts no push run
+# (GitHub does not create workflow runs for its pushes), so the bump is
+# picked up by the next matrix run of any kind, at the latest the 6-hourly
+# one that measures whatever changed since it was last measured. With
+# BUMP_PAT the merge is the PAT user's and starts matrix.yml straight away.
 #
 # Tokens. For a PR opened (or a branch pushed) with the workflow's own
 # GITHUB_TOKEN, GitHub creates the `pull_request` run of verify.yml but holds
@@ -30,9 +35,14 @@
 #     checks out, pushes and opens PRs with it; pull_request runs then start
 #     without approval (the PRs are authored by that user).
 #
-# A PR that has gone CONFLICTING (a sibling pin in the same manifest merged
-# first) is rebuilt on the next run, even when it already names the right
-# version.
+# A PR that already names the right version is still rebuilt on the next run
+# in two cases. It has gone CONFLICTING (a sibling pin in the same manifest
+# merged first). Or main has changed the relay it bumps since the branch was
+# built (scripts/bump-pr-stale.sh): the PR's checks ran against the older
+# relay, and the bump itself may no longer be the whole change, as when a
+# lock file for the manifest has arrived on main in the meantime. The rebuilt
+# branch is a new commit, so its checks start over. Between two runs of this
+# workflow such a PR can still merge on the checks it has.
 name: bump-agents
 
 on:
@@ -52,12 +62,12 @@ permissions:
 
 jobs:
   discover:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       bumps: ${{ steps.find.outputs.bumps }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -76,7 +86,7 @@ jobs:
   apply:
     needs: discover
     if: needs.discover.outputs.bumps != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -97,13 +107,16 @@ jobs:
       # Always branch from current main, whatever ref dispatched the run.
       # The token is persisted for `git push`, so pushes come from BUMP_PAT
       # when it is set (and so trigger `pull_request: synchronize`).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
+          fetch-depth: 0 # scripts/bump-pr-stale.sh: back to where the bump branch forked
           token: ${{ secrets.BUMP_PAT || github.token }}
 
-      - name: Is the open PR for ${{ env.BRANCH }} already at ${{ env.TO }}, and still mergeable?
+      - name: Is the open PR for ${{ env.BRANCH }} already at ${{ env.TO }}, still mergeable, and built on this relay?
         id: existing
+        env:
+          FILES: ${{ toJson(matrix.bump.files) }}
         run: |
           set -euo pipefail
           pr=$(gh pr list --head "$BRANCH" --state open --json number,title,mergeable --jq '.[0] // empty')
@@ -111,18 +124,30 @@ jobs:
           title=$(jq -r '.title // empty' <<<"$pr")
           mergeable=$(jq -r '.mergeable // empty' <<<"$pr")
           echo "number=$number" >> "$GITHUB_OUTPUT"
-          if [[ -n "$number" && "$title" == *"→ $TO" && "$mergeable" != "CONFLICTING" ]]; then
+          # What main has changed in the bumped relay since the branch was
+          # built. Fails rather than answer "nothing" when it cannot tell.
+          moved=""
+          if [[ -n "$number" ]]; then
+            git fetch -q origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+            mapfile -t files < <(jq -r '.[]' <<<"$FILES")
+            moved=$(MAIN=HEAD scripts/bump-pr-stale.sh "origin/$BRANCH" "${files[@]}")
+          fi
+          if [[ -n "$number" && "$title" == *"→ $TO" && "$mergeable" != "CONFLICTING" && -z "$moved" ]]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "::notice::#$number ($title) already proposes $TO; nothing to do"
           else
-            # No PR, a PR for an older version, or a PR that conflicts with
+            # No PR, a PR for an older version, a PR that conflicts with
             # main (a sibling pin in the same Dockerfile / go.sum merged
-            # first): rebuild the branch on current main.
+            # first), or one built before main changed its relay: rebuild
+            # the branch on current main.
             [[ "$mergeable" == "CONFLICTING" ]] && echo "::notice::#$number conflicts with main; rebuilding"
+            if [[ -n "$moved" ]]; then
+              echo "::notice::#$number was built before main changed $(wc -l <<<"$moved" | tr -d ' ') file(s) of its relay, the first being $(head -1 <<<"$moved"); rebuilding"
+            fi
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         if: steps.existing.outputs.skip != 'true'
         with:
           go-version-file: go.mod
@@ -131,12 +156,27 @@ jobs:
       # Rust relays (as backtest.yml does for `cpm pins set`).
       - uses: dtolnay/rust-toolchain@stable
         if: steps.existing.outputs.skip != 'true' && matrix.bump.kind == 'cargo'
+      # ... and Gemfile.lock with `bundle lock` for the Ruby relays, under the
+      # Ruby of the relay image (its FROM tag, so the two cannot drift): the
+      # lock is resolved by the Ruby and Bundler that install it.
+      - name: Ruby version of the relay image
+        id: ruby
+        if: steps.existing.outputs.skip != 'true' && matrix.bump.kind == 'bundler'
+        run: sed -nE 's/^FROM ruby:([0-9.]+).*/version=\1/p' relays/ruby/Dockerfile >> "$GITHUB_OUTPUT"
+      - uses: ruby/setup-ruby@v1
+        if: steps.existing.outputs.skip != 'true' && matrix.bump.kind == 'bundler'
+        with:
+          ruby-version: ${{ steps.ruby.outputs.version }}
 
       - name: Apply ${{ env.ID }} ${{ env.FROM }} → ${{ env.TO }}
         if: steps.existing.outputs.skip != 'true'
         id: apply
         env:
           GITHUB_TOKEN: ${{ github.token }} # github-releases lookups
+          # setup-go sets GOTOOLCHAIN=local for the job. A Go pin is moved
+          # with `go get` and `go mod tidy` on the runner, which may need a
+          # newer Go than go.mod names: let them fetch it.
+          GOTOOLCHAIN: auto
         run: |
           set -euo pipefail
           go run ./cmd/cpm pins latest -only "$ID" -apply > /tmp/bump.json
@@ -198,8 +238,8 @@ jobs:
             "- Variants re-measured: " + (.variants | map("`" + . + "`") | join(", ")) + "\n" +
             "- Source: `\(.source.registry)` / `\(.source.package)`" + (if .url then " — [registry](\(.url))" else "" end) +
             (if .releases_url then " · [releases](\(.releases_url))" else "" end) + "\n\n" +
-            "Merging this re-measures the listed variants in the next matrix run and publishes a new release.\n\n" +
-            "_Opened by `bump-agents.yml` (`cpm pins latest -only \(.id) -apply`). A newer upstream release rewrites this branch and PR in place; older PRs for the same pin are closed as superseded._"
+            "Once merged, the next matrix run measures the listed variants and publishes a new release (within 6 hours; a bot merge does not start a run by itself).\n\n" +
+            "_Opened by `bump-agents.yml` (`cpm pins latest -only \(.id) -apply`). A newer upstream release, or a change to this relay on main, rewrites this branch and PR in place; older PRs for the same pin are closed as superseded._"
           ' /tmp/bump.json)
 
           if [[ -n "$EXISTING" ]]; then

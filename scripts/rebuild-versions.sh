@@ -9,8 +9,9 @@
 # Walks the releases oldest first and files each measurement under its
 # tracer version with `cpm versions`, so when a version was measured more
 # than once the latest measurement stands — the same rule the workflows
-# apply incrementally. Then uploads each variant's <version>.json files and
-# index.json in one go (creating the release when missing). Documents from
+# apply incrementally. Then uploads each variant's <version>.json files,
+# index.json and versions.json (the bundle) in one go (creating the release
+# when missing). Documents from
 # before tracer.pinned was recorded are filed under the plain reported
 # version; a back-test's version comes from its tag; anything else (PHP
 # relays report composite strings) is listed at the end and gets filed by
@@ -25,7 +26,7 @@ only=()
 for a in "$@"; do
   case "$a" in
     -dry-run|--dry-run) dry=true ;;
-    -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "rebuild-versions: unknown flag $a (try -h)" >&2; exit 2 ;;
     *) only+=("$a") ;;
   esac
@@ -41,9 +42,12 @@ wanted() { # variant id → 0 if selected
 }
 
 echo "listing releases…"
+# Oldest first by publication time. created_at is the tagged commit's date:
+# releases cut from the same commit share it, and the tag name then decides
+# (run-D.10 before run-D.9, every backtest-* before every run-*).
 gh api --paginate "repos/$repo/releases?per_page=100" \
-  --jq '.[] | select(.draft | not) | select(.tag_name | test("^(run|backtest)-")) | "\(.created_at)\t\(.tag_name)"' \
-  | sort >"$work/releases"
+  --jq '.[] | select(.draft | not) | select(.tag_name | test("^(run|backtest)-")) | "\(.published_at)\t\(.tag_name)"' \
+  | LC_ALL=C sort >"$work/releases"
 echo "$(wc -l <"$work/releases" | tr -d ' ') run/back-test releases"
 
 skipped=()
@@ -84,7 +88,7 @@ for dir in "$work"/variants/*/; do
   tag="variant-$v"
   if ! gh release view "$tag" -R "$repo" >/dev/null 2>&1; then
     gh release create "$tag" -R "$repo" --latest=false --title "$v — results by tracer version" \
-      --notes "One asset per tracer version ever measured for \`$v\` (\`<version>.json\`, a single-variant results document) plus \`index.json\` listing them. Updated by every matrix run and back-test that measures this variant; the run and back-test releases remain the record of each job." >/dev/null
+      --notes "One asset per tracer version ever measured for \`$v\` (\`<version>.json\`, a single-variant results document) plus \`index.json\` listing them and \`versions.json\` bundling the index and every document. Updated by every matrix run and back-test that measures this variant; the run and back-test releases remain the record of each job." >/dev/null
   fi
   gh release upload "$tag" -R "$repo" --clobber "$dir"/*.json >/dev/null
   echo "$tag: $n version(s) uploaded"

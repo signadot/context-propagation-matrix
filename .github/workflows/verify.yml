@@ -10,11 +10,15 @@
 #       published results.json agree; every tracer pin in pins.yaml resolves;
 #       shell scripts parse.
 #   "Boot and propagate: <variant>"  (one per smoked variant; not required)
-#       build the relay from the GHCR layer cache, run the 16 hops against
-#       real brokers, check the driver recorded all 16 and leaked no canary.
+#       build the relay from the GHCR layer cache, run every boundary
+#       against real brokers, check the driver recorded each boundary
+#       variants.yaml lists, once, and leaked no canary.
 #   "Affected relays build, boot and propagate"
 #       the stable gate over the per-variant jobs above: fails if any of them
-#       failed, passes when none was needed.
+#       failed, passes when none was needed. Also fails a pull_request run
+#       that starts after main has changed a relay the pull request changes
+#       (scripts/run-base-moved.sh): it would test the main it was created
+#       for, not today's.
 #
 # Which relays are smoked: the ones `cpm affected` says the change can alter
 # (a tracer bump boots exactly the variant it moves). A change to shared code
@@ -28,10 +32,20 @@
 # check runs land on the branch's head commit, which is the PR's head, so
 # they count for branch protection like any other run. The change is diffed
 # against the branch's merge-base with main, as for a pull request.
+#
+# merge_group is for a merge queue on main, which is not switched on. A queue
+# runs the required checks on the commit it is about to merge (main, the
+# pull requests ahead in the queue, and this one) and merges only when they
+# pass, so a pull request can no longer merge on checks that ran against an
+# older main.
 name: verify
 
 on:
   pull_request:
+  # Nothing raises this until "Require merge queue" is on for main. From then
+  # on GitHub waits for the required checks on this event, and a workflow
+  # that does not run on it leaves every queued pull request waiting.
+  merge_group:
   push:
     branches: [main]
     paths-ignore:
@@ -39,8 +53,13 @@ on:
       - '**.md'
   workflow_dispatch:
 
+# A branch has one run at a time: a push to a pull request replaces the run of
+# the commit it supersedes. main has one per commit instead. A run there looks
+# only at what its own merge changed, so cancelling it for the next merge
+# loses the one run that would have shown the first merge broke a relay, and
+# the next merge's run is green (#263, then #264 two minutes later).
 concurrency:
-  group: verify-${{ github.ref }}
+  group: verify-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -59,10 +78,10 @@ env:
 jobs:
   go:
     name: "Go: gofmt, vet, test"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -75,10 +94,10 @@ jobs:
 
   consistency:
     name: "Registry, pins, annotations and scripts consistent"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -92,7 +111,10 @@ jobs:
       # Pull requests are strict: an annotation whose cells all pass (or whose
       # explicit outcome no longer occurs) must be marked fixed in the same
       # review. The scheduled matrix run stays non-strict so an upstream fix
-      # can never stop results from being published.
+      # can never stop results from being published. Two things are only
+      # ever a warning, strict or not: an annotation some of whose cells now
+      # pass, and failing cells that no annotation explains. validate prints
+      # both as ::warning:: annotations here (GITHUB_ACTIONS is set).
       - name: variants.yaml, docker-compose.yml and annotations agree
         run: go run ./cmd/cpm validate -results results/latest/results.json ${{ github.event_name != 'push' && '-strict' || '' }}
       # Every tracer pin listed in pins.yaml resolves in its file, and every
@@ -100,19 +122,60 @@ jobs:
       # bump-agents.yml move). Offline.
       - name: pins.yaml matches the manifests and the registry
         run: go run ./cmd/cpm pins check >/dev/null
+      # The Python image installs requirements.txt, and only pip-compile reads
+      # requirements.in. A version changed in one and not compiled into the
+      # other would build and pass, so the two are compared here. Offline.
+      - name: relays/python/requirements.txt agrees with requirements.in
+        run: scripts/check-python-requirements.sh
+      - name: check-python-requirements.sh catches a stale requirements.txt
+        run: scripts/test-check-python-requirements.sh
+      # bump-agents.yml leaves an open bump PR alone unless this script says
+      # main has changed its relay since. Told nothing, it leaves a PR with
+      # checks from an older relay free to merge itself. Offline.
+      - name: bump-pr-stale.sh reports a bump built on an older relay
+        run: scripts/test-bump-pr-stale.sh
       - name: shell scripts parse
         run: for f in run.sh scripts/*.sh; do bash -n "$f" || exit 1; done
+      # The plan job refuses a run that tests a base branch which has since
+      # changed a relay the pull request changes, on this script's word.
+      # Told nothing, it lets a held run pass on a tree main no longer has.
+      - name: run-base-moved.sh reports a run created before its relay changed
+        run: scripts/test-run-base-moved.sh
+      # matrix.yml carries results over from the release this names and diffs
+      # against it, and republish.yml rewrites it. The releases API does not
+      # list runs newest first, so the choice is tested. Offline.
+      - name: fetch-latest.sh names the newest run
+        run: scripts/test-fetch-latest.sh
+      # matrix.yml and backtest.yml publish through this. GitHub sometimes
+      # refuses to tag the measured commit, which cannot be provoked from a
+      # pull request, so the refusal is played by a stand-in `gh`. Offline.
+      - name: create-release.sh publishes when the measured commit cannot be tagged
+        run: scripts/test-create-release.sh
 
   plan:
     name: "Which relays does this change affect?"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       variants: ${{ steps.plan.outputs.variants }}
+      boundaries: ${{ steps.plan.outputs.boundaries }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # cpm affected diffs two revisions
-      - uses: actions/setup-go@v5
+      # A pull_request run tests the merge with the base branch as it was
+      # when the run was created, however late it starts: a run held for
+      # approval (every bump PR opened with the workflow's token, every first
+      # PR from a fork) or run again days later builds that old tree and can
+      # pass on it. Refused here when the base branch has since changed a
+      # relay this pull request changes; a run that starts when it is created
+      # is not. The checkout above fetched every branch, so origin/<base> is
+      # the base branch now. Here to stop before anything is built; again in
+      # the gate job, which is the one that also runs when only the failed
+      # jobs of a run are run again.
+      - name: This run still tests the base branch as it is now
+        if: github.event_name == 'pull_request'
+        run: scripts/run-base-moved.sh --checkout "origin/$GITHUB_BASE_REF"
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -121,15 +184,28 @@ jobs:
           HAS_NR: ${{ secrets.NEW_RELIC_LICENSE_KEY != '' }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          QUEUE_BASE: ${{ github.event.merge_group.base_sha }}
           PUSH_BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
+          # setup-go registers a problem matcher for `<file>.go: <message>`
+          # lines. `cpm affected` prints its reasons in that shape (`affected:
+          # cmd/cpm/main.go: aggregation/tooling only, no variants`), and the
+          # matcher would file each one as an error annotation on this job.
+          echo "::remove-matcher owner=go::"
           case "$GITHUB_EVENT_NAME" in
             pull_request)
               # Diff from where the branch forked, not from the base branch's
               # current tip, so unrelated merges to main do not widen the set.
               base=$(git merge-base "$PR_BASE" "$PR_HEAD")
               head="$PR_HEAD"
+              ;;
+            merge_group)
+              # The commit the queue built for this pull request, which is
+              # the one checked out, against the parent the event names for
+              # it.
+              base="$QUEUE_BASE"
+              head="$GITHUB_SHA"
               ;;
             workflow_dispatch)
               # Dispatched on a bump/* branch by bump-agents.yml: same idea,
@@ -163,12 +239,17 @@ jobs:
           fi
           echo "variants=$(echo "$selected" | jq -R . | jq -sc 'map(select(length > 0))')" >> "$GITHUB_OUTPUT"
           echo "smoking: $(echo $selected)"
+          # The hops a smoked relay has to record: the registry's list, read
+          # here because the smoke jobs set up no Go.
+          boundaries=$(go run ./cmd/cpm boundaries -json)
+          echo "boundaries=$boundaries" >> "$GITHUB_OUTPUT"
+          echo "boundaries: $boundaries"
 
   smoke:
     name: "Boot and propagate: ${{ matrix.variant }}"
     needs: plan
     if: needs.plan.outputs.variants != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -178,11 +259,11 @@ jobs:
       V: ${{ matrix.variant }}
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Log in to GHCR (cache read/write; skipped for forks)
         if: github.event.pull_request.head.repo.fork != true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -226,19 +307,32 @@ jobs:
           sleep 5
           docker compose run --rm --pull never driver -variant "$V" >/dev/null 2>&1 || true
           sleep 10
-      - name: Run the 16 hops
+      - name: Run every boundary
         run: docker compose run --rm --pull never driver -variant "$V"
-      - name: Assert 16 hops recorded, canary clean
+      # The driver has its own protocol list; variants.yaml's boundaries are
+      # what a variant is scored on. Compared by name, so that a count that
+      # happens to match cannot hide a boundary one of them lacks.
+      - name: Assert every boundary recorded, canary clean
+        env:
+          BOUNDARIES: ${{ needs.plan.outputs.boundaries }}
         run: |
           python3 - <<'EOF'
           import json, os
+          want = json.loads(os.environ["BOUNDARIES"])
+          assert want, "the plan job passed no boundaries"
           d = json.load(open(f"results/raw/{os.environ['V']}.json"))
           hops = d["tests"]
-          assert len(hops) == 16, f"expected 16 hops, got {len(hops)}"
+          got = [t["boundary"] for t in hops]
+          missing = [b for b in want if b not in got]
+          assert not missing, f"the driver recorded no hop on {missing}, which variants.yaml lists"
+          unlisted = sorted({b for b in got if b not in want})
+          assert not unlisted, f"the driver recorded {unlisted}, which variants.yaml does not list"
+          repeated = sorted({b for b in got if got.count(b) > 1})
+          assert not repeated, f"the driver recorded {repeated} more than once"
           leaks = [t["boundary"] for t in hops if t.get("status") and t["status"]["canary_leak"]]
           assert not leaks, f"canary leaked on {leaks}"
           delivered = sum(1 for t in hops if t["delivered"])
-          print(f"ok: {delivered}/16 hops delivered")
+          print(f"ok: {delivered}/{len(want)} hops delivered")
           EOF
       - name: Relay logs (on failure)
         if: failure()
@@ -250,8 +344,17 @@ jobs:
     name: "Affected relays build, boot and propagate"
     needs: [plan, smoke]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
+      # See the plan job. Running only the failed jobs of a run again runs
+      # the smoke jobs and this one, not the plan job.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+      - name: This run still tests the base branch as it is now
+        if: github.event_name == 'pull_request'
+        run: scripts/run-base-moved.sh --checkout "origin/$GITHUB_BASE_REF"
       - env:
           PLAN: ${{ needs.plan.result }}
           SMOKE: ${{ needs.smoke.result }}

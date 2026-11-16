@@ -16,9 +16,9 @@ ENV GOTOOLCHAIN=auto
 WORKDIR /src
 # Both modules' manifests first, for layer-cached dependency downloads. The
 # relays/go-orchestrion module has a `replace
-# github.com/signadot/context-propagation-matrix => ../../` directive, so the
-# root go.mod must be in place.
-COPY go.mod go.sum ./
+# github.com/signadot/context-propagation-matrix/gen => ../../gen` directive,
+# so the stubs' go.mod must be in place.
+COPY gen/go.mod gen/go.sum ./gen/
 COPY relays/go-orchestrion/go.mod relays/go-orchestrion/go.sum ./relays/go-orchestrion/
 RUN --mount=type=cache,target=/go/pkg/mod cd relays/go-orchestrion && go mod download
 # Now the source.
