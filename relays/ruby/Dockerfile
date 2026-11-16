@@ -26,14 +26,14 @@
 # grpc-tools ships no linux/arm64 protoc binaries, so stub generation runs in
 # an explicit amd64 stage (emulated on Apple Silicon) and the generated .rb
 # files are copied into the runtime image.
-FROM --platform=linux/amd64 ruby:3.3 AS protogen
+FROM --platform=linux/amd64 ruby:4.0 AS protogen
 WORKDIR /app
 COPY proto/relay.proto proto/relay.proto
 RUN gem install grpc-tools --no-document \
  && mkdir -p gen \
  && grpc_tools_ruby_protoc -I proto --ruby_out=gen --grpc_out=gen proto/relay.proto
 
-FROM ruby:3.3 AS base
+FROM ruby:4.0 AS base
 WORKDIR /app
 
 # Build deps for gems with native extensions. grpc and rdkafka do not use
