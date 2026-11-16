@@ -398,12 +398,14 @@ jobs:
         if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
+        # The tag goes on the measured commit when GitHub allows it, and on
+        # main's tip when it does not: see scripts/create-release.sh.
         run: |
-          gh release create "${{ steps.ids.outputs.run_id }}" --target "$GITHUB_SHA" \
-            --title "${{ steps.ids.outputs.run_id }}" \
-            --notes-file summary.md \
-            results/latest/results.json results/latest/MATRIX.md raw.tar.gz logs.tar.gz \
-            $( [[ -f results/latest/changes.json ]] && echo results/latest/changes.json )
+          set -euo pipefail
+          assets=(results/latest/results.json results/latest/MATRIX.md raw.tar.gz logs.tar.gz)
+          [[ -f results/latest/changes.json ]] && assets+=(results/latest/changes.json)
+          scripts/create-release.sh "${{ steps.ids.outputs.run_id }}" summary.md \
+            --title "${{ steps.ids.outputs.run_id }}" "${assets[@]}"
       - name: File each measured variant under its tracer version (variant-* releases)
         if: needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main'
         env:
