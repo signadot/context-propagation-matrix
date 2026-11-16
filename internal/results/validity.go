@@ -3,6 +3,8 @@ package results
 import (
 	"fmt"
 	"strings"
+
+	"github.com/signadot/context-propagation-matrix/internal/eval"
 )
 
 // Validity: a variant can run all its hops and still not be a measurement of
@@ -33,10 +35,6 @@ type Problem struct {
 	Boundaries []string `json:"boundaries,omitempty"`
 	Detail     string   `json:"detail"`
 }
-
-// canaryHeader is the control header the driver seeds on every hop
-// (driver/main.go).
-const canaryHeader = "x-sd-canary"
 
 // otBaggagePrefix: OpenTracing baggage is one header per item, so tracers
 // emit names the registry cannot list (Datadog's Go tracer turns the seeded
@@ -76,13 +74,16 @@ func tracingSeen(h *Hop, names map[string]bool) map[string]bool {
 }
 
 // canarySeen reports whether the canary arrived on h: what the driver
-// concluded, or the header itself among what the sink recorded.
+// concluded, or the header itself among what the sink recorded. The header
+// is the control the driver seeds on every hop (driver/main.go), under the
+// name this hop was seeded with: it was renamed at matrix_version 2.
 func canarySeen(h *Hop) bool {
 	if h.CanaryLeak {
 		return true
 	}
+	canary := eval.Canary(h.Seeded)
 	for k := range h.Observed {
-		if strings.EqualFold(k, canaryHeader) {
+		if strings.EqualFold(k, canary) {
 			return true
 		}
 	}
@@ -179,7 +180,7 @@ func (r *Results) Judge(v, baseline *Variant) []Problem {
 	var out []Problem
 	if len(leaks) > 0 {
 		out = append(out, Problem{Kind: ProblemCanaryLeak, Boundaries: leaks,
-			Detail: fmt.Sprintf("%s reached the sink on %d of %d delivered hop(s): the relay forwards inbound headers itself", canaryHeader, len(leaks), delivered)})
+			Detail: fmt.Sprintf("the control header reached the sink on %d of %d delivered hop(s): the relay forwards inbound headers itself", len(leaks), delivered)})
 	}
 	if len(mismatches) > 0 {
 		out = append(out, Problem{Kind: ProblemTransportMismatch, Boundaries: mismatches,

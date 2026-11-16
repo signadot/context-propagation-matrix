@@ -180,9 +180,9 @@
       outcome: fail
   cause: "ot-baggage-* is a legacy OpenTracing convention; OpenTelemetry, Elastic APM and New Relic each define their propagation header set without it."
   explanation: |
-    The seeded `ot-baggage-sd-routing-key` header is ignored — neither extracted
-    nor re-emitted — by every OpenTelemetry, Elastic and New Relic variant on
-    every delivered boundary. None of these tools ever emitted the OpenTracing
+    The seeded `ot-baggage-routing-key` header is neither extracted nor
+    re-emitted by any OpenTelemetry, Elastic or New Relic variant on any
+    delivered boundary. None of these tools ever emitted the OpenTracing
     header format: OpenTelemetry standardised on W3C `baggage`; Elastic's agent
     spec defines `traceparent`, `tracestate`, `baggage` and the binary
     `elasticapmtraceparent`; New Relic's distributed-tracing model is

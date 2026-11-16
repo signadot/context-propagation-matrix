@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/signadot/context-propagation-matrix/internal/eval"
 	"github.com/signadot/context-propagation-matrix/internal/results"
 )
 
@@ -140,7 +141,7 @@ func Markdown(res *results.Results) string {
 	w("")
 	if len(res.Summary.CanaryLeaks) == 0 {
 		w("Canary check: in all recorded runs the non-tracing control header")
-		w("(`x-sd-canary`) was verified absent after the hop, proving relays re-emit")
+		w("(`%s`) was verified absent after the hop, proving relays re-emit", eval.CanaryHeader)
 		w("rather than proxy. Raw per-test header dumps live in this release's `raw.tar.gz`")
 		w("(`raw/{variant}.json`) and, per hop, under `variants[].hops[].observed_headers` in `results.json`.")
 	} else {

@@ -20,12 +20,59 @@ import (
 
 // What the driver seeds besides the trace context: the baggage member (and
 // ot-baggage-* suffix) that carries the routing key, the foreign tracestate
-// entry, and the control header no instrumentation forwards.
+// entry, and the control header no instrumentation forwards. The driver
+// seeds from these, so this is the one place to change them. They name no
+// vendor and no product: nothing under test has a reason to treat them
+// differently from any other application's.
 const (
-	routingKeyMember = "sd-routing-key"
-	tracestateEntry  = "sdtest=v1"
-	canaryHeader     = "x-sd-canary"
+	RoutingKeyMember = "routing-key"
+	TracestateEntry  = "cptest=v1"
+	CanaryHeader     = "x-cp-canary"
 )
+
+// names is what to look for after a hop.
+type names struct {
+	member string // the baggage member that carries the routing key
+	entry  string // the foreign tracestate entry
+	ot     string // the ot-baggage-* header
+	canary string // the control header
+}
+
+// namesOf returns the names a hop was seeded with, read from the headers the
+// seed records. A result is judged against what it was sent, so one measured
+// when the seeds had other names (they were renamed at matrix_version 2)
+// still evaluates to the statuses recorded for it. A seed that records no
+// headers is taken to have used today's.
+func namesOf(seed raw.Seeded) names {
+	n := names{RoutingKeyMember, TracestateEntry, "ot-baggage-" + RoutingKeyMember, Canary(seed.Headers)}
+	for name, value := range seed.Headers {
+		switch {
+		case name == "tracestate":
+			n.entry = value
+		case name == "baggage":
+			for member, v := range parseBaggage(value) {
+				if v == seed.RoutingKey {
+					n.member = member
+				}
+			}
+		case strings.HasPrefix(name, "ot-baggage-"):
+			n.ot = name
+		}
+	}
+	return n
+}
+
+// Canary returns the name of the control header among the headers a hop was
+// seeded with. It has always been called x-…-canary; when the seeded headers
+// are not recorded, or hold none of that form, it is today's.
+func Canary(seeded map[string]string) string {
+	for name := range seeded {
+		if strings.HasSuffix(name, "-canary") {
+			return name
+		}
+	}
+	return CanaryHeader
+}
 
 // The values Span returns.
 const (
@@ -36,10 +83,10 @@ const (
 // Evaluate classifies the observed headers h against what was seeded: the
 // status the driver records for a delivered hop.
 func Evaluate(h map[string][]string, seed raw.Seeded) *raw.Status {
-	_, canary := first(h, canaryHeader)
+	_, canary := first(h, namesOf(seed).canary)
 	return &raw.Status{
 		Traceparent: Traceparent(h, seed),
-		Tracestate:  Tracestate(h),
+		Tracestate:  Tracestate(h, seed),
 		Baggage:     Baggage(h, seed),
 		OTBaggage:   OTBaggage(h, seed),
 		// The driver has no registry, and datadog_native has always meant
@@ -146,13 +193,14 @@ func Flags(h map[string][]string, seed raw.Seeded) string {
 }
 
 // Tracestate: preserved | present_entry_lost | absent.
-func Tracestate(h map[string][]string) string {
+func Tracestate(h map[string][]string, seed raw.Seeded) string {
 	v, ok := joined(h, "tracestate")
 	if !ok {
 		return "absent"
 	}
+	want := namesOf(seed).entry
 	for _, entry := range strings.Split(v, ",") {
-		if strings.TrimSpace(entry) == tracestateEntry {
+		if strings.TrimSpace(entry) == want {
 			return "preserved"
 		}
 	}
@@ -180,7 +228,7 @@ func Baggage(h map[string][]string, seed raw.Seeded) string {
 	if !ok {
 		return "absent"
 	}
-	if parseBaggage(v)[routingKeyMember] == seed.RoutingKey {
+	if parseBaggage(v)[namesOf(seed).member] == seed.RoutingKey {
 		return "propagated"
 	}
 	return "partial"
@@ -188,7 +236,7 @@ func Baggage(h map[string][]string, seed raw.Seeded) string {
 
 // OTBaggage: propagated | partial | absent.
 func OTBaggage(h map[string][]string, seed raw.Seeded) string {
-	v, ok := first(h, "ot-baggage-"+routingKeyMember)
+	v, ok := first(h, namesOf(seed).ot)
 	if !ok {
 		return "absent"
 	}
