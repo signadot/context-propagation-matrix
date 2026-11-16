@@ -139,9 +139,20 @@ For each variant it runs every boundary. Per test:
 
    The names are constants in `internal/eval`, which the driver seeds from.
    They name no vendor and no product. Every result records the headers it
-   was seeded with, and it is judged against those: results measured before
-   `matrix_version` 2, when the seeds were `sd-routing-key`, `sdtest=v1` and
-   `x-sd-canary`, keep the statuses recorded for them.
+   was seeded with, and it is judged against those.
+
+   Until 16 November 2026 the same values were seeded under other names.
+   Renaming them did not change the contract, so `matrix_version` stayed
+   at 1: `run-2026-11-16.5` measured all 47 variants under the new names,
+   and none of its 3,008 cells differs from the variant's last result under
+   the old ones. The results the site reads were then relabelled, so that
+   they show the names above whenever they were measured: every document
+   in the `variant-*` releases, and `results.json` of the twelve runs from
+   `run-2026-11-13.7` to `run-2026-11-16.5`. Nothing else in them was
+   changed. The `backtest-*` releases, the older runs, every `raw.tar.gz`
+   and the files under `results/` are as they were recorded, under the
+   names of their time; a result is judged against the names it records,
+   so they evaluate as before.
 3. Poll the sink for an observation with `test_id` (45s timeout; before the
    first Kafka-inbound test the driver sends a warm-up message and waits up to
    120s for the consumer group to join).

@@ -76,7 +76,7 @@ func tracingSeen(h *Hop, names map[string]bool) map[string]bool {
 // canarySeen reports whether the canary arrived on h: what the driver
 // concluded, or the header itself among what the sink recorded. The header
 // is the control the driver seeds on every hop (driver/main.go), under the
-// name this hop was seeded with: it was renamed at matrix_version 2.
+// name this hop was seeded with: it was renamed on 16 November 2026.
 func canarySeen(h *Hop) bool {
 	if h.CanaryLeak {
 		return true
