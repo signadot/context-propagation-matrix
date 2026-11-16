@@ -119,6 +119,11 @@ jobs:
         run: scripts/check-python-requirements.sh
       - name: check-python-requirements.sh catches a stale requirements.txt
         run: scripts/test-check-python-requirements.sh
+      # bump-agents.yml leaves an open bump PR alone unless this script says
+      # main has changed its relay since. Told nothing, it leaves a PR with
+      # checks from an older relay free to merge itself. Offline.
+      - name: bump-pr-stale.sh reports a bump built on an older relay
+        run: scripts/test-bump-pr-stale.sh
       - name: shell scripts parse
         run: for f in run.sh scripts/*.sh; do bash -n "$f" || exit 1; done
       # The plan job refuses a run that tests a base branch which has since
