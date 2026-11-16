@@ -10,6 +10,8 @@
 #               → results.json (schema v2) + MATRIX.md + changes.json; publish a
 #               GitHub Release run-YYYY-MM-DD[.N]; fire the Netlify build hook so
 #               contextpropagation.io rebuilds; post to Slack if cells changed.
+#               A variant whose job failed keeps its last result; the release
+#               notes name it and Slack is told, whether or not a cell changed.
 #
 # Nothing is committed back to the repository: Releases are the only home for
 # results (scripts/fetch-latest.sh restores them locally; republish.yml
@@ -277,11 +279,25 @@ jobs:
         # only its own variants; the rest keep their last published result so
         # results.json stays complete. Raw files for variants that have since
         # left variants.yaml are dropped by `cpm aggregate -ignore-unknown`.
+        env:
+          PLANNED: ${{ needs.plan.outputs.variants }}
         run: |
           set -euo pipefail
+          mkdir -p artifacts # absent when no job got as far as uploading one
           find artifacts -name '*.json' -exec cp {} results/raw/ \;
           find artifacts -name '*.log' -exec mv {} logs/ \; || true
           reran=$(find artifacts -name '*.json' -exec basename {} .json \; | sort | tr '\n' ' ')
+          # The variants the plan chose and no job delivered a result for: the
+          # image did not build, the relay did not start, the driver failed
+          # twice, or the job was cancelled or timed out. Their last published
+          # result is carried over, which changes no cell, so this warning,
+          # the summary and the last step are the only places that name them.
+          failed=$(comm -23 <(jq -r '.[]' <<<"$PLANNED" | sort) <(tr ' ' '\n' <<<"$reran" | sed '/^$/d' | sort) | tr '\n' ' ')
+          failed=${failed% }
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          if [[ -n "$failed" ]]; then
+            echo "::warning::could not be measured in this run (the job failed, was cancelled or timed out): $failed"
+          fi
           # Every job failed. An empty -reran means "everything was measured
           # here" to cpm aggregate, which would publish the carried-over
           # results as this run's measurements at this commit.
@@ -305,6 +321,7 @@ jobs:
         name: Aggregate → results.json, MATRIX.md, changes.json
         env:
           RERAN: ${{ steps.merge.outputs.reran }}
+          FAILED: ${{ steps.merge.outputs.failed }}
         run: |
           set -euo pipefail
           args=(-kind matrix -run-id "${{ steps.ids.outputs.run_id }}" -commit "$GITHUB_SHA"
@@ -316,7 +333,7 @@ jobs:
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
-          go run ./cmd/cpm summary ${prev:+-changes results/latest/changes.json} results/latest/results.json | tee summary.md >> "$GITHUB_STEP_SUMMARY"
+          go run ./cmd/cpm summary ${prev:+-changes results/latest/changes.json} -not-measured "$FAILED" results/latest/results.json | tee summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Package raw evidence
         run: tar czf raw.tar.gz -C results raw && tar czf logs.tar.gz logs
       - uses: actions/upload-artifact@v7
@@ -416,3 +433,20 @@ jobs:
           text=$(head -c 2800 summary.md)
           jq -n --arg t "$text" --arg url "https://github.com/${{ github.repository }}/releases/tag/${{ steps.ids.outputs.run_id }}" \
             '{text: ($t + "\n" + $url)}' | curl -fsS -X POST -H 'content-type: application/json' -d @- "$SLACK_WEBHOOK_URL"
+      # The summary above is posted when a cell changed. A relay that no
+      # longer builds changes none, and stays unmeasured run after run until
+      # someone opens the Actions tab. always(): this has to post when every
+      # job failed and the merge step stopped this one, and when the gate did.
+      - name: Slack (a variant this run was to measure has no result)
+        if: always() && needs.plan.outputs.publish == 'true' && github.ref == 'refs/heads/main' && steps.merge.outputs.failed != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          FAILED: ${{ steps.merge.outputs.failed }}
+        run: |
+          if [[ -z "$SLACK_WEBHOOK_URL" ]]; then echo "::notice::SLACK_WEBHOOK_URL not set"; exit 0; fi
+          jq -n --arg ids "$FAILED" --arg sha "${GITHUB_SHA:0:7}" \
+                --arg url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '($ids | split(" ")) as $v
+             | {text: ("matrix run at \($sha): \($v | length) variant(s) could not be built or measured: \($v | join(", ")).\n"
+                       + "What is published for them is from an earlier run.\n" + $url)}' \
+            | curl -fsS -X POST -H 'content-type: application/json' -d @- "$SLACK_WEBHOOK_URL"

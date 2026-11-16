@@ -40,8 +40,13 @@ on:
       - '**.md'
   workflow_dispatch:
 
+# A branch has one run at a time: a push to a pull request replaces the run of
+# the commit it supersedes. main has one per commit instead. A run there looks
+# only at what its own merge changed, so cancelling it for the next merge
+# loses the one run that would have shown the first merge broke a relay, and
+# the next merge's run is green (#263, then #264 two minutes later).
 concurrency:
-  group: verify-${{ github.ref }}
+  group: verify-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
   cancel-in-progress: true
 
 permissions:

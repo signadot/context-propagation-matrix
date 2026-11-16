@@ -92,7 +92,8 @@ and each variant's `ran_at` says when its own cells were last measured.
    as the `NETLIFY_BUILD_HOOK_URL` repository secret. Without it runs still
    publish releases; the site simply is not rebuilt.
 2. Optional secrets: `NEW_RELIC_LICENSE_KEY` (New Relic variants are skipped
-   without it) and `SLACK_WEBHOOK_URL` (a summary when cells change).
+   without it) and `SLACK_WEBHOOK_URL` (a summary when cells change, and a
+   message when a variant could not be built or measured).
 3. Settings → Actions → "Allow GitHub Actions to create and approve pull
    requests", so a run can open the PR that marks resolved annotations fixed.
 4. Dispatch `matrix.yml` once (Actions → matrix → Run workflow) for the first
