@@ -49,7 +49,7 @@ tools:
     vendor: Datadog
     url: https://docs.datadoghq.com/tracing/
     native_headers: [x-datadog-trace-id, x-datadog-parent-id, x-datadog-sampling-priority, x-datadog-tags]
-    default_propagators: [datadog, tracecontext]
+    default_propagators: [datadog, tracecontext, baggage]   # DD_TRACE_PROPAGATION_STYLE default; every *-defaults variant passes baggage on http->http
   elastic:
     display_name: Elastic APM
     short_name: Elastic
@@ -158,7 +158,7 @@ headers:
     display_name: "W3C traceparent (trace continuity)"
     wire_name: traceparent
     raw_field: traceparent
-    question: "Was the seeded trace-id continued (a new span-id is expected)?"
+    question: "Was the seeded trace-id continued? (A new span-id is expected but not scored.)"
     success: [same_trace]
     partial: []
     new_trace: [new_trace]
