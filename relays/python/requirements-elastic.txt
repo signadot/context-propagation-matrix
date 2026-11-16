@@ -1,2 +1,2 @@
 # Elastic APM agent for the elastic target, pinned exactly.
-elastic-apm==6.26.2
+elastic-apm==6.26.3
