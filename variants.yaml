@@ -33,6 +33,8 @@ schema_version: 1
 # Adding a variant, a tool or a language does not change the contract. Every
 # result records the value it was measured under, and keeps it when a later
 # run carries the measurement over.
+# Renaming the seeds on 16 November 2026 did not move it: a run of every
+# variant under the new names changed no cell (DESIGN.md, "Driver").
 matrix_version: 1
 
 tools:
@@ -49,7 +51,7 @@ tools:
     vendor: Datadog
     url: https://docs.datadoghq.com/tracing/
     native_headers: [x-datadog-trace-id, x-datadog-parent-id, x-datadog-sampling-priority, x-datadog-tags]
-    default_propagators: [datadog, tracecontext]
+    default_propagators: [datadog, tracecontext, baggage]   # DD_TRACE_PROPAGATION_STYLE default; every *-defaults variant passes baggage on http->http
   elastic:
     display_name: Elastic APM
     short_name: Elastic
@@ -142,7 +144,7 @@ headers:
     display_name: "W3C baggage"
     wire_name: baggage
     raw_field: baggage
-    question: "Did the seeded `sd-routing-key` baggage member arrive intact?"
+    question: "Did the seeded `routing-key` baggage member arrive intact?"
     success: [propagated]
     partial: [partial]
     spec: https://www.w3.org/TR/baggage/
@@ -150,7 +152,7 @@ headers:
     display_name: "W3C tracestate"
     wire_name: tracestate
     raw_field: tracestate
-    question: "Did the seeded foreign vendor entry (`sdtest=v1`) survive?"
+    question: "Did the seeded foreign vendor entry (`cptest=v1`) survive?"
     success: [preserved]
     partial: [present_entry_lost]
     spec: https://www.w3.org/TR/trace-context/#tracestate-header
@@ -158,16 +160,16 @@ headers:
     display_name: "W3C traceparent (trace continuity)"
     wire_name: traceparent
     raw_field: traceparent
-    question: "Was the seeded trace-id continued (a new span-id is expected)?"
+    question: "Was the seeded trace-id continued? (A new span-id is expected but not scored.)"
     success: [same_trace]
     partial: []
     new_trace: [new_trace]
     spec: https://www.w3.org/TR/trace-context/#traceparent-header
   ot-baggage:
     display_name: "ot-baggage-* (OpenTracing legacy)"
-    wire_name: ot-baggage-sd-routing-key
+    wire_name: ot-baggage-routing-key
     raw_field: ot_baggage
-    question: "Did `ot-baggage-sd-routing-key` arrive with the seeded value?"
+    question: "Did `ot-baggage-routing-key` arrive with the seeded value?"
     success: [propagated]
     partial: [partial]
     spec: https://github.com/opentracing/specification/blob/master/rfc/trace_identifiers.md

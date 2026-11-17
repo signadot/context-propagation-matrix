@@ -107,7 +107,7 @@ Each arrival is an **observation**:
 {
   "test_id": "datadog-java--http-kafka--3f2a9c1e",
   "transport": "kafka",
-  "headers": { "baggage": ["sd-routing-key=rk-3f2a9c1e,team=alpha"], ... },
+  "headers": { "baggage": ["routing-key=rk-3f2a9c1e,team=alpha"], ... },
   "received_at": "2026-09-04T19:03:11Z"
 }
 ```
@@ -128,14 +128,31 @@ For each variant it runs every boundary. Per test:
    | header | value |
    |---|---|
    | `traceparent` | `00-{trace_id}-{span_id}-01` |
-   | `tracestate` | `sdtest=v1` |
-   | `baggage` | `sd-routing-key={rk},team=alpha` |
-   | `ot-baggage-sd-routing-key` | `{rk}` |
-   | `x-sd-canary` | `{test_id}` |
+   | `tracestate` | `cptest=v1` |
+   | `baggage` | `routing-key={rk},team=alpha` |
+   | `ot-baggage-routing-key` | `{rk}` |
+   | `x-cp-canary` | `{test_id}` |
 
-   `x-sd-canary` is a control: no instrumentation forwards arbitrary headers,
+   `x-cp-canary` is a control: no instrumentation forwards arbitrary headers,
    so if it ever reaches the sink the relay is proxying rather than
    re-emitting, and the whole variant is invalid.
+
+   The names are constants in `internal/eval`, which the driver seeds from.
+   They name no vendor and no product. Every result records the headers it
+   was seeded with, and it is judged against those.
+
+   Until 16 November 2026 the same values were seeded under other names.
+   Renaming them did not change the contract, so `matrix_version` stayed
+   at 1: `run-2026-11-16.5` measured all 47 variants under the new names,
+   and none of its 3,008 cells differs from the variant's last result under
+   the old ones. The results the site reads were then relabelled, so that
+   they show the names above whenever they were measured: every document
+   in the `variant-*` releases, and `results.json` of the twelve runs from
+   `run-2026-11-13.7` to `run-2026-11-16.5`. Nothing else in them was
+   changed. The `backtest-*` releases, the older runs, every `raw.tar.gz`
+   and the files under `results/` are as they were recorded, under the
+   names of their time; a result is judged against the names it records,
+   so they evaluate as before.
 3. Poll the sink for an observation with `test_id` (45s timeout; before the
    first Kafka-inbound test the driver sends a warm-up message and waits up to
    120s for the consumer group to join).
@@ -156,12 +173,12 @@ are joined with `,` before evaluating.
 
 - `traceparent`: `same_trace` (arrived with seeded trace-id; span-id will and
   should differ) | `new_trace` (present, different trace-id) | `absent`
-- `tracestate`: `preserved` (our foreign entry `sdtest=v1` still listed —
+- `tracestate`: `preserved` (our foreign entry `cptest=v1` still listed —
   vendors may prepend their own entries, that's fine) | `present_entry_lost`
   (header present, our entry gone) | `absent`
-- `baggage`: `propagated` (`sd-routing-key={rk}` parseable from the W3C list)
+- `baggage`: `propagated` (`routing-key={rk}` parseable from the W3C list)
   | `partial` (header present, our key missing) | `absent`
-- `ot_baggage`: `propagated` (`ot-baggage-sd-routing-key == {rk}`) | `partial`
+- `ot_baggage`: `propagated` (`ot-baggage-routing-key == {rk}`) | `partial`
   (header present, different value) | `absent`
 - `datadog_native`: informational; `present_same_trace` if
   `x-datadog-trace-id` equals the low 64 bits of the seeded trace-id (decimal)
@@ -336,7 +353,7 @@ measurement is not valid, records why on the variant in `results.json` as
 `invalid`, a list of `{kind, boundaries, detail}`. The field is absent on a
 valid variant and in documents written before it existed. The kinds:
 
-- `canary_leak`: `x-sd-canary` reached the sink on the listed `boundaries`,
+- `canary_leak`: `x-cp-canary` reached the sink on the listed `boundaries`,
   so the relay copies inbound headers itself and a `pass` is not the tool's
   doing.
 - `transport_mismatch`: on the listed `boundaries` the hop was delivered
