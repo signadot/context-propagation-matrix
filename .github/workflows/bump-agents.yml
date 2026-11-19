@@ -6,7 +6,10 @@
 # (.github/dependabot.yml) and moved here instead. Every 6 hours: look up the
 # newest stable version of each pin in its registry (`cpm pins latest`) and
 # keep exactly ONE open PR per pin, on branch `bump/<id>`, labelled
-# tracer-bump + auto-merge + dependencies, with squash auto-merge requested.
+# tracer-bump + auto-merge + dependencies + the language label Dependabot
+# gives that language's PRs (python, javascript, .NET, …, so `label:python`
+# finds every PR that moved the Python relays), with squash auto-merge
+# requested.
 # A newer upstream release rewrites that branch (main + one commit) and the
 # PR in place; any older PR for the same pin is closed as superseded.
 # Merging touches relays/**, and matrix.yml measures the bumped variants →
@@ -35,9 +38,14 @@
 #     checks out, pushes and opens PRs with it; pull_request runs then start
 #     without approval (the PRs are authored by that user).
 #
-# A PR that has gone CONFLICTING (a sibling pin in the same manifest merged
-# first) is rebuilt on the next run, even when it already names the right
-# version.
+# A PR that already names the right version is still rebuilt on the next run
+# in two cases. It has gone CONFLICTING (a sibling pin in the same manifest
+# merged first). Or main has changed the relay it bumps since the branch was
+# built (scripts/bump-pr-stale.sh): the PR's checks ran against the older
+# relay, and the bump itself may no longer be the whole change, as when a
+# lock file for the manifest has arrived on main in the meantime. The rebuilt
+# branch is a new commit, so its checks start over. Between two runs of this
+# workflow such a PR can still merge on the checks it has.
 name: bump-agents
 
 on:
@@ -96,6 +104,9 @@ jobs:
       # The exact arrow matters: the title is how daily runs recognise an
       # up-to-date PR, and how superseded ones are found.
       TITLE: 'bump(${{ matrix.bump.id }}): ${{ matrix.bump.from }} → ${{ matrix.bump.to }}'
+      # Dependabot's label for the pin's language (`cpm pins latest`, from
+      # the variants it lists); empty when unknown.
+      LABEL: ${{ matrix.bump.label }}
       # BUMP_PAT when set (see the header), else the workflow token.
       GH_TOKEN: ${{ secrets.BUMP_PAT || github.token }}
     steps:
@@ -105,10 +116,13 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: main
+          fetch-depth: 0 # scripts/bump-pr-stale.sh: back to where the bump branch forked
           token: ${{ secrets.BUMP_PAT || github.token }}
 
-      - name: Is the open PR for ${{ env.BRANCH }} already at ${{ env.TO }}, and still mergeable?
+      - name: Is the open PR for ${{ env.BRANCH }} already at ${{ env.TO }}, still mergeable, and built on this relay?
         id: existing
+        env:
+          FILES: ${{ toJson(matrix.bump.files) }}
         run: |
           set -euo pipefail
           pr=$(gh pr list --head "$BRANCH" --state open --json number,title,mergeable --jq '.[0] // empty')
@@ -116,14 +130,26 @@ jobs:
           title=$(jq -r '.title // empty' <<<"$pr")
           mergeable=$(jq -r '.mergeable // empty' <<<"$pr")
           echo "number=$number" >> "$GITHUB_OUTPUT"
-          if [[ -n "$number" && "$title" == *"→ $TO" && "$mergeable" != "CONFLICTING" ]]; then
+          # What main has changed in the bumped relay since the branch was
+          # built. Fails rather than answer "nothing" when it cannot tell.
+          moved=""
+          if [[ -n "$number" ]]; then
+            git fetch -q origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+            mapfile -t files < <(jq -r '.[]' <<<"$FILES")
+            moved=$(MAIN=HEAD scripts/bump-pr-stale.sh "origin/$BRANCH" "${files[@]}")
+          fi
+          if [[ -n "$number" && "$title" == *"→ $TO" && "$mergeable" != "CONFLICTING" && -z "$moved" ]]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "::notice::#$number ($title) already proposes $TO; nothing to do"
           else
-            # No PR, a PR for an older version, or a PR that conflicts with
+            # No PR, a PR for an older version, a PR that conflicts with
             # main (a sibling pin in the same Dockerfile / go.sum merged
-            # first): rebuild the branch on current main.
+            # first), or one built before main changed its relay: rebuild
+            # the branch on current main.
             [[ "$mergeable" == "CONFLICTING" ]] && echo "::notice::#$number conflicts with main; rebuilding"
+            if [[ -n "$moved" ]]; then
+              echo "::notice::#$number was built before main changed $(wc -l <<<"$moved" | tr -d ' ') file(s) of its relay, the first being $(head -1 <<<"$moved"); rebuilding"
+            fi
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -207,9 +233,17 @@ jobs:
           HAS_PAT: ${{ secrets.BUMP_PAT != '' }}
         run: |
           set -euo pipefail
-          # Idempotent: both labels exist after the first run.
+          # Idempotent: the labels exist after the first run. The language
+          # label is normally Dependabot's, created with its first PR for
+          # that ecosystem; made here with Dependabot's wording in case a
+          # tracer bump comes first (a fresh fork).
           gh label create tracer-bump --color 0E8A16 --description "Moves a tracer/agent pin; merged automatically when checks pass" 2>/dev/null || true
           gh label create auto-merge --color 5319E7 --description "Auto-merge enabled by a workflow" 2>/dev/null || true
+          labels=dependencies,tracer-bump,auto-merge
+          if [[ -n "$LABEL" ]]; then
+            gh label create "$LABEL" --color EDEDED --description "Pull requests that update $LABEL code" 2>/dev/null || true
+            labels+=",$LABEL"
+          fi
 
           body=$(jq -r '.[0] |
             "Moves the **\(.id)** pin from `\(.from)` to `\(.to)`.\n\n" +
@@ -219,15 +253,15 @@ jobs:
             "- Source: `\(.source.registry)` / `\(.source.package)`" + (if .url then " — [registry](\(.url))" else "" end) +
             (if .releases_url then " · [releases](\(.releases_url))" else "" end) + "\n\n" +
             "Once merged, the next matrix run measures the listed variants and publishes a new release (within 6 hours; a bot merge does not start a run by itself).\n\n" +
-            "_Opened by `bump-agents.yml` (`cpm pins latest -only \(.id) -apply`). A newer upstream release rewrites this branch and PR in place; older PRs for the same pin are closed as superseded._"
+            "_Opened by `bump-agents.yml` (`cpm pins latest -only \(.id) -apply`). A newer upstream release, or a change to this relay on main, rewrites this branch and PR in place; older PRs for the same pin are closed as superseded._"
           ' /tmp/bump.json)
 
           if [[ -n "$EXISTING" ]]; then
-            gh pr edit "$EXISTING" --title "$TITLE" --body "$body" --add-label dependencies,tracer-bump,auto-merge
+            gh pr edit "$EXISTING" --title "$TITLE" --body "$body" --add-label "$labels"
             pr=$EXISTING
             echo "updated #$pr"
           else
-            url=$(gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$body" --label dependencies,tracer-bump,auto-merge)
+            url=$(gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$body" --label "$labels")
             pr=${url##*/}
             echo "opened #$pr ($url)"
           fi

@@ -98,7 +98,7 @@ ENV OTEL_PHP_AUTOLOAD_ENABLED=true \
 # (each release's setup script installs that release's tracer). Tracer
 # version is read at runtime via phpversion('ddtrace') for /info.
 FROM app AS datadog
-ARG DD_PHP_TRACER_VERSION=1.27.1
+ARG DD_PHP_TRACER_VERSION=2.0.0
 RUN curl -fLo /tmp/datadog-setup.php \
       "https://github.com/DataDog/dd-trace-php/releases/download/${DD_PHP_TRACER_VERSION}/datadog-setup.php" \
  && php /tmp/datadog-setup.php --php-bin=all \
@@ -113,7 +113,7 @@ RUN curl -fLo /tmp/datadog-setup.php \
 # are auto-instrumented for distributed tracing; php-amqplib has agent
 # instrumentation (agent >= 11.6); ext-rdkafka and ext-grpc are unsupported.
 FROM app AS newrelic
-ARG NEWRELIC_PHP_AGENT_VERSION=12.12.0.41
+ARG NEWRELIC_PHP_AGENT_VERSION=12.13.0.43
 RUN set -eux; \
     ver="${NEWRELIC_PHP_AGENT_VERSION}"; \
     curl -fsSL "https://download.newrelic.com/php_agent/archive/${ver}/newrelic-php5-${ver}-linux.tar.gz" \

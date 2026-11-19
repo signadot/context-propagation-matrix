@@ -107,7 +107,7 @@ Each arrival is an **observation**:
 {
   "test_id": "datadog-java--http-kafka--3f2a9c1e",
   "transport": "kafka",
-  "headers": { "baggage": ["sd-routing-key=rk-3f2a9c1e,team=alpha"], ... },
+  "headers": { "baggage": ["routing-key=rk-3f2a9c1e,team=alpha"], ... },
   "received_at": "2026-09-04T19:03:11Z"
 }
 ```
@@ -128,14 +128,31 @@ For each variant it runs every boundary. Per test:
    | header | value |
    |---|---|
    | `traceparent` | `00-{trace_id}-{span_id}-01` |
-   | `tracestate` | `sdtest=v1` |
-   | `baggage` | `sd-routing-key={rk},team=alpha` |
-   | `ot-baggage-sd-routing-key` | `{rk}` |
-   | `x-sd-canary` | `{test_id}` |
+   | `tracestate` | `cptest=v1` |
+   | `baggage` | `routing-key={rk},team=alpha` |
+   | `ot-baggage-routing-key` | `{rk}` |
+   | `x-cp-canary` | `{test_id}` |
 
-   `x-sd-canary` is a control: no instrumentation forwards arbitrary headers,
+   `x-cp-canary` is a control: no instrumentation forwards arbitrary headers,
    so if it ever reaches the sink the relay is proxying rather than
    re-emitting, and the whole variant is invalid.
+
+   The names are constants in `internal/eval`, which the driver seeds from.
+   They name no vendor and no product. Every result records the headers it
+   was seeded with, and it is judged against those.
+
+   Until 16 November 2026 the same values were seeded under other names.
+   Renaming them did not change the contract, so `matrix_version` stayed
+   at 1: `run-2026-11-16.5` measured all 47 variants under the new names,
+   and none of its 3,008 cells differs from the variant's last result under
+   the old ones. The results the site reads were then relabelled, so that
+   they show the names above whenever they were measured: every document
+   in the `variant-*` releases, and `results.json` of the twelve runs from
+   `run-2026-11-13.7` to `run-2026-11-16.5`. Nothing else in them was
+   changed. The `backtest-*` releases, the older runs, every `raw.tar.gz`
+   and the files under `results/` are as they were recorded, under the
+   names of their time; a result is judged against the names it records,
+   so they evaluate as before.
 3. Poll the sink for an observation with `test_id` (45s timeout; before the
    first Kafka-inbound test the driver sends a warm-up message and waits up to
    120s for the consumer group to join).
@@ -156,12 +173,12 @@ are joined with `,` before evaluating.
 
 - `traceparent`: `same_trace` (arrived with seeded trace-id; span-id will and
   should differ) | `new_trace` (present, different trace-id) | `absent`
-- `tracestate`: `preserved` (our foreign entry `sdtest=v1` still listed —
+- `tracestate`: `preserved` (our foreign entry `cptest=v1` still listed —
   vendors may prepend their own entries, that's fine) | `present_entry_lost`
   (header present, our entry gone) | `absent`
-- `baggage`: `propagated` (`sd-routing-key={rk}` parseable from the W3C list)
+- `baggage`: `propagated` (`routing-key={rk}` parseable from the W3C list)
   | `partial` (header present, our key missing) | `absent`
-- `ot_baggage`: `propagated` (`ot-baggage-sd-routing-key == {rk}`) | `partial`
+- `ot_baggage`: `propagated` (`ot-baggage-routing-key == {rk}`) | `partial`
   (header present, different value) | `absent`
 - `datadog_native`: informational; `present_same_trace` if
   `x-datadog-trace-id` equals the low 64 bits of the seeded trace-id (decimal)
@@ -336,7 +353,7 @@ measurement is not valid, records why on the variant in `results.json` as
 `invalid`, a list of `{kind, boundaries, detail}`. The field is absent on a
 valid variant and in documents written before it existed. The kinds:
 
-- `canary_leak`: `x-sd-canary` reached the sink on the listed `boundaries`,
+- `canary_leak`: `x-cp-canary` reached the sink on the listed `boundaries`,
   so the relay copies inbound headers itself and a `pass` is not the tool's
   doing.
 - `transport_mismatch`: on the listed `boundaries` the hop was delivered
@@ -400,7 +417,7 @@ release per instrumented variant, `variant-{id}`:
 | Asset | Contents |
 |---|---|
 | `{version}.json` | a single-variant schema v2 document for that tracer version: the variant, the run manifest it was measured in, the dimensions, the annotations that touch it and a summary for it alone |
-| `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts, plus the document's `invalid` when the measurement is not valid (so an agent that never attached can be told from one that propagates nothing without opening the document) |
+| `index.json` | every version filed, newest first, with its asset name, `released_at` (when the tracer's registry published the version; left out when unknown), `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts, plus the document's `invalid` when the measurement is not valid (so an agent that never attached can be told from one that propagates nothing without opening the document) |
 | `versions.json` | the bundle: `{schema_version, index, documents}` — `index` is `index.json`, `documents` maps each listed version to its `{version}.json` byte for byte. One download gives a consumer the variant's whole history; the site reads only this asset |
 
 Byte for byte as filed, with one exception. Cells are the measurement and
@@ -413,6 +430,18 @@ each `{version}.json` asset keeps the annotations it was filed with. A note
 written or corrected after a version was measured thus reaches that version's
 page: attached to its failing cells on the versions before the fix, resolved
 with `fixed_in` on the versions from it.
+
+`released_at` is the one field of an index entry that does not come from a
+measurement. It is a property of the version: the time the tracer's registry
+(the variant's `tracer` coordinate in `variants.yaml`) published it. `cpm
+versions` looks it up at publish for the entries that have none, and an entry
+keeps it from then on, also when the version is measured again. The field is
+optional. A lookup that fails is a warning, the entry is published without a
+date and tried again at the next publish of the variant. Where each registry
+states the date is in `internal/versions/dates.go`; for a Go module it is the
+time of the tagged commit, and PECL and New Relic's download index name no
+time zone, so theirs are read as UTC. The per-version documents do not carry
+the date.
 
 `{version}` is the *pinned* tracer version (`tracer.pinned`: what `cpm pins`
 reads from the manifest the relay was built from, the value a bump PR names
@@ -448,6 +477,14 @@ a weaver's module is not among the binary's build-info dependencies.
 into `results/latest` and `results/raw`, and `republish.yml` re-renders the
 latest release in place and re-annotates every per-version bundle when
 `annotations/` changes.
+
+A run's release, and a back-test's when it is first published, is tagged on
+the commit that was measured. GitHub refuses that when the commit changes a
+workflow file and `main` has since moved on. The release is then created
+with its tag on `main`'s tip, and its notes say so
+(`scripts/create-release.sh`). Nothing reads where a tag sits: the commit is
+in the document (`run.harness_commit`, and `measured_commit` on each
+variant).
 
 contextpropagation.io consumes only `results.json` (from GitHub Releases), so
 the schema is versioned (`schema_version: 2`) and changes to it are breaking
@@ -535,8 +572,11 @@ Two bots move versions, and they do not overlap:
   one single-dependency manifest per Node
   tool under `relays/node/tools/`), pip (`requirements.in`, compiled
   to `requirements.txt`, + `requirements-<tool>.txt`), bundler (one Gemfile per tool under
-  `relays/ruby/gemfiles/`), composer, maven, nuget, cargo, and docker base
-  images — one grouped `app-deps` PR per ecosystem. Every tracer package
+  `relays/ruby/gemfiles/`), composer, maven, nuget, cargo (one crate per
+  Rust tool under `relays/rust/`), and docker base images — one grouped
+  `app-deps` PR per ecosystem, across every tool directory of a language, so
+  the variants of one language are never measured on different versions of
+  the same application library. Every tracer package
   that `pins.yaml` lists is in that ecosystem's `ignore` list, so Dependabot
   never proposes a tracer bump (it also cannot see the Dockerfile ARGs).
 - **bump-agents.yml** moves the *tracers*. `pins.yaml` lists where every
@@ -552,7 +592,10 @@ Two bots move versions, and they do not overlap:
   `==` line, a `gem` line with `bundle lock`, an `ARG`). There is exactly
   one PR per pin: branch
   `bump/<id>`, title `bump(<id>): <from> → <to>`, labels `dependencies` +
-  `tracer-bump` + `auto-merge`, squash auto-merge requested. A newer
+  `tracer-bump` + `auto-merge` + the language label Dependabot gives that
+  language's PRs (`python`, `javascript`, `.NET`, …, so `label:python`
+  lists every PR that moved the Python relays, tracer or library), squash
+  auto-merge requested. A newer
   upstream release rewrites that branch (current `main` + one commit) and
   PR in place and closes any older PR for the same pin as superseded, so
   the queue never holds two PRs for one tracer, and a PR that has gone
@@ -560,7 +603,10 @@ Two bots move versions, and they do not overlap:
   on the next run. For PRs made with the workflow's own token GitHub holds
   the `pull_request` run of `verify.yml` for a maintainer's approval
   ("Approve and run" on the PR); once approved it reports like any other
-  check and auto-merge completes after review. With the optional `BUMP_PAT`
+  check and auto-merge completes after review. A held run still tests the
+  `main` it was created for, so `verify.yml` fails one approved after
+  `main` has changed the relay the PR bumps; updating the branch starts a
+  run on today's tree. With the optional `BUMP_PAT`
   secret set, the bot pushes and opens PRs as that user instead and the
   runs start unprompted.
 

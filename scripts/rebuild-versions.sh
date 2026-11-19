@@ -18,6 +18,11 @@
 # the next matrix run that measures it. The one-off back-fill, and the
 # repair tool if a variant-* release is ever damaged. Needs `gh` with
 # contents:write; GH_REPO overrides the repository.
+#
+# The release date of each version (`released_at` in index.json) is looked up
+# in the tracer's registry once per variant, after everything is filed, not
+# once per release walked. A lookup that fails leaves entries without a date;
+# the next publish of the variant tries them again.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -26,7 +31,7 @@ only=()
 for a in "$@"; do
   case "$a" in
     -dry-run|--dry-run) dry=true ;;
-    -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "rebuild-versions: unknown flag $a (try -h)" >&2; exit 2 ;;
     *) only+=("$a") ;;
   esac
@@ -51,6 +56,9 @@ gh api --paginate "repos/$repo/releases?per_page=100" \
 echo "$(wc -l <"$work/releases" | tr -d ' ') run/back-test releases"
 
 skipped=()
+# -release-dates=false: this loop runs `cpm versions` once per release, and
+# each run would ask the registry about the same versions. The pass after
+# the loop looks them up once per variant.
 while IFS=$'\t' read -r _ tag; do
   doc="$work/src/$tag.json"
   gh release download "$tag" -R "$repo" -p results.json -O "$doc" 2>/dev/null || { echo "  $tag: no results.json"; continue; }
@@ -58,14 +66,14 @@ while IFS=$'\t' read -r _ tag; do
     v=$(jq -r '.variants[] | select(.missing | not) | .id' "$doc")
     wanted "$v" || continue
     ver=${tag#"backtest-$v-"}
-    "$work/cpm" versions -variant "$v" -out "$work/variants/$v" -results "$doc" -version "$ver" >/dev/null \
+    "$work/cpm" versions -release-dates=false -variant "$v" -out "$work/variants/$v" -results "$doc" -version "$ver" >/dev/null \
       || skipped+=("$tag")
   else
     n=0
     while IFS= read -r v; do
       wanted "$v" || continue
       # Measured in this run (not carried over) and with a tracer; cpm refuses the rest.
-      if "$work/cpm" versions -variant "$v" -out "$work/variants/$v" -results "$doc" >/dev/null 2>"$work/err"; then
+      if "$work/cpm" versions -release-dates=false -variant "$v" -out "$work/variants/$v" -results "$doc" >/dev/null 2>"$work/err"; then
         n=$((n + 1))
       elif grep -q 'no pinned version' "$work/err"; then
         skipped+=("$tag $v")
@@ -76,6 +84,20 @@ while IFS=$'\t' read -r _ tag; do
     echo "  $tag: filed $n variant(s)"
   fi
 done <"$work/releases"
+
+# Release dates: with nothing to file, `cpm versions` rewrites the variant's
+# index.json and versions.json as they stand and gives every entry its
+# released_at, in one lookup per variant. A lookup that fails is a warning
+# from cpm and the entries stay undated; if cpm itself fails, the files from
+# the loop above are complete without dates and are uploaded as they are.
+echo
+echo "release dates…"
+for dir in "$work"/variants/*/; do
+  [[ -f "$dir/index.json" ]] || continue
+  v=$(basename "$dir")
+  "$work/cpm" versions -variant "$v" -out "$dir" >/dev/null \
+    || echo "  $v: cpm versions failed; its index keeps the entries without release dates" >&2
+done
 
 echo
 for dir in "$work"/variants/*/; do

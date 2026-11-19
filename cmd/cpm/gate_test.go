@@ -58,7 +58,7 @@ func sendsTraced(out string) []string {
 }
 
 func sendsEverything(out string) []string {
-	return append(sendsTraced(out), "baggage", "ot-baggage-sd-routing-key", "x-sd-canary")
+	return append(sendsTraced(out), "baggage", "ot-baggage-routing-key", "x-cp-canary")
 }
 
 // sendsRuntime is the .NET runtime with no agent: its HTTP and gRPC clients
@@ -86,7 +86,7 @@ func writeRaw(t *testing.T, reg *registry.Registry, dir, variant string, sent fu
 		st := &raw.Status{Traceparent: "absent", Tracestate: "absent", Baggage: "absent", OTBaggage: "absent", DatadogNative: "absent"}
 		for _, h := range sent(out) {
 			obs.Headers[h] = []string{"x"}
-			if h == "x-sd-canary" {
+			if h == "x-cp-canary" {
 				st.CanaryLeak = true
 			}
 		}

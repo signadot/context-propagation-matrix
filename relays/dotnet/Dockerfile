@@ -5,8 +5,8 @@
 # these curl-fetched installers/tarballs, so bumps are manual (see DESIGN.md
 # "Version pinning"): update the ARG, rebuild, re-run the variant.
 ARG OTEL_DOTNET_AUTO_VERSION=1.19.1
-ARG DD_DOTNET_TRACER_VERSION=3.57.0
-ARG NEWRELIC_DOTNET_AGENT_VERSION=10.57.0
+ARG DD_DOTNET_TRACER_VERSION=3.58.0
+ARG NEWRELIC_DOTNET_AGENT_VERSION=10.58.0
 ARG ELASTIC_APM_DOTNET_VERSION=1.36.0
 
 # The SDK and runtime image majors must match <TargetFramework> in Relay.csproj

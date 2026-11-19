@@ -170,39 +170,37 @@ updates:
         patterns: ["*"]
 
   # Rust: one crate per tool (Cargo.toml + committed Cargo.lock) over the
-  # shared source, relays/rust/README.md. The tracer crates are pins.yaml
+  # shared source, relays/rust/README.md. One entry for all three crates, as
+  # for Go and Ruby, so an application dependency moves in every crate in
+  # the same PR: the application crates are the carriers under test (axum,
+  # tonic, reqwest, rdkafka, lapin), and the three variants should never be
+  # measured on different versions of them. The tracer crates are pins.yaml
   # `packages:` (and `follow`) — moved by bump-agents.yml (`cargo update`
   # for the whole family at once, which single-crate PRs cannot do).
+  #
+  # `ignore` is per entry, so the list is the union over the three crates.
+  # For the baseline (relays/rust/none) that means its opentelemetry API and
+  # HTTP-carrier crates, which are application dependencies there (no tracer
+  # installed, the API's globals are no-ops), are not moved by Dependabot
+  # either. That costs nothing in practice: an opentelemetry minor is an API
+  # change to the shared source and has to land with the otel-rust pin (and,
+  # through `follow`, the datadog-rust pin) in all three crates by hand; a
+  # patch of a no-op API crate is not worth a PR per carrier bump.
   - package-ecosystem: cargo
-    directory: /relays/rust/otel
+    directories:
+      - /relays/rust/otel
+      - /relays/rust/datadog
+      - /relays/rust/none
     schedule: { interval: weekly }
     groups:
       app-deps:
         patterns: ["*"]
-        exclude-patterns: ["opentelemetry*"]  # opentelemetry, opentelemetry_sdk, opentelemetry-http
+        exclude-patterns: ["opentelemetry*", "datadog-opentelemetry"]
     ignore:
-      - dependency-name: "opentelemetry"          # otel-rust
+      - dependency-name: "opentelemetry"          # otel-rust; datadog-rust (follow)
       - dependency-name: "opentelemetry_sdk"      # otel-rust
-      - dependency-name: "opentelemetry-http"     # otel-rust
-  - package-ecosystem: cargo
-    directory: /relays/rust/datadog
-    schedule: { interval: weekly }
-    groups:
-      app-deps:
-        patterns: ["*"]
-        exclude-patterns: ["datadog-opentelemetry", "opentelemetry", "opentelemetry-http"]
-    ignore:
+      - dependency-name: "opentelemetry-http"     # otel-rust; datadog-rust (follow)
       - dependency-name: "datadog-opentelemetry"  # datadog-rust
-      - dependency-name: "opentelemetry"          # datadog-rust (follow)
-      - dependency-name: "opentelemetry-http"     # datadog-rust (follow)
-  # The baseline installs no tracer; its opentelemetry crates are plain
-  # application dependencies.
-  - package-ecosystem: cargo
-    directory: /relays/rust/none
-    schedule: { interval: weekly }
-    groups:
-      app-deps:
-        patterns: ["*"]
 
   # Base images in every Dockerfile. Language toolchain images are checked
   # against their manifests by scripts/check-toolchains.sh. Two toolchains are
@@ -231,10 +229,13 @@ updates:
       - /relays/php
       - /relays/rust
     schedule: { interval: weekly }
+    # Dependabot names an image without its registry host: the .NET images
+    # are `dotnet/sdk` and `dotnet/aspnet` in its log and its PR titles. A
+    # rule under `mcr.microsoft.com/dotnet/...` matches nothing.
     ignore:
-      - dependency-name: "mcr.microsoft.com/dotnet/sdk"
+      - dependency-name: "dotnet/sdk"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "mcr.microsoft.com/dotnet/aspnet"
+      - dependency-name: "dotnet/aspnet"
         update-types: ["version-update:semver-major"]
       - dependency-name: "eclipse-temurin"
         update-types: ["version-update:semver-major"]

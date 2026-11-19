@@ -91,16 +91,16 @@ func TestTracestate(t *testing.T) {
 	}{
 		"absent":                     {hdrs{}, "absent"},
 		"no values":                  {hdrs{"tracestate": {}}, "absent"},
-		"verbatim":                   {hdrs{"tracestate": {"sdtest=v1"}}, "preserved"},
-		"vendor entry prepended":     {hdrs{"tracestate": {"dd=s:1;t.dm:-0, sdtest=v1"}}, "preserved"},
+		"verbatim":                   {hdrs{"tracestate": {"cptest=v1"}}, "preserved"},
+		"vendor entry prepended":     {hdrs{"tracestate": {"dd=s:1;t.dm:-0, cptest=v1"}}, "preserved"},
 		"entry lost":                 {hdrs{"tracestate": {"dd=s:1"}}, "present_entry_lost"},
-		"value changed":              {hdrs{"tracestate": {"sdtest=v2"}}, "present_entry_lost"},
+		"value changed":              {hdrs{"tracestate": {"cptest=v2"}}, "present_entry_lost"},
 		"empty value":                {hdrs{"tracestate": {""}}, "present_entry_lost"},
-		"second field has the entry": {hdrs{"tracestate": {"dd=s:1", "sdtest=v1"}}, "preserved"},
-		"first field has the entry":  {hdrs{"tracestate": {"sdtest=v1", "dd=s:1"}}, "preserved"},
+		"second field has the entry": {hdrs{"tracestate": {"dd=s:1", "cptest=v1"}}, "preserved"},
+		"first field has the entry":  {hdrs{"tracestate": {"cptest=v1", "dd=s:1"}}, "preserved"},
 		"no field has the entry":     {hdrs{"tracestate": {"dd=s:1", "es=s:1"}}, "present_entry_lost"},
 	} {
-		if got := Tracestate(tc.h); got != tc.want {
+		if got := Tracestate(tc.h, seed); got != tc.want {
 			t.Errorf("%s: got %q, want %q", name, got, tc.want)
 		}
 	}
@@ -113,18 +113,18 @@ func TestBaggage(t *testing.T) {
 	}{
 		"absent":                        {hdrs{}, "absent"},
 		"no values":                     {hdrs{"baggage": {}}, "absent"},
-		"verbatim":                      {hdrs{"baggage": {"sd-routing-key=rk-3e26ef84,team=alpha"}}, "propagated"},
-		"reordered, spaces":             {hdrs{"baggage": {"team=alpha , sd-routing-key = rk-3e26ef84"}}, "propagated"},
-		"member properties":             {hdrs{"baggage": {"sd-routing-key=rk-3e26ef84;prop=1,team=alpha"}}, "propagated"},
+		"verbatim":                      {hdrs{"baggage": {"routing-key=rk-3e26ef84,team=alpha"}}, "propagated"},
+		"reordered, spaces":             {hdrs{"baggage": {"team=alpha , routing-key = rk-3e26ef84"}}, "propagated"},
+		"member properties":             {hdrs{"baggage": {"routing-key=rk-3e26ef84;prop=1,team=alpha"}}, "propagated"},
 		"key missing":                   {hdrs{"baggage": {"team=alpha"}}, "partial"},
-		"wrong value":                   {hdrs{"baggage": {"sd-routing-key=rk-other"}}, "partial"},
+		"wrong value":                   {hdrs{"baggage": {"routing-key=rk-other"}}, "partial"},
 		"empty value":                   {hdrs{"baggage": {""}}, "partial"},
-		"second field has the key":      {hdrs{"baggage": {"team=alpha", "sd-routing-key=rk-3e26ef84"}}, "propagated"},
-		"first field has the key":       {hdrs{"baggage": {"sd-routing-key=rk-3e26ef84", "team=alpha"}}, "propagated"},
+		"second field has the key":      {hdrs{"baggage": {"team=alpha", "routing-key=rk-3e26ef84"}}, "propagated"},
+		"first field has the key":       {hdrs{"baggage": {"routing-key=rk-3e26ef84", "team=alpha"}}, "propagated"},
 		"no field has the key":          {hdrs{"baggage": {"team=alpha", "env=test"}}, "partial"},
-		"repeated key, seeded last":     {hdrs{"baggage": {"sd-routing-key=stale,sd-routing-key=rk-3e26ef84"}}, "propagated"},
-		"repeated key, seeded first":    {hdrs{"baggage": {"sd-routing-key=rk-3e26ef84,sd-routing-key=stale"}}, "partial"},
-		"repeated key in a later field": {hdrs{"baggage": {"sd-routing-key=rk-3e26ef84", "sd-routing-key=stale"}}, "partial"},
+		"repeated key, seeded last":     {hdrs{"baggage": {"routing-key=stale,routing-key=rk-3e26ef84"}}, "propagated"},
+		"repeated key, seeded first":    {hdrs{"baggage": {"routing-key=rk-3e26ef84,routing-key=stale"}}, "partial"},
+		"repeated key in a later field": {hdrs{"baggage": {"routing-key=rk-3e26ef84", "routing-key=stale"}}, "partial"},
 	} {
 		if got := Baggage(tc.h, seed); got != tc.want {
 			t.Errorf("%s: got %q, want %q", name, got, tc.want)
@@ -138,11 +138,11 @@ func TestOTBaggage(t *testing.T) {
 		want string
 	}{
 		"absent":                      {hdrs{}, "absent"},
-		"no values":                   {hdrs{"ot-baggage-sd-routing-key": {}}, "absent"},
+		"no values":                   {hdrs{"ot-baggage-routing-key": {}}, "absent"},
 		"another ot-baggage key":      {hdrs{"ot-baggage-team": {"alpha"}}, "absent"},
-		"propagated":                  {hdrs{"ot-baggage-sd-routing-key": {"rk-3e26ef84"}}, "propagated"},
-		"wrong value":                 {hdrs{"ot-baggage-sd-routing-key": {"rk-other"}}, "partial"},
-		"only the first value counts": {hdrs{"ot-baggage-sd-routing-key": {"rk-other", "rk-3e26ef84"}}, "partial"},
+		"propagated":                  {hdrs{"ot-baggage-routing-key": {"rk-3e26ef84"}}, "propagated"},
+		"wrong value":                 {hdrs{"ot-baggage-routing-key": {"rk-other"}}, "partial"},
+		"only the first value counts": {hdrs{"ot-baggage-routing-key": {"rk-other", "rk-3e26ef84"}}, "partial"},
 	} {
 		if got := OTBaggage(tc.h, seed); got != tc.want {
 			t.Errorf("%s: got %q, want %q", name, got, tc.want)
@@ -152,11 +152,11 @@ func TestOTBaggage(t *testing.T) {
 
 func TestEvaluate(t *testing.T) {
 	got := Evaluate(hdrs{
-		"traceparent":               {newSpan},
-		"tracestate":                {"dd=s:1,sdtest=v1"},
-		"baggage":                   {"team=alpha"},
-		"ot-baggage-sd-routing-key": {"rk-3e26ef84"},
-		"x-datadog-trace-id":        {ddLow64},
+		"traceparent":            {newSpan},
+		"tracestate":             {"dd=s:1,cptest=v1"},
+		"baggage":                {"team=alpha"},
+		"ot-baggage-routing-key": {"rk-3e26ef84"},
+		"x-datadog-trace-id":     {ddLow64},
 	}, seed)
 	want := raw.Status{Traceparent: "same_trace", Tracestate: "preserved", Baggage: "partial",
 		OTBaggage: "propagated", DatadogNative: "present_same_trace"}
@@ -171,8 +171,63 @@ func TestEvaluate(t *testing.T) {
 		t.Errorf("empty: got %+v, want %+v", *got, want)
 	}
 
-	if !Evaluate(hdrs{"x-sd-canary": {"otel-node--http-http--3e26ef84"}}, seed).CanaryLeak {
+	if !Evaluate(hdrs{"x-cp-canary": {"otel-node--http-http--3e26ef84"}}, seed).CanaryLeak {
 		t.Error("canary leak not detected")
+	}
+}
+
+// A result is judged against the names it was seeded with, which the seed
+// records: one measured before a rename keeps its statuses, and what counts
+// for it is what it was sent, not what the driver sends today.
+func TestNamesComeFromTheSeed(t *testing.T) {
+	earlier := raw.Seeded{TraceID: seed.TraceID, SpanID: seed.SpanID, RoutingKey: seed.RoutingKey,
+		Headers: map[string]string{
+			"traceparent":         "00-" + seed.TraceID + "-" + seed.SpanID + "-01",
+			"tracestate":          "acme=v7",
+			"baggage":             "acme-key=" + seed.RoutingKey + ",team=alpha",
+			"ot-baggage-acme-key": seed.RoutingKey,
+			"x-acme-canary":       "otel-node--http-http--3e26ef84",
+		}}
+	then := hdrs{
+		"traceparent":         {newSpan},
+		"tracestate":          {"dd=s:1,acme=v7"},
+		"baggage":             {"team=alpha,acme-key=rk-3e26ef84"},
+		"ot-baggage-acme-key": {"rk-3e26ef84"},
+		"x-acme-canary":       {"otel-node--http-http--3e26ef84"},
+	}
+	now := hdrs{
+		"traceparent":            {newSpan},
+		"tracestate":             {"dd=s:1,cptest=v1"},
+		"baggage":                {"team=alpha,routing-key=rk-3e26ef84"},
+		"ot-baggage-routing-key": {"rk-3e26ef84"},
+		"x-cp-canary":            {"otel-node--http-http--3e26ef84"},
+	}
+	arrived := raw.Status{Traceparent: "same_trace", Tracestate: "preserved", Baggage: "propagated",
+		OTBaggage: "propagated", DatadogNative: "absent", CanaryLeak: true}
+	lost := raw.Status{Traceparent: "same_trace", Tracestate: "present_entry_lost", Baggage: "partial",
+		OTBaggage: "absent", DatadogNative: "absent"}
+
+	for name, tc := range map[string]struct {
+		h    hdrs
+		seed raw.Seeded
+		want raw.Status
+	}{
+		"earlier names, earlier seed":  {then, earlier, arrived},
+		"today's names, earlier seed":  {now, earlier, lost},
+		"earlier names, today's seed":  {then, seed, lost},
+		"today's names, today's seed":  {now, seed, arrived},
+		"today's names, recorded seed": {now, raw.Seeded{TraceID: seed.TraceID, RoutingKey: seed.RoutingKey, Headers: map[string]string{"tracestate": TracestateEntry, "baggage": RoutingKeyMember + "=" + seed.RoutingKey + ",team=alpha", "ot-baggage-" + RoutingKeyMember: seed.RoutingKey, CanaryHeader: "t"}}, arrived},
+	} {
+		if got := Evaluate(tc.h, tc.seed); *got != tc.want {
+			t.Errorf("%s: got %+v, want %+v", name, *got, tc.want)
+		}
+	}
+
+	if got := Canary(earlier.Headers); got != "x-acme-canary" {
+		t.Errorf("Canary of the earlier seed: got %q", got)
+	}
+	if got := Canary(nil); got != CanaryHeader {
+		t.Errorf("Canary of no headers: got %q, want %q", got, CanaryHeader)
 	}
 }
 

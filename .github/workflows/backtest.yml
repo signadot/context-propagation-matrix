@@ -277,9 +277,10 @@ jobs:
             gh release upload "$tag" --clobber "${assets[@]}"
             gh release edit "$tag" --notes "Back-test of \`$V\` with tracer version \`$VER\` (kind=backtest), re-measured $(date -u +%F) at $GITHUB_SHA. See the run's results.json for cells." >/dev/null
           else
-            gh release create "$tag" --target "$GITHUB_SHA" --title "backtest: $V @ $VER" --prerelease \
-              --notes "Back-test of \`$V\` with tracer version \`$VER\` (kind=backtest). See the run's results.json for cells." \
-              "${assets[@]}"
+            # The tag goes on the measured commit when GitHub allows it, and
+            # on main's tip when it does not: see scripts/create-release.sh.
+            echo "Back-test of \`$V\` with tracer version \`$VER\` (kind=backtest). See the run's results.json for cells." > /tmp/notes.md
+            scripts/create-release.sh "$tag" /tmp/notes.md --title "backtest: $V @ $VER" --prerelease "${assets[@]}"
           fi
       - name: Keep the document for the filing job
         uses: actions/upload-artifact@v7
