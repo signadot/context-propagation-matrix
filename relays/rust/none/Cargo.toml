@@ -36,8 +36,12 @@ http = "1"
 
 # No tracer. The shared source calls the OpenTelemetry API, whose globals
 # default to no-ops when nothing installs a provider or propagator, so the
-# API and HTTP carrier crates are plain application dependencies here
-# (Dependabot moves them with the rest), not a pin.
+# API and HTTP carrier crates are plain application dependencies here, not
+# a pin. Nobody moves them automatically: Dependabot ignores them (one cargo
+# entry covers all three crates and the tracer crates are ignored there) and
+# pins.yaml does not list this crate. Move them by hand with the otel-rust
+# pin: a minor is an API change to the shared source and lands in all three
+# crates at once.
 opentelemetry = "0.33"
 opentelemetry-http = "0.33"
 
