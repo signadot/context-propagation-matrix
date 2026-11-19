@@ -33,7 +33,7 @@ GEM
       logger
     nio4r (2.7.5)
     openssl (4.0.2)
-    puma (8.0.2)
+    puma (8.0.3)
       nio4r (~> 2.0)
     rack (3.2.8)
     rack-protection (4.2.1)
@@ -78,7 +78,7 @@ DEPENDENCIES
   bunny (= 3.6.0)
   grpc (= 1.85.0)
   newrelic_rpm (= 10.9.1)
-  puma (= 8.0.2)
+  puma (= 8.0.3)
   rackup (= 2.3.1)
   rdkafka (= 0.31.0)
   sinatra (= 4.2.1)

@@ -13,7 +13,7 @@
 # 2026 dependency tree (some transitive crates' MSRV exceeds 1.8x); it matches
 # the toolchain they were generated with.
 
-FROM rust:1.99-bookworm AS build
+FROM rust:1.100-bookworm AS build
 # cmake: the rdkafka `cmake-build` feature compiles the vendored librdkafka.
 # protobuf-compiler: tonic-prost-build shells out to protoc for the stubs.
 RUN apt-get update \
