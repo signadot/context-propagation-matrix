@@ -4,7 +4,7 @@
 # Agent versions are pinned for repeatability. Dependabot does not cover
 # curl-fetched jars, so bumps are manual (or via the refresh checklist in
 # DESIGN.md "Version pinning"): update the ARG, rebuild, re-run the variant.
-ARG OTEL_JAVA_AGENT_VERSION=2.33.1
+ARG OTEL_JAVA_AGENT_VERSION=2.34.0
 ARG DD_JAVA_AGENT_VERSION=1.69.0
 ARG NEWRELIC_JAVA_AGENT_VERSION=9.5.0
 ARG ELASTIC_APM_JAVA_AGENT_VERSION=1.57.1
