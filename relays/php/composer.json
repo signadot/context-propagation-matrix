@@ -9,7 +9,7 @@
         "ext-grpc": "*",
         "ext-rdkafka": "*",
         "slim/slim": "4.15.3",
-        "slim/psr7": "1.8.0",
+        "slim/psr7": "1.8.1",
         "php-amqplib/php-amqplib": "3.7.5",
         "grpc/grpc": "1.85.0",
         "google/protobuf": "5.36.2"
