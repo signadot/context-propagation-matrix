@@ -572,8 +572,11 @@ Two bots move versions, and they do not overlap:
   one single-dependency manifest per Node
   tool under `relays/node/tools/`), pip (`requirements.in`, compiled
   to `requirements.txt`, + `requirements-<tool>.txt`), bundler (one Gemfile per tool under
-  `relays/ruby/gemfiles/`), composer, maven, nuget, cargo, and docker base
-  images — one grouped `app-deps` PR per ecosystem. Every tracer package
+  `relays/ruby/gemfiles/`), composer, maven, nuget, cargo (one crate per
+  Rust tool under `relays/rust/`), and docker base images — one grouped
+  `app-deps` PR per ecosystem, across every tool directory of a language, so
+  the variants of one language are never measured on different versions of
+  the same application library. Every tracer package
   that `pins.yaml` lists is in that ecosystem's `ignore` list, so Dependabot
   never proposes a tracer bump (it also cannot see the Dockerfile ARGs).
 - **bump-agents.yml** moves the *tracers*. `pins.yaml` lists where every
