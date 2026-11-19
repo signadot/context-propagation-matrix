@@ -63,12 +63,6 @@ func (c *Client) ReleaseDates(ctx context.Context, p registry.Package, versions 
 	return out, err
 }
 
-// HasReleaseDates reports whether ReleaseDates can ask the named registry.
-func HasReleaseDates(name string) bool {
-	_, ok := daters[name]
-	return ok
-}
-
 // A dater returns the publication time of each wanted version (already
 // stripped of "v") that the registry lists, keyed the same way, and an error
 // for what it could not look up. Both may be non-empty.

@@ -621,7 +621,7 @@ func TestEveryTracerRegistryHasReleaseDates(t *testing.T) {
 			continue
 		}
 		tracers++
-		if !HasReleaseDates(v.Tracer.Registry) {
+		if _, ok := daters[v.Tracer.Registry]; !ok {
 			t.Errorf("%s: no release-date lookup for registry %q (add one to daters in dates.go)", v.ID, v.Tracer.Registry)
 		}
 	}
