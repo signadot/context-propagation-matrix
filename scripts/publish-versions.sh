@@ -31,6 +31,13 @@
 # from annotations/ at this checkout: a <version>.json asset keeps the
 # annotations it was filed with, the bundle (what the site renders) carries
 # the ones the current YAML attaches to that version's cells.
+#
+# In every mode it also gives each index entry that has none a `released_at`,
+# the date the tracer's registry published that version, which it looks up
+# over the network (GH_TOKEN, when set, authenticates the GitHub lookups). An
+# entry keeps its date, so a publish normally looks up one version. A failed
+# lookup is a warning: the entry is published without a date and tried again
+# next time.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -43,7 +50,7 @@ while (($#)); do
     -version|--version) version="$2"; shift 2 ;;
     -rebuild|--rebuild) rebuild=true; shift ;;
     -refresh|--refresh) refresh=true; shift ;;
-    -h|--help) sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "publish-versions: unknown flag $1 (try -h)" >&2; exit 2 ;;
     *)
       if ! $rebuild && ! $refresh && [[ -z "$results" ]]; then results="$1"; else break; fi

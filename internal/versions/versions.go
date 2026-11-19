@@ -6,6 +6,9 @@
 // Coordinates are the registry/package pairs from variants.yaml (`tracer`) and
 // pins.yaml (`source`), so `cpm discover` (older versions to back-test) and
 // `cpm pins latest` (newer agent versions to bump to) share one client.
+//
+// The same client says when given versions were published (ReleaseDates, in
+// dates.go), which `cpm versions` records in a variant's version index.
 package versions
 
 import (
@@ -27,8 +30,9 @@ import (
 
 const userAgent = "context-propagation-matrix (+https://contextpropagation.io)"
 
-// Client fetches version lists. The zero value is usable; Token (or
-// $GITHUB_TOKEN) raises the GitHub API rate limit for github-releases.
+// Client fetches version lists and release dates. The zero value is usable;
+// Token (or $GITHUB_TOKEN, or $GH_TOKEN) raises the GitHub API rate limit
+// for github-releases.
 type Client struct {
 	HTTP  *http.Client
 	Token string
@@ -41,11 +45,17 @@ func (c *Client) http() *http.Client {
 	return &http.Client{Timeout: 30 * time.Second}
 }
 
+// token is Token, else $GITHUB_TOKEN, else $GH_TOKEN. The last is what the
+// workflows' publish steps set (for gh), and `cpm versions` looks up release
+// dates from inside them.
 func (c *Client) token() string {
 	if c.Token != "" {
 		return c.Token
 	}
-	return os.Getenv("GITHUB_TOKEN")
+	if t := os.Getenv("GITHUB_TOKEN"); t != "" {
+		return t
+	}
+	return os.Getenv("GH_TOKEN")
 }
 
 // Latest returns the newest stable version of p.
