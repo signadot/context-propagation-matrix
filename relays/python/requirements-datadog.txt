@@ -1,2 +1,2 @@
 # Datadog tracer for the datadog target, pinned exactly.
-ddtrace==4.17.1
+ddtrace==4.17.2
