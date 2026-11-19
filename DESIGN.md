@@ -592,7 +592,10 @@ Two bots move versions, and they do not overlap:
   `==` line, a `gem` line with `bundle lock`, an `ARG`). There is exactly
   one PR per pin: branch
   `bump/<id>`, title `bump(<id>): <from> → <to>`, labels `dependencies` +
-  `tracer-bump` + `auto-merge`, squash auto-merge requested. A newer
+  `tracer-bump` + `auto-merge` + the language label Dependabot gives that
+  language's PRs (`python`, `javascript`, `.NET`, …, so `label:python`
+  lists every PR that moved the Python relays, tracer or library), squash
+  auto-merge requested. A newer
   upstream release rewrites that branch (current `main` + one commit) and
   PR in place and closes any older PR for the same pin as superseded, so
   the queue never holds two PRs for one tracer, and a PR that has gone
