@@ -190,6 +190,14 @@ type pinBump struct {
 	To       string           `json:"to"`
 	Source   registry.Package `json:"source"`
 	Variants []string         `json:"variants"`
+	// Language is the variants.yaml language of the pin's variants (a pin
+	// is one manifest under relays/<language>/, so they share one); Label
+	// is the GitHub label Dependabot gives PRs that update that language's
+	// manifests (python, javascript, .NET, …), which the bump PR carries
+	// too so `label:python` finds tracer bumps and library bumps alike.
+	// Both are empty when the language is unknown.
+	Language string `json:"language,omitempty"`
+	Label    string `json:"label,omitempty"`
 	// URL is the package's page in its registry; ReleasesURL the GitHub
 	// releases page (variants.yaml `github:`, or the package itself for
 	// github-releases sources). Either may be empty.
@@ -206,7 +214,7 @@ type latestFunc func(ctx context.Context, p registry.Package) (string, error)
 // the registries report them. A failed lookup skips that pin (and is
 // reported on stderr) so one registry outage does not block the others; a
 // pin that does not resolve in its file is an error.
-func findBumps(ctx context.Context, m *pins.Manifest, only string, latest latestFunc, github map[string]string) ([]pinBump, error) {
+func findBumps(ctx context.Context, m *pins.Manifest, only string, latest latestFunc, reg regInfo) ([]pinBump, error) {
 	bumps := []pinBump{}
 	found := false
 	var errs []string
@@ -232,11 +240,14 @@ func findBumps(ctx context.Context, m *pins.Manifest, only string, latest latest
 			continue
 		}
 		files := p.Files()
+		lang := pinLanguage(p, reg.language)
 		bumps = append(bumps, pinBump{
 			ID: p.ID, Kind: p.Kind, File: files[0], Files: files,
 			From: current, To: newest, Source: p.Source, Variants: p.Variants,
+			Language:    lang,
+			Label:       languageLabel(lang),
 			URL:         packageURL(p.Source),
-			ReleasesURL: releasesURL(p.Source, github[sourceKey(p.Source)]),
+			ReleasesURL: releasesURL(p.Source, reg.github[sourceKey(p.Source)]),
 		})
 	}
 	if only != "" && !found {
@@ -250,23 +261,64 @@ func findBumps(ctx context.Context, m *pins.Manifest, only string, latest latest
 
 func sourceKey(p registry.Package) string { return p.Registry + ":" + p.Package }
 
-// githubRepos maps every tracer/weaver coordinate in variants.yaml to its
-// `github:` owner/repo, for the releases link in PR bodies. Best effort: an
-// unreadable variants.yaml just means no links.
-func githubRepos(regPath string) map[string]string {
-	out := map[string]string{}
+// regInfo is what findBumps takes from variants.yaml for the PR: the
+// `github:` owner/repo of every tracer/weaver coordinate (the releases link
+// in the body) and the language of every variant (the language label).
+type regInfo struct {
+	github   map[string]string // sourceKey → owner/repo
+	language map[string]string // variant id → language id
+}
+
+// loadRegInfo reads variants.yaml, best effort: an unreadable file just
+// means no links and no language label.
+func loadRegInfo(regPath string) regInfo {
+	out := regInfo{github: map[string]string{}, language: map[string]string{}}
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		return out
 	}
 	for _, v := range reg.Variants {
+		out.language[v.ID] = v.Language
 		for _, p := range []*registry.Package{v.Tracer, v.Weaver} {
 			if p != nil && p.GitHub != "" {
-				out[sourceKey(*p)] = p.GitHub
+				out.github[sourceKey(*p)] = p.GitHub
 			}
 		}
 	}
 	return out
+}
+
+// pinLanguage is the language of a pin's variants: a pin is one manifest
+// under relays/<language>/, so they share one. "" when none is known, or
+// when they disagree (then no label is better than a wrong one).
+func pinLanguage(p *pins.Pin, language map[string]string) string {
+	lang := ""
+	for _, v := range p.Variants {
+		l := language[v]
+		if l == "" {
+			continue
+		}
+		if lang != "" && l != lang {
+			fmt.Fprintf(os.Stderr, "%s: variants span languages %s and %s; no language label\n", p.ID, lang, l)
+			return ""
+		}
+		lang = l
+	}
+	return lang
+}
+
+// languageLabel is the label Dependabot puts on PRs that update a
+// language's manifests, by variants.yaml language id. Dependabot names them
+// by ecosystem (gomod → go, npm → javascript, nuget → .NET, pip → python);
+// two differ from our ids, the rest coincide.
+func languageLabel(lang string) string {
+	switch lang {
+	case "node":
+		return "javascript"
+	case "dotnet":
+		return ".NET"
+	}
+	return lang
 }
 
 // packageURL is the package's page in its registry, "" if unknown.
@@ -336,7 +388,7 @@ func pinsLatest(args []string) error {
 	}
 	client := &versions.Client{}
 	ctx := context.Background()
-	bumps, findErr := findBumps(ctx, m, *only, client.Latest, githubRepos(*regPath))
+	bumps, findErr := findBumps(ctx, m, *only, client.Latest, loadRegInfo(*regPath))
 	if *apply {
 		for i := range bumps {
 			b := &bumps[i]

@@ -6,7 +6,10 @@
 # (.github/dependabot.yml) and moved here instead. Every 6 hours: look up the
 # newest stable version of each pin in its registry (`cpm pins latest`) and
 # keep exactly ONE open PR per pin, on branch `bump/<id>`, labelled
-# tracer-bump + auto-merge + dependencies, with squash auto-merge requested.
+# tracer-bump + auto-merge + dependencies + the language label Dependabot
+# gives that language's PRs (python, javascript, .NET, …, so `label:python`
+# finds every PR that moved the Python relays), with squash auto-merge
+# requested.
 # A newer upstream release rewrites that branch (main + one commit) and the
 # PR in place; any older PR for the same pin is closed as superseded.
 # Merging touches relays/**, and matrix.yml measures the bumped variants →
@@ -101,6 +104,9 @@ jobs:
       # The exact arrow matters: the title is how daily runs recognise an
       # up-to-date PR, and how superseded ones are found.
       TITLE: 'bump(${{ matrix.bump.id }}): ${{ matrix.bump.from }} → ${{ matrix.bump.to }}'
+      # Dependabot's label for the pin's language (`cpm pins latest`, from
+      # the variants it lists); empty when unknown.
+      LABEL: ${{ matrix.bump.label }}
       # BUMP_PAT when set (see the header), else the workflow token.
       GH_TOKEN: ${{ secrets.BUMP_PAT || github.token }}
     steps:
@@ -227,9 +233,17 @@ jobs:
           HAS_PAT: ${{ secrets.BUMP_PAT != '' }}
         run: |
           set -euo pipefail
-          # Idempotent: both labels exist after the first run.
+          # Idempotent: the labels exist after the first run. The language
+          # label is normally Dependabot's, created with its first PR for
+          # that ecosystem; made here with Dependabot's wording in case a
+          # tracer bump comes first (a fresh fork).
           gh label create tracer-bump --color 0E8A16 --description "Moves a tracer/agent pin; merged automatically when checks pass" 2>/dev/null || true
           gh label create auto-merge --color 5319E7 --description "Auto-merge enabled by a workflow" 2>/dev/null || true
+          labels=dependencies,tracer-bump,auto-merge
+          if [[ -n "$LABEL" ]]; then
+            gh label create "$LABEL" --color EDEDED --description "Pull requests that update $LABEL code" 2>/dev/null || true
+            labels+=",$LABEL"
+          fi
 
           body=$(jq -r '.[0] |
             "Moves the **\(.id)** pin from `\(.from)` to `\(.to)`.\n\n" +
@@ -243,11 +257,11 @@ jobs:
           ' /tmp/bump.json)
 
           if [[ -n "$EXISTING" ]]; then
-            gh pr edit "$EXISTING" --title "$TITLE" --body "$body" --add-label dependencies,tracer-bump,auto-merge
+            gh pr edit "$EXISTING" --title "$TITLE" --body "$body" --add-label "$labels"
             pr=$EXISTING
             echo "updated #$pr"
           else
-            url=$(gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$body" --label dependencies,tracer-bump,auto-merge)
+            url=$(gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$body" --label "$labels")
             pr=${url##*/}
             echo "opened #$pr ($url)"
           fi
