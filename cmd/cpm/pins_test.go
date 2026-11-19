@@ -94,7 +94,7 @@ func TestFindBumpsEveryKind(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(kind+"/"+tc.name, func(t *testing.T) {
 				m := onePinManifest(t, t.TempDir(), kind, tc.current)
-				got, err := findBumps(context.Background(), m, "", fakeRegistry(map[string]string{"reg:pkg": tc.newest}), nil)
+				got, err := findBumps(context.Background(), m, "", fakeRegistry(map[string]string{"reg:pkg": tc.newest}), regInfo{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -141,7 +141,7 @@ func TestFindBumpsSelection(t *testing.T) {
 	}
 
 	// All pins: a is behind, b is current, c's registry is down (skipped, not fatal).
-	got, err := findBumps(context.Background(), m, "", reg, nil)
+	got, err := findBumps(context.Background(), m, "", reg, regInfo{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,25 +150,25 @@ func TestFindBumpsSelection(t *testing.T) {
 	}
 
 	// -only narrows to one pin.
-	got, err = findBumps(context.Background(), m, "b", reg, nil)
+	got, err = findBumps(context.Background(), m, "b", reg, regInfo{})
 	if err != nil || len(got) != 0 {
 		t.Errorf("-only b: bumps = %v, err = %v; want none", ids(got), err)
 	}
-	got, err = findBumps(context.Background(), m, "a", reg, nil)
+	got, err = findBumps(context.Background(), m, "a", reg, regInfo{})
 	if err != nil || !reflect.DeepEqual(ids(got), []string{"a"}) {
 		t.Errorf("-only a: bumps = %v, err = %v; want [a]", ids(got), err)
 	}
 
 	// -only with an unknown id is an error (the apply job would otherwise
 	// commit nothing).
-	if _, err := findBumps(context.Background(), m, "nope", reg, nil); err == nil || !strings.Contains(err.Error(), "no pin") {
+	if _, err := findBumps(context.Background(), m, "nope", reg, regInfo{}); err == nil || !strings.Contains(err.Error(), "no pin") {
 		t.Errorf("-only nope: err = %v, want no-pin error", err)
 	}
 
 	// A pin that does not resolve in its file is an error, but the other
 	// bumps are still returned (and printed) so the run shows what it found.
 	m.Pins = append(m.Pins, pins.Pin{ID: "d", Kind: pins.KindArg, File: df, Arg: "MISSING", Source: registry.Package{Registry: "npm", Package: "b"}})
-	got, err = findBumps(context.Background(), m, "", reg, nil)
+	got, err = findBumps(context.Background(), m, "", reg, regInfo{})
 	if err == nil || !strings.Contains(err.Error(), "did not resolve") {
 		t.Errorf("unresolved pin: err = %v", err)
 	}
@@ -191,7 +191,7 @@ func TestFindBumpsLinks(t *testing.T) {
 		"newrelic-download:php_agent":             "1.1.0.0",
 	})
 	github := map[string]string{"maven:com.datadoghq:dd-java-agent": "DataDog/dd-trace-java"}
-	got, err := findBumps(context.Background(), m, "", reg, github)
+	got, err := findBumps(context.Background(), m, "", reg, regInfo{github: github})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,6 +203,46 @@ func TestFindBumpsLinks(t *testing.T) {
 	for _, b := range got {
 		if w := want[b.ID]; b.URL != w[0] || b.ReleasesURL != w[1] {
 			t.Errorf("%s: url = %q, releases = %q; want %q, %q", b.ID, b.URL, b.ReleasesURL, w[0], w[1])
+		}
+	}
+}
+
+// The language label is Dependabot's name for the pin's language, taken
+// from its variants; a pin whose variants are unknown, or (impossibly)
+// span two languages, gets none.
+func TestFindBumpsLanguageLabel(t *testing.T) {
+	dir := t.TempDir()
+	df := writeFile(t, dir, "Dockerfile", "ARG A_VERSION=1.0.0\nARG B_VERSION=1.0.0\nARG C_VERSION=1.0.0\nARG D_VERSION=1.0.0\nARG E_VERSION=1.0.0\n")
+	src := func(name string) registry.Package { return registry.Package{Registry: "npm", Package: name} }
+	m := &pins.Manifest{Pins: []pins.Pin{
+		{ID: "a", Kind: pins.KindArg, File: df, Arg: "A_VERSION", Source: src("a"), Variants: []string{"datadog-python", "datadog-python-defaults"}},
+		{ID: "b", Kind: pins.KindArg, File: df, Arg: "B_VERSION", Source: src("b"), Variants: []string{"otel-node"}},
+		{ID: "c", Kind: pins.KindArg, File: df, Arg: "C_VERSION", Source: src("c"), Variants: []string{"newrelic-dotnet"}},
+		{ID: "d", Kind: pins.KindArg, File: df, Arg: "D_VERSION", Source: src("d"), Variants: []string{"unknown-variant"}},
+		{ID: "e", Kind: pins.KindArg, File: df, Arg: "E_VERSION", Source: src("e"), Variants: []string{"otel-node", "datadog-python"}},
+	}}
+	reg := fakeRegistry(map[string]string{"npm:a": "1.1.0", "npm:b": "1.1.0", "npm:c": "1.1.0", "npm:d": "1.1.0", "npm:e": "1.1.0"})
+	info := regInfo{language: map[string]string{
+		"datadog-python": "python", "datadog-python-defaults": "python",
+		"otel-node": "node", "newrelic-dotnet": "dotnet",
+	}}
+	got, err := findBumps(context.Background(), m, "", reg, info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][2]string{
+		"a": {"python", "python"},
+		"b": {"node", "javascript"},
+		"c": {"dotnet", ".NET"},
+		"d": {"", ""},
+		"e": {"", ""},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d bumps, want %d", len(got), len(want))
+	}
+	for _, b := range got {
+		if w := want[b.ID]; b.Language != w[0] || b.Label != w[1] {
+			t.Errorf("%s: language = %q, label = %q; want %q, %q", b.ID, b.Language, b.Label, w[0], w[1])
 		}
 	}
 }
