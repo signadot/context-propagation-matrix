@@ -417,7 +417,7 @@ release per instrumented variant, `variant-{id}`:
 | Asset | Contents |
 |---|---|
 | `{version}.json` | a single-variant schema v2 document for that tracer version: the variant, the run manifest it was measured in, the dimensions, the annotations that touch it and a summary for it alone |
-| `index.json` | every version filed, newest first, with its asset name, `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts, plus the document's `invalid` when the measurement is not valid (so an agent that never attached can be told from one that propagates nothing without opening the document) |
+| `index.json` | every version filed, newest first, with its asset name, `released_at` (when the tracer's registry published the version; left out when unknown), `measured_in` / `measured_at` / `measured_commit` / `matrix_version`, the reported version string and per-header counts, plus the document's `invalid` when the measurement is not valid (so an agent that never attached can be told from one that propagates nothing without opening the document) |
 | `versions.json` | the bundle: `{schema_version, index, documents}` — `index` is `index.json`, `documents` maps each listed version to its `{version}.json` byte for byte. One download gives a consumer the variant's whole history; the site reads only this asset |
 
 Byte for byte as filed, with one exception. Cells are the measurement and
@@ -430,6 +430,18 @@ each `{version}.json` asset keeps the annotations it was filed with. A note
 written or corrected after a version was measured thus reaches that version's
 page: attached to its failing cells on the versions before the fix, resolved
 with `fixed_in` on the versions from it.
+
+`released_at` is the one field of an index entry that does not come from a
+measurement. It is a property of the version: the time the tracer's registry
+(the variant's `tracer` coordinate in `variants.yaml`) published it. `cpm
+versions` looks it up at publish for the entries that have none, and an entry
+keeps it from then on, also when the version is measured again. The field is
+optional. A lookup that fails is a warning, the entry is published without a
+date and tried again at the next publish of the variant. Where each registry
+states the date is in `internal/versions/dates.go`; for a Go module it is the
+time of the tagged commit, and PECL and New Relic's download index name no
+time zone, so theirs are read as UTC. The per-version documents do not carry
+the date.
 
 `{version}` is the *pinned* tracer version (`tracer.pinned`: what `cpm pins`
 reads from the manifest the relay was built from, the value a bump PR names
@@ -560,8 +572,11 @@ Two bots move versions, and they do not overlap:
   one single-dependency manifest per Node
   tool under `relays/node/tools/`), pip (`requirements.in`, compiled
   to `requirements.txt`, + `requirements-<tool>.txt`), bundler (one Gemfile per tool under
-  `relays/ruby/gemfiles/`), composer, maven, nuget, cargo, and docker base
-  images — one grouped `app-deps` PR per ecosystem. Every tracer package
+  `relays/ruby/gemfiles/`), composer, maven, nuget, cargo (one crate per
+  Rust tool under `relays/rust/`), and docker base images — one grouped
+  `app-deps` PR per ecosystem, across every tool directory of a language, so
+  the variants of one language are never measured on different versions of
+  the same application library. Every tracer package
   that `pins.yaml` lists is in that ecosystem's `ignore` list, so Dependabot
   never proposes a tracer bump (it also cannot see the Dockerfile ARGs).
 - **bump-agents.yml** moves the *tracers*. `pins.yaml` lists where every
@@ -577,7 +592,10 @@ Two bots move versions, and they do not overlap:
   `==` line, a `gem` line with `bundle lock`, an `ARG`). There is exactly
   one PR per pin: branch
   `bump/<id>`, title `bump(<id>): <from> → <to>`, labels `dependencies` +
-  `tracer-bump` + `auto-merge`, squash auto-merge requested. A newer
+  `tracer-bump` + `auto-merge` + the language label Dependabot gives that
+  language's PRs (`python`, `javascript`, `.NET`, …, so `label:python`
+  lists every PR that moved the Python relays, tracer or library), squash
+  auto-merge requested. A newer
   upstream release rewrites that branch (current `main` + one commit) and
   PR in place and closes any older PR for the same pin as superseded, so
   the queue never holds two PRs for one tracer, and a PR that has gone

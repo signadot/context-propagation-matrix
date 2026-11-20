@@ -24,7 +24,8 @@ const VersionIndexSchema = 1
 
 // VersionIndex is index.json: every measured tracer version of one variant,
 // newest first, with enough of each measurement to render a version list
-// (counts, provenance) without opening the per-version document.
+// (counts, provenance) without opening the per-version document, and the
+// date the version was released upstream.
 type VersionIndex struct {
 	SchemaVersion int            `json:"schema_version"`
 	Variant       string         `json:"variant"`
@@ -37,9 +38,13 @@ type VersionIndex struct {
 
 // VersionEntry is one measured version. Asset is the document's file name
 // in the release; Version is the canonical (pinned) tracer version, Reported
-// what the relay said at run time.
+// what the relay said at run time. ReleasedAt is when the tracer's registry
+// published this version; it is absent when it could not be looked up.
+// Unlike measured_at it is a property of the version, not of the
+// measurement.
 type VersionEntry struct {
 	Version        string            `json:"version"`
+	ReleasedAt     *time.Time        `json:"released_at,omitempty"`
 	Reported       string            `json:"reported,omitempty"`
 	Asset          string            `json:"asset"`
 	Kind           string            `json:"kind"` // run kind that measured it: matrix | backtest | local
@@ -334,10 +339,15 @@ func LoadVersionIndex(path string, v *Variant) (*VersionIndex, error) {
 }
 
 // Upsert replaces the entry for e.Version or adds it: the latest measurement
-// of a version is the one that stands.
+// of a version is the one that stands. The release date is not part of a
+// measurement, and an entry built from a document has none, so the replaced
+// entry's is kept.
 func (idx *VersionIndex) Upsert(e VersionEntry) {
 	for i := range idx.Versions {
 		if idx.Versions[i].Version == e.Version {
+			if e.ReleasedAt == nil {
+				e.ReleasedAt = idx.Versions[i].ReleasedAt
+			}
 			idx.Versions[i] = e
 			return
 		}
