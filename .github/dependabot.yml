@@ -243,3 +243,12 @@ updates:
       # does not see its bump as a major; ignore the image outright. Build-
       # only, so the Maven version does not matter to the measurement.
       - dependency-name: "maven"
+
+  # Workflow actions. Third-party actions are pinned to a commit SHA with the
+  # release in a trailing comment; this keeps both current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions:
+        patterns: ["*"]

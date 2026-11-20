@@ -160,8 +160,10 @@ jobs:
           cache: true
       # `cpm pins latest -apply` moves Cargo.lock with `cargo update` for the
       # Rust relays (as backtest.yml does for `cpm pins set`).
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         if: steps.existing.outputs.skip != 'true' && matrix.bump.kind == 'cargo'
+        with:
+          toolchain: stable
       # ... and Gemfile.lock with `bundle lock` for the Ruby relays, under the
       # Ruby of the relay image (its FROM tag, so the two cannot drift): the
       # lock is resolved by the Ruby and Bundler that install it.
@@ -169,7 +171,7 @@ jobs:
         id: ruby
         if: steps.existing.outputs.skip != 'true' && matrix.bump.kind == 'bundler'
         run: sed -nE 's/^FROM ruby:([0-9.]+).*/version=\1/p' relays/ruby/Dockerfile >> "$GITHUB_OUTPUT"
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
         if: steps.existing.outputs.skip != 'true' && matrix.bump.kind == 'bundler'
         with:
           ruby-version: ${{ steps.ruby.outputs.version }}
@@ -205,8 +207,8 @@ jobs:
         if: steps.apply.outputs.changed == 'true'
         run: |
           set -euo pipefail
-          git config user.name "matrix-bot"
-          git config user.email "matrix-bot@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # The branch is always main + exactly one commit: (re)create it here.
           git checkout -B "$BRANCH"
           jq -r '.[0].files[]' /tmp/bump.json | xargs git add --
