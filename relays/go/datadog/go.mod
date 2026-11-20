@@ -8,7 +8,7 @@ require (
 	github.com/DataDog/dd-trace-go/contrib/net/http/v2 v2.12.0
 	github.com/DataDog/dd-trace-go/v2 v2.12.0
 	github.com/IBM/sarama v1.61.1
-	github.com/rabbitmq/amqp091-go v1.16.0
+	github.com/rabbitmq/amqp091-go v1.17.0
 	github.com/signadot/context-propagation-matrix/gen v0.0.0-00010101000000-000000000000
 	github.com/signadot/context-propagation-matrix/relays/go/internal v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.85.0

@@ -12,7 +12,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/nramqp v1.0.4
 	github.com/newrelic/go-agent/v3/integrations/nrgrpc v1.4.11
 	github.com/newrelic/go-agent/v3/integrations/nrsarama v1.0.2
-	github.com/rabbitmq/amqp091-go v1.16.0
+	github.com/rabbitmq/amqp091-go v1.17.0
 	github.com/signadot/context-propagation-matrix/gen v0.0.0-00010101000000-000000000000
 	github.com/signadot/context-propagation-matrix/relays/go/internal v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.85.0

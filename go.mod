@@ -3,7 +3,7 @@ module github.com/signadot/context-propagation-matrix
 go 1.26.0
 
 require (
-	github.com/rabbitmq/amqp091-go v1.16.0
+	github.com/rabbitmq/amqp091-go v1.17.0
 	github.com/signadot/context-propagation-matrix/gen v0.0.0-00010101000000-000000000000
 	github.com/twmb/franz-go v1.22.3
 	github.com/twmb/franz-go/pkg/kadm v1.20.0
