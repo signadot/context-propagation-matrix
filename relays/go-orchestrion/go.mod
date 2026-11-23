@@ -9,7 +9,7 @@ go 1.26.0
 // and dd-trace-go match the hand-wired datadog-go relay for comparability.
 require (
 	github.com/IBM/sarama v1.61.1
-	github.com/rabbitmq/amqp091-go v1.16.0
+	github.com/rabbitmq/amqp091-go v1.17.0
 	github.com/signadot/context-propagation-matrix/gen v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.85.0
 )

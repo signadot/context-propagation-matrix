@@ -9,7 +9,7 @@ go 1.26.0
 // (Dependabot bumps them); kafka-go because it is the only Kafka client otelc
 // v1 instruments.
 require (
-	github.com/rabbitmq/amqp091-go v1.16.0
+	github.com/rabbitmq/amqp091-go v1.17.0
 	github.com/segmentio/kafka-go v0.4.51
 	github.com/signadot/context-propagation-matrix/gen v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.85.0
