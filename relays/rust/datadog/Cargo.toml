@@ -26,7 +26,7 @@ tonic-prost = "0.14"
 prost = "0.14"
 # cmake-build: compile the vendored librdkafka with cmake (no system lib).
 # libz-static: statically link zlib so the runtime image needs nothing extra.
-rdkafka = { version = "0.39", features = ["cmake-build", "libz-static", "tokio"] }
+rdkafka = { version = "0.40", features = ["cmake-build", "libz-static", "tokio"] }
 # tokio runtime only; no TLS backend needed for plain amqp://.
 lapin = { version = "4", default-features = false, features = ["tokio"] }
 futures-util = "0.3"
