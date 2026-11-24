@@ -7,13 +7,13 @@ gem 'grpc', '1.85.0'
 gem 'puma', '8.1.2'
 gem 'rackup', '2.3.1'
 gem 'rdkafka', '0.31.0'
-gem 'sinatra', '4.2.1'
+gem 'sinatra', '4.2.2'
 
 gem 'opentelemetry-sdk', '1.13.1'
 
 gem 'opentelemetry-instrumentation-bunny', '0.25.0'  # needs ruby >= 3.3
 gem 'opentelemetry-instrumentation-grpc', '0.5.3'    # client-side only
 gem 'opentelemetry-instrumentation-net_http', '0.30.0'
-gem 'opentelemetry-instrumentation-rack', '0.31.2'
+gem 'opentelemetry-instrumentation-rack', '0.32.0'
 gem 'opentelemetry-instrumentation-rdkafka', '0.10.0' # needs rdkafka >= 0.18
-gem 'opentelemetry-instrumentation-sinatra', '0.30.1'
+gem 'opentelemetry-instrumentation-sinatra', '0.31.0'
