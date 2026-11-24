@@ -13,7 +13,7 @@
 # --allow-unsafe: grpcio-tools needs setuptools, which this image does not ship.
 # This build reads requirements.txt only. verify.yml fails a pull request in
 # which the two files disagree (scripts/check-python-requirements.sh).
-FROM python:3.12-slim AS app
+FROM python:3.15-slim AS app
 WORKDIR /app
 COPY relays/python/requirements.txt .
 # --no-deps + pip check: install exactly what the compiled file lists, and
