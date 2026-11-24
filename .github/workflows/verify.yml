@@ -8,7 +8,8 @@
 #   "Registry, pins, annotations and scripts consistent"
 #       variants.yaml ↔ docker-compose.yml ↔ annotations/*.yaml ↔ the latest
 #       published results.json agree; every tracer pin in pins.yaml resolves;
-#       shell scripts parse.
+#       language toolchains agree between manifests and Dockerfiles; shell
+#       scripts parse.
 #   "Boot and propagate: <variant>"  (one per smoked variant; not required)
 #       build the relay from the GHCR layer cache, run every boundary
 #       against real brokers, check the driver recorded each boundary
@@ -122,6 +123,13 @@ jobs:
       # bump-agents.yml move). Offline.
       - name: pins.yaml matches the manifests and the registry
         run: go run ./cmd/cpm pins check >/dev/null
+      # A language toolchain pinned in two places (go.mod vs golang image,
+      # csproj TargetFramework vs dotnet images, pom.xml java.version vs
+      # temurin images) must agree. Dependabot bumps the two sides in separate
+      # PRs, and dependabot-automerge.yml merges them on this job's word, so
+      # the check has to be required rather than path-filtered. Offline.
+      - name: Language toolchains agree between manifests and Dockerfiles
+        run: scripts/check-toolchains.sh
       # The Python image installs requirements.txt, and only pip-compile reads
       # requirements.in. A version changed in one and not compiled into the
       # other would build and pass, so the two are compared here. Offline.

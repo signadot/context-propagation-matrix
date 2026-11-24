@@ -1,0 +1,83 @@
+# dependabot-automerge.yml — Dependabot's PRs merge themselves, as tracer
+# bumps do.
+#
+# Dependabot keeps the application dependencies, base images and workflow
+# actions (.github/dependabot.yml); bump-agents.yml keeps the tracer pins and
+# requests squash auto-merge on every PR it opens. This workflow does the same
+# for Dependabot's PRs, so a library bump merges once the required checks
+# (verify.yml: the smoke over the relays the change can alter, the Go job,
+# the consistency job) and the review are in, instead of waiting for someone
+# to click. Two kinds are left to a person:
+#
+#   - a major (dependabot/fetch-metadata's update-type; for a grouped PR the
+#     highest in the group): labelled `major`, auto-merge not requested. A
+#     Spring Boot or axum major is a decision, and sometimes a code change
+#     (#320), not a routine bump.
+#   - a PR labelled `blocked`: whoever labelled it had a reason. Adding the
+#     label also cancels an auto-merge requested earlier; removing it asks
+#     again.
+#
+# What the merge does not do: start a matrix run. The merge is made by the
+# workflow token, and GitHub starts no push run for its pushes, so the bumped
+# relays are measured by the next matrix run of any kind, at the latest the
+# 6-hourly one (bump-agents.yml has the same property and the same note).
+# A result change from a library bump is a real result — the library is the
+# carrier under test — and shows up in that run's Slack post like any other.
+#
+# Idempotent: Dependabot rebases and re-pushes its branches, and every push
+# runs this again; auto-merge already requested is left alone.
+name: dependabot-automerge
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+# Dependabot-triggered runs get a read-only token unless the workflow asks
+# for more; these two are what `gh pr merge --auto` and `gh pr edit` need.
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write # gh label create (labels are shared with issues)
+
+jobs:
+  automerge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PR: ${{ github.event.pull_request.number }}
+      BLOCKED: ${{ contains(github.event.pull_request.labels.*.name, 'blocked') }}
+    steps:
+      - name: Cancel auto-merge on a blocked PR
+        if: env.BLOCKED == 'true'
+        run: |
+          gh pr merge --disable-auto "$PR" 2>/dev/null && echo "#$PR is blocked; auto-merge cancelled" \
+            || echo "#$PR is blocked; no auto-merge was requested"
+
+      - id: meta
+        if: env.BLOCKED != 'true'
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ github.token }}
+
+      - name: Major — label it and leave it to a person
+        if: env.BLOCKED != 'true' && steps.meta.outputs.update-type == 'version-update:semver-major'
+        env:
+          DEPS: ${{ steps.meta.outputs.dependency-names }}
+        run: |
+          gh label create major --color B60205 --description "Major version bump; merged by a person, not auto-merge" 2>/dev/null || true
+          gh pr edit "$PR" --add-label major
+          gh pr merge --disable-auto "$PR" 2>/dev/null || true
+          echo "::notice::#$PR is a major ($DEPS); left for review"
+
+      - name: Request squash auto-merge
+        if: env.BLOCKED != 'true' && steps.meta.outputs.update-type != 'version-update:semver-major'
+        env:
+          TYPE: ${{ steps.meta.outputs.update-type }}
+        run: |
+          if [[ "$(gh pr view "$PR" --json autoMergeRequest --jq '.autoMergeRequest != null')" == "true" ]]; then
+            echo "#$PR already has auto-merge requested"; exit 0
+          fi
+          gh pr merge --auto --squash "$PR"
+          echo "#$PR: squash auto-merge requested (${TYPE:-digest or unknown update type})"
