@@ -129,6 +129,15 @@ updates:
       - /relays/ruby/gemfiles/elastic
     schedule: { interval: weekly }
     groups:
+      # The otel Gemfile's opentelemetry-instrumentation-* gems are not the
+      # pin (that is opentelemetry-sdk, below) and not carriers either: they
+      # are the part of the OpenTelemetry Ruby agent that decides what is
+      # propagated on each carrier, released on their own cadence. One PR for
+      # the set, so a week's instrumentation releases land together and
+      # otel-ruby is measured once, not once per gem. A dependency joins the
+      # first group it matches, so this comes before app-deps.
+      otel-instrumentation:
+        patterns: ["opentelemetry-instrumentation-*"]
       app-deps:
         patterns: ["*"]
         exclude-patterns:
@@ -138,7 +147,7 @@ updates:
           - "elastic-apm"
     # pins.yaml `packages:` — moved by bump-agents.yml. Only the SDK gem is
     # pinned; the opentelemetry-instrumentation-* gems have their own
-    # versions and stay Dependabot's.
+    # versions and stay Dependabot's (the otel-instrumentation group above).
     ignore:
       - dependency-name: "opentelemetry-sdk"  # otel-ruby
       - dependency-name: "datadog"            # datadog-ruby

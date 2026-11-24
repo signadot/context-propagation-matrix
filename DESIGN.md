@@ -576,7 +576,9 @@ Two bots move versions, and they do not overlap:
   Rust tool under `relays/rust/`), and docker base images — one grouped
   `app-deps` PR per ecosystem, across every tool directory of a language, so
   the variants of one language are never measured on different versions of
-  the same application library. Every tracer package
+  the same application library (Ruby has a second group,
+  `otel-instrumentation`, for the OpenTelemetry instrumentation gems, which
+  are neither the pin nor a carrier). Every tracer package
   that `pins.yaml` lists is in that ecosystem's `ignore` list, so Dependabot
   never proposes a tracer bump (it also cannot see the Dockerfile ARGs).
   `dependabot-automerge.yml` requests squash auto-merge on each of its PRs,
