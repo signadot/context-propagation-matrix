@@ -13,6 +13,6 @@ gem 'grpc', '1.85.0'
 gem 'puma', '8.1.2'
 gem 'rackup', '2.3.1'
 gem 'rdkafka', '0.31.0'
-gem 'sinatra', '4.2.1'
+gem 'sinatra', '4.2.2'
 
 gem 'elastic-apm', '4.9.0'
