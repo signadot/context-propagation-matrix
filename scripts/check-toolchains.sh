@@ -2,8 +2,9 @@
 # check-toolchains.sh — the language-toolchain pins that live in two places
 # must agree. Dependabot bumps each side independently (gomod raises go.mod's
 # `go` directive when a dependency needs it; the docker ecosystem bumps FROM
-# tags), and the matrix only notices on its next run. Run in CI
-# (.github/workflows/toolchains.yml) and locally.
+# tags), and the matrix only notices on its next run. Run in CI as a step of
+# verify.yml's required "Registry, pins, annotations and scripts consistent"
+# job (dependabot-automerge.yml merges on that job's word) and locally.
 #
 #   Go    go.mod `go` (and `toolchain`) directive  <=  FROM golang:<tag>
 #         for the root module and each Go relay module. Older images cannot

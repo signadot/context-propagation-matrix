@@ -579,6 +579,11 @@ Two bots move versions, and they do not overlap:
   the same application library. Every tracer package
   that `pins.yaml` lists is in that ecosystem's `ignore` list, so Dependabot
   never proposes a tracer bump (it also cannot see the Dockerfile ARGs).
+  `dependabot-automerge.yml` requests squash auto-merge on each of its PRs,
+  so a patch or minor bump merges once `verify.yml` and the review pass;
+  a major is labelled `major` and left to a person, and a `blocked` label
+  cancels auto-merge. As for tracer bumps, the merge starts no matrix run
+  and the bumped relays are measured by the next scheduled one.
 - **bump-agents.yml** moves the *tracers*. `pins.yaml` lists where every
   tracer's pin lives — Dockerfile ARG, go.mod module family, package.json,
   requirements file, Gemfile, Cargo.toml — keyed by the same
