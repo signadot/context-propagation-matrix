@@ -1,16 +1,17 @@
 package com.signadot.cpmatrix.relay;
 
-import org.apache.kafka.common.utils.AppInfoParser;
 import org.springframework.boot.SpringBootVersion;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Properties;
 
 @RestController
 public class RelayController {
@@ -53,7 +54,7 @@ public class RelayController {
 
         Map<String, String> libs = new LinkedHashMap<>();
         libs.put("spring-boot", SpringBootVersion.getVersion());
-        libs.put("kafka-clients", AppInfoParser.getVersion());
+        libs.put("kafka-clients", kafkaClientsVersion());
         libs.put("http-client", "RestTemplate (HttpURLConnection)");
         libs.put("grpc", "grpc-java");
         libs.put("kafka", "spring-kafka");
@@ -67,6 +68,25 @@ public class RelayController {
         String file = Forwarder.env("TRACER_VERSION_FILE", "/agent/version.txt");
         try {
             return Files.readString(Path.of(file)).trim();
+        } catch (Exception e) {
+            return "unknown";
+        }
+    }
+
+    /**
+     * The kafka-clients version, from the kafka/kafka-version.properties the
+     * jar ships (what AppInfoParser reads). AppInfoParser itself is internal
+     * and moved package in kafka-clients 4.4.
+     */
+    private static String kafkaClientsVersion() {
+        try (InputStream in = RelayController.class.getClassLoader()
+                .getResourceAsStream("kafka/kafka-version.properties")) {
+            if (in == null) {
+                return "unknown";
+            }
+            Properties p = new Properties();
+            p.load(in);
+            return p.getProperty("version", "unknown");
         } catch (Exception e) {
             return "unknown";
         }

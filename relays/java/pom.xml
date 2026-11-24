@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>4.1.2</version>
+    <version>4.2.0</version>
     <relativePath/>
   </parent>
 
@@ -36,9 +36,13 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-kafka</artifactId>
     </dependency>
+    <!-- RabbitMQ over AMQP 0-9-1 (spring-rabbit: RabbitTemplate, @RabbitListener).
+         Since Boot 4.2 `spring-boot-starter-amqp` is the AMQP 1.0 client
+         (spring-amqp-client over Qpid protonj2) and no longer brings
+         spring-rabbit; the 0-9-1 stack is `spring-boot-starter-rabbitmq`. -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-amqp</artifactId>
+      <artifactId>spring-boot-starter-rabbitmq</artifactId>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
