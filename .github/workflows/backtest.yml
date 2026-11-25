@@ -72,8 +72,8 @@ jobs:
       count: ${{ steps.plan.outputs.count }}
       baseline: ${{ steps.baseline.outputs.artifact-id != '' }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -117,7 +117,7 @@ jobs:
       # no baseline.
       - id: baseline
         name: Keep that results.json as the baseline for every pair
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: latest-run-results
           path: results/latest/results.json
@@ -146,8 +146,8 @@ jobs:
       # The latest run's results.json from the plan job; empty when there is none.
       BASELINE: ${{ needs.plan.outputs.baseline == 'true' && '/tmp/baseline/results.json' || '' }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -229,7 +229,7 @@ jobs:
         run: docker compose logs --no-color "relay-$V" sink > "relay-$V.log" 2>&1 || true
       - name: Keep the logs (also when nothing is published)
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: logs-backtest-${{ env.V }}-${{ env.VER }}
           path: relay-${{ env.V }}.log
@@ -237,7 +237,7 @@ jobs:
           retention-days: 30
       - name: Latest run's results.json (the uninstrumented baseline to judge this agent against)
         if: env.BASELINE != ''
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: latest-run-results
           path: /tmp/baseline
@@ -291,7 +291,7 @@ jobs:
             scripts/create-release.sh "$tag" /tmp/notes.md --title "backtest: $V @ $VER" --prerelease "${assets[@]}"
           fi
       - name: Keep the document for the filing job
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backtest-${{ env.V }}-${{ env.VER }}
           path: /tmp/out/results.json
@@ -308,12 +308,12 @@ jobs:
     if: always() && needs.run.result != 'skipped'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: backtest-*
           path: docs
