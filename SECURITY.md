@@ -17,7 +17,8 @@ supply-chain problem in a pinned dependency), please email
 **security@signadot.com**, or use GitHub's private reporting form,
 [Report a vulnerability](https://github.com/signadot/context-propagation-matrix/security/advisories/new)
 under this repository's **Security** tab, rather than opening a public issue or
-pull request. We aim to acknowledge reports within three working days.
+pull request. Both reach the same people. We aim to acknowledge reports within
+three working days.
 
 Vulnerabilities in the *instrumentation libraries under test* (OpenTelemetry,
 Datadog, Elastic APM, New Relic agents) should be reported to those projects
