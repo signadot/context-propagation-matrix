@@ -29,7 +29,8 @@ the tree by the harness; the design/contract is in [`DESIGN.md`](DESIGN.md).
 
 ## Run it
 
-Requirements: Docker + docker compose.
+Requirements: Docker + docker compose, and Go 1.26+ (`run.sh` runs the `cpm`
+CLI with `go run`).
 
 ```sh
 # infra (Kafka + RabbitMQ + sink)
@@ -110,7 +111,7 @@ annotations/       per-cell explanations as data (matched into results.json)
 proto/             relay/sink gRPC definitions
 sink/              uninstrumented Go recorder (HTTP + gRPC + Kafka + RabbitMQ)
 driver/            uninstrumented Go test driver (seeds headers, evaluates results)
-cmd/cpm/           CLI: list | affected | validate | aggregate | diff | summary | coords | annotations | pins | discover | versions
+cmd/cpm/           CLI: list | boundaries | affected | validate | aggregate | gate | diff | summary | coords | annotations | pins | discover | versions
 internal/          registry loader, results schema v2, annotations, affected-variant rules, renderer
 matrixgen/         compatibility wrapper around `cpm aggregate` (MATRIX.md only)
 scripts/           fetch-latest.sh: restore results/latest (+ results/raw) from a release
