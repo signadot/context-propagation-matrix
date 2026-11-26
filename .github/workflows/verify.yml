@@ -27,12 +27,11 @@
 # every such PR is the matrix run's job, not the gate's, so above
 # SMOKE_CAP variants the gate falls back to a representative pair instead.
 #
-# workflow_dispatch exists for bump-agents.yml: branches it pushes with the
-# workflow's own token raise no pull_request event (GitHub's recursion
-# guard), so it dispatches this workflow on the bump/* branch instead. The
-# check runs land on the branch's head commit, which is the PR's head, so
-# they count for branch protection like any other run. The change is diffed
-# against the branch's merge-base with main, as for a pull request.
+# workflow_dispatch runs the same checks on any branch by hand. The change is
+# diffed against the branch's merge-base with main, as for a pull request.
+# Its check runs are not part of a pull request's status rollup, so branch
+# protection ignores them. It was added for bump-agents.yml, which no longer
+# dispatches it (see the header of bump-agents.yml).
 #
 # merge_group is for a merge queue on main, which is not switched on. A queue
 # runs the required checks on the commit it is about to merge (main, the
@@ -216,8 +215,8 @@ jobs:
               head="$GITHUB_SHA"
               ;;
             workflow_dispatch)
-              # Dispatched on a bump/* branch by bump-agents.yml: same idea,
-              # the branch's fork point from main.
+              # Run by hand on a branch: same idea, the branch's fork point
+              # from main.
               base=$(git merge-base origin/main "$GITHUB_SHA")
               head="$GITHUB_SHA"
               ;;
