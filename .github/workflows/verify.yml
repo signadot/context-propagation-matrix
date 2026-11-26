@@ -81,8 +81,8 @@ jobs:
     name: "Go: gofmt, vet, test"
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -97,8 +97,8 @@ jobs:
     name: "Registry, pins, annotations and scripts consistent"
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -167,7 +167,7 @@ jobs:
       variants: ${{ steps.plan.outputs.variants }}
       boundaries: ${{ steps.plan.outputs.boundaries }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # cpm affected diffs two revisions
       # A pull_request run tests the merge with the base branch as it was
@@ -183,7 +183,7 @@ jobs:
       - name: This run still tests the base branch as it is now
         if: github.event_name == 'pull_request'
         run: scripts/run-base-moved.sh --checkout "origin/$GITHUB_BASE_REF"
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -267,7 +267,7 @@ jobs:
       V: ${{ matrix.variant }}
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Log in to GHCR (cache read/write; skipped for forks)
         if: github.event.pull_request.head.repo.fork != true
@@ -356,7 +356,7 @@ jobs:
     steps:
       # See the plan job. Running only the failed jobs of a run again runs
       # the smoke jobs and this one, not the plan job.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: github.event_name == 'pull_request'
         with:
           fetch-depth: 0
